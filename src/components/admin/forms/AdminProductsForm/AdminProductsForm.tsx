@@ -680,12 +680,9 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
                 </AdminSelectTrigger>
                 <AdminSelectContent>
                   <AdminSelectGroup>
-                    {/* ShoeSize excluded — this is a clothing store */}
-                    {Object.entries(SIZE_TEMPLATES)
-                      .filter(([key]) => key !== SIZE_TYPES.SHOE)
-                      .map(([key, labels]) => (
+                    {Object.entries(SIZE_TEMPLATES).map(([key, labels]) => (
                         <AdminSelectItem key={key} value={key}>
-                          {key} ({labels.join(", ")})
+                          {key} ({labels.slice(0, 3).join(", ")}{labels.length > 3 ? "…" : ""})
                         </AdminSelectItem>
                       ))}
                   </AdminSelectGroup>

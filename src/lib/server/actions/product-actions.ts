@@ -36,6 +36,16 @@ export async function createProduct(
       stockTotal: 10,
     }));
 
+    // Validate collection IDs exist before connecting to prevent P2025
+    const safeCollectionIds = data.collectionIds?.length
+      ? (
+          await prisma.collection.findMany({
+            where: { id: { in: data.collectionIds } },
+            select: { id: true },
+          })
+        ).map((c) => c.id)
+      : [];
+
     const created = await prisma.product.create({
       data: {
         name: data.name,
@@ -58,8 +68,8 @@ export async function createProduct(
           create: sizes,
         },
 
-        ...(data.collectionIds?.length
-          ? { collections: { connect: data.collectionIds.map((id) => ({ id })) } }
+        ...(safeCollectionIds.length
+          ? { collections: { connect: safeCollectionIds.map((id) => ({ id })) } }
           : {}),
       },
     });
@@ -86,6 +96,16 @@ export async function updateProductById(
       : null;
     const sizeTypeChanged = current && current.sizeType !== data.sizeType;
 
+    // Validate collection IDs exist before connecting to prevent P2025
+    const safeCollectionIds = data.collectionIds?.length
+      ? (
+          await prisma.collection.findMany({
+            where: { id: { in: data.collectionIds } },
+            select: { id: true },
+          })
+        ).map((c) => c.id)
+      : [];
+
     const created = await prisma.product.update({
       where: { id },
       data: {
@@ -105,7 +125,7 @@ export async function updateProductById(
         images: data.imageUrls,
         sizeType: data.sizeType,
         collections: {
-          set: (data.collectionIds || []).map((cid) => ({ id: cid })),
+          set: safeCollectionIds.map((cid) => ({ id: cid })),
         },
         ...(sizeTypeChanged && data.sizeType
           ? {
