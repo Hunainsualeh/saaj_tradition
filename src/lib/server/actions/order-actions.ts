@@ -1,7 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { Order, OrderStatus, PaymentStatus, CartStatus } from "@prisma/client";
+import {
+  Order,
+  OrderStatus,
+  PaymentStatus,
+  CartStatus,
+  PaymentMethod,
+} from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 
 import { prisma } from "@/lib/prisma";
@@ -12,6 +18,7 @@ import { cookies } from "next/headers";
 import { COOKIE_CART_ID } from "@/lib/constants";
 import { adminRoutes } from "@/lib/routing";
 import { sendOrderConfirmationEmails, sendOrderStatusEmail } from "./email-actions";
+import { buildPayFastPaymentPayload } from "@/lib/server/payments/payfast";
 
 // === QUERIES ===
 export async function getCurrentOrder(): Promise<
@@ -122,6 +129,62 @@ export async function markOrderAsPaid(
     sendOrderConfirmationEmails(orderId).catch((err) => {
       console.error("[Email] Failed to send order confirmation after markOrderAsPaid:", err);
     });
+  });
+}
+
+export type InitiatePayFastCheckoutResponse = {
+  actionUrl: string;
+  fields: Record<string, string>;
+};
+
+/** Build PayFast form payload for a pending order */
+export async function initiatePayFastCheckout(
+  orderId: string,
+): Promise<ServerActionResponse<InitiatePayFastCheckoutResponse>> {
+  return wrapServerCall(async () => {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        paymentStatus: true,
+        totalPrice: true,
+      },
+    });
+
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    if (order.status !== OrderStatus.PENDING) {
+      throw new Error("Only pending orders can be paid");
+    }
+
+    if (order.paymentStatus === PaymentStatus.PAID) {
+      throw new Error("Order is already paid");
+    }
+
+    const payload = await buildPayFastPaymentPayload({
+      amount: Number(order.totalPrice),
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+    });
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        paymentMethod: PaymentMethod.STRIPE,
+        paymentStatus: PaymentStatus.PENDING,
+        stripeSessionId: `payfast_${order.id}`,
+        updatedAt: new Date(),
+      },
+    });
+
+    return {
+      actionUrl: payload.actionUrl,
+      fields: payload.fields,
+    };
   });
 }
 

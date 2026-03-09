@@ -6,11 +6,12 @@ import { Button } from "@/components/ui";
 type OrderSummaryStepUIProps = {
   isSubmitting: boolean;
   onConfirmPayment: () => void;
+  buttonText?: string;
 };
 
 export function OrderSummaryStepUI(props: OrderSummaryStepUIProps) {
   // === PROPS ===
-  const { isSubmitting, onConfirmPayment } = props;
+  const { isSubmitting, onConfirmPayment, buttonText = "Submit payment" } = props;
 
   return (
     <motion.div
@@ -43,7 +44,7 @@ export function OrderSummaryStepUI(props: OrderSummaryStepUIProps) {
       <Button
         onClick={onConfirmPayment}
         variant="dark"
-        text="Submit payment"
+        text={buttonText}
         className="mt-8 w-full"
         isLoading={isSubmitting}
       />

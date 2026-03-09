@@ -16,7 +16,7 @@ It includes a customer-facing storefront and an admin back office for managing p
 
 - 🏪 **Customer storefront** — home, shop, product details, cart, checkout, blog, about, and support pages
 - 🛒 **Cart system with persistence** — cookie-backed cart ID, quantity guardrails, and server-side cart mutations
-- 💳 **Stripe checkout flow** — payment intent creation, multi-step checkout UI, and webhook-driven order/payment updates
+- 💳 **PayFast checkout flow** — hosted payment handoff (card/JazzCash/EasyPaisa), secure server-side token generation, and callback-driven order/payment updates
 - 📦 **Inventory reservation logic** — stock is reserved during checkout and finalized on successful payment
 - ⚙️ **Admin content management** — product, blog, and author management pages with create/edit routes
 - 📚 **Component library documentation** — Storybook for isolated component development and UI review
@@ -51,14 +51,14 @@ https://samhalsall.dev/cartelle-case-study
 
 ### Cart + Checkout + Payment
 
-Checkout is handled through server actions and Stripe integration:
+Checkout is handled through server actions and payment gateway integration:
 
 1. Customer adds items by product + size into a cookie-scoped cart
 2. Server validates per-item and total cart quantity limits
 3. Checkout initiation reserves stock (`stockReserved`) atomically in Prisma
-4. A Stripe Payment Intent is created and stored on the order (`stripeSessionId`)
+4. A PayFast access token is generated server-side and posted to PayFast's hosted checkout
 5. Frontend checkout runs a three-step flow (delivery, payment, summary)
-6. Stripe webhook finalizes order/payment status and decrements reserved stock
+6. PayFast callback finalizes order/payment status and decrements reserved stock
 
 Core files:
 
@@ -66,16 +66,20 @@ Core files:
 src/lib/server/actions/cart-actions.ts
 src/lib/server/actions/order-actions.ts
 src/components/common/CheckoutForm/CheckoutForm.tsx
-src/app/api/webhooks/stripe/route.ts
+src/app/api/payment/payfast/return/route.ts
 ```
 
 Environment variables required:
 
 ```
 DATABASE_URL=
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
+PAYFAST_MERCHANT_ID=
+PAYFAST_SECURE_KEY=
+PAYFAST_TOKEN_URL=
+NEXT_PUBLIC_PAYFAST_POST_URL=
+# Optional
+# PAYFAST_RETURN_URL=
+# PAYFAST_POST_EXTRA_FIELDS={"VERSION":"1.1"}
 ```
 
 ---
@@ -134,9 +138,10 @@ Create a `.env` (or `.env.local`) file in the project root:
 
 ```
 DATABASE_URL=
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
+PAYFAST_MERCHANT_ID=
+PAYFAST_SECURE_KEY=
+PAYFAST_TOKEN_URL=
+NEXT_PUBLIC_PAYFAST_POST_URL=
 BLOB_READ_WRITE_TOKEN=
 DEMO_MODE=
 ```

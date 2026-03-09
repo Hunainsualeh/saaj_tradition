@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     "premium apparel",
     "saaj tradition",
   ],
-  metadataBase: new URL("https://saajtradition.example"),
+  metadataBase: new URL("https://saajtradition.com"),
   openGraph: {
     title: "Saaj Tradition",
     description:

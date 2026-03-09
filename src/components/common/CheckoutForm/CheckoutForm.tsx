@@ -8,7 +8,7 @@ import { CircleCheckIcon } from "@/components/icons";
 import { cn } from "@/lib";
 import { DeliveryDetailsStep } from "./DeliveryDetailsStep";
 import { OrderSummaryStep } from "./OrderSummaryStep";
-import { PaymentStep } from "./PaymentStep";
+import { CheckoutPaymentMethod, PaymentStep } from "./PaymentStep";
 
 type CheckoutFormComponentProps = {
   id: string;
@@ -128,6 +128,8 @@ export function CheckoutForm(props: CheckoutFormProps) {
   const [deliveryData, setDeliveryData] = useState<DeliveryDetailsData | null>(
     null,
   );
+  const [paymentMethod, setPaymentMethod] =
+    useState<CheckoutPaymentMethod>("PAYFAST");
 
   // === FUNCTIONS ===
   const handleConfirmDelivery = (deliveryData: DeliveryDetailsData) => {
@@ -146,7 +148,8 @@ export function CheckoutForm(props: CheckoutFormProps) {
     }, 100);
   };
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = (method: CheckoutPaymentMethod) => {
+    setPaymentMethod(method);
     setCurrentStep(3);
 
     // Wait for DOM to update, then scroll
@@ -198,6 +201,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
             completed={currentStep > 2}
             onContinue={handleConfirmPayment}
             onEditPaymentRequest={() => setCurrentStep(2)}
+            selectedMethod={paymentMethod}
           />
         </div>
       </CheckoutFormComponent>
@@ -214,6 +218,7 @@ export function CheckoutForm(props: CheckoutFormProps) {
           <OrderSummaryStep
             deliveryData={deliveryData}
             orderId={orderId}
+            paymentMethod={paymentMethod}
           />
         </div>
       </CheckoutFormComponent>

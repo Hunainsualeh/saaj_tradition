@@ -38,6 +38,13 @@ export function AdminOrderView(props: AdminOrderViewProps) {
   // === PROPS ===
   const { order } = props;
 
+  const paymentMethodLabel =
+    order.paymentMethod === "COD"
+      ? "Cash on Delivery"
+      : order.stripeSessionId?.startsWith("payfast_")
+        ? "PayFast"
+        : "Online Payment";
+
   // === STATE ===
   const [orderStatus, setOrderStatus] = useState(order.status);
   const [paymentStat, setPaymentStat] = useState(order.paymentStatus);
@@ -318,7 +325,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
           </div>
           <div className="bg-neutral-01 p-4 rounded">
             <p className="text-sm text-neutral-09 mb-1">Payment Method</p>
-            <p className="font-semibold text-neutral-11">{order.paymentMethod === "COD" ? "Cash on Delivery" : order.paymentMethod}</p>
+            <p className="font-semibold text-neutral-11">{paymentMethodLabel}</p>
           </div>
         </div>
 

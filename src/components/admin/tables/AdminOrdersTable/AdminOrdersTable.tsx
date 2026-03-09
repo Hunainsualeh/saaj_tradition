@@ -92,6 +92,12 @@ export function AdminOrdersTable(props: AdminOrdersTableProps) {
         ...order,
         itemsCount,
         totalPrice: `Rs.${order.totalPrice.toFixed(2)}`,
+        paymentMethod:
+          order.paymentMethod === "COD"
+            ? "Cash on Delivery"
+            : order.stripeSessionId?.startsWith("payfast_")
+              ? "PayFast"
+              : "Online Payment",
         createdAt: formatDateToYYYYMMDD(order.createdAt) ?? "",
         updatedAt: formatDateToYYYYMMDD(order.updatedAt) ?? "",
       };

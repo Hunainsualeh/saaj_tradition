@@ -97,6 +97,7 @@ export type GetAdminOrder = {
   billingPostcode: string | null;
   billingState: string | null;
   billingCountry: string | null;
+  stripeSessionId: string | null;
   totalPrice: number;
   shippingAmount: number | null;
   couponCode: string | null;
