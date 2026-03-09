@@ -95,6 +95,18 @@ const SITE_CONTENT_DEFAULTS: SiteContentDefault[] = [
     label: "Hero Subheading",
     group: "hero",
   },
+  {
+    key: "hero_video_url",
+    value: "",
+    label: "Hero Background Video URL (Cloudinary — up to 200 MB, leave empty to hide)",
+    group: "hero",
+  },
+  {
+    key: "hero_image_url",
+    value: "",
+    label: "Hero Background Image URL (Cloudinary — shown when no video, or on mobile)",
+    group: "hero",
+  },
   // === New Arrivals Section ===
   {
     key: "new_arrivals_heading",

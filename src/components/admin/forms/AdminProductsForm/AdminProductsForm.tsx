@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -143,6 +143,21 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
   const isFeaturedValue = watch("isFeatured");
   const imageUrlsValue = watch("imageUrls");
   const collectionIdsValue = watch("collectionIds") || [];
+  const nameValue = watch("name");
+
+  // Auto-generate slug from name in add mode.
+  const slugManuallyEdited = useRef(!!productData?.slug);
+  useEffect(() => {
+    if (isEditMode || slugManuallyEdited.current) return;
+    const generated = (nameValue ?? "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    setValue("slug", generated, { shouldValidate: false });
+  }, [nameValue, isEditMode, setValue]);
 
   // === MEMOS ===
   const savedImageUrls = useMemo(() => imageUrlsValue || [], [imageUrlsValue]);
@@ -542,7 +557,7 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
                         <button
                           type="button"
                           onClick={() => handleRemoveImage(index, preview)}
-                          className="absolute top-1.5 right-1.5 bg-black/70 hover:bg-black backdrop-blur-sm text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110"
+                          className="absolute top-1.5 right-1.5 bg-black/70 hover:bg-black backdrop-blur-sm text-white p-1 rounded-md opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 hover:scale-110"
                           aria-label="Remove image"
                         >
                           <CloseIcon className="h-3.5 w-3.5" />
@@ -557,7 +572,7 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
                               handleReCropNewFile(index - savedImageUrls.length);
                             }
                           }}
-                          className="absolute top-1.5 left-1.5 bg-black/70 hover:bg-black backdrop-blur-sm text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110"
+                          className="absolute top-1.5 left-1.5 bg-black/70 hover:bg-black backdrop-blur-sm text-white p-1 rounded-md opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 hover:scale-110"
                           aria-label="Re-crop image"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -577,7 +592,9 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
               <AdminFieldLabel htmlFor="productSlug">Slug</AdminFieldLabel>
               <AdminInput
                 id="productSlug"
-                {...register("slug")}
+                {...register("slug", {
+                  onChange: () => { slugManuallyEdited.current = true; },
+                })}
                 placeholder="e.g., organic-cotton-tee"
               />
               <AdminFieldError errors={[errors.slug]} />

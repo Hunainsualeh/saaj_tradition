@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Collection } from "@prisma/client";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -51,6 +51,7 @@ export function AdminCollectionsForm(props: AdminCollectionsFormProps) {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<AdminCollectionsFormData>({
     resolver: zodResolver(AdminCollectionsFormSchema(isEditMode)),
@@ -62,7 +63,21 @@ export function AdminCollectionsForm(props: AdminCollectionsFormProps) {
     },
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // Auto-generate slug from name in add mode.
+  const slugManuallyEdited = useRef(!!collectionData?.slug);
+  const nameValue = watch("name");
+  useEffect(() => {
+    if (isEditMode || slugManuallyEdited.current) return;
+    const generated = nameValue
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    setValue("slug", generated, { shouldValidate: false });
+  }, [nameValue, isEditMode, setValue]);
+
   const clearFileInput = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -186,7 +201,12 @@ export function AdminCollectionsForm(props: AdminCollectionsFormProps) {
               </AdminField>
               <AdminField>
                 <AdminFieldLabel htmlFor="slug">Slug</AdminFieldLabel>
-                <AdminInput id="slug" {...register("slug")} />
+                <AdminInput
+                  id="slug"
+                  {...register("slug", {
+                    onChange: () => { slugManuallyEdited.current = true; },
+                  })}
+                />
                 <AdminFieldError errors={[errors.slug]} />
               </AdminField>
               <AdminField>
@@ -222,10 +242,24 @@ export function AdminCollectionsForm(props: AdminCollectionsFormProps) {
                       sizes="(max-width: 768px) 100vw, 240px"
                       className="rounded object-cover"
                     />
+                    {/* Remove image button — always visible on mobile */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFile(null);
+                        setValue("image", undefined);
+                        clearFileInput();
+                      }}
+                      className="absolute top-1.5 right-1.5 bg-black/70 hover:bg-black text-white p-1 rounded text-xs opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all flex items-center gap-1"
+                      aria-label="Remove image"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                    {/* Re-crop button — always visible on mobile */}
                     <button
                       type="button"
                       onClick={() => setCropSrc(preview || collectionData?.imageUrl || null)}
-                      className="absolute top-1.5 left-1.5 bg-black/70 hover:bg-black text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1"
+                      className="absolute top-1.5 left-1.5 bg-black/70 hover:bg-black text-white px-2 py-1 rounded text-xs opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all flex items-center gap-1"
                       aria-label="Re-crop image"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>

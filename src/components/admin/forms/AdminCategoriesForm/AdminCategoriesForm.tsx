@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Category } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import imageCompression from "browser-image-compression";
@@ -48,7 +48,8 @@ export function AdminCategoriesForm(props: AdminCategoriesFormProps) {
     register,
     handleSubmit,
     setValue,
-    formState: { errors },
+    control,
+    formState: { errors, dirtyFields },
   } = useForm<AdminCategoryFormData>({
     resolver: zodResolver(AdminCategoryFormSchema),
     defaultValues: {
@@ -58,6 +59,21 @@ export function AdminCategoriesForm(props: AdminCategoriesFormProps) {
       imageUrl: categoryData?.imageUrl ?? "",
     },
   });
+
+  // Auto-generate slug from name in add mode (or when slug hasn't been
+  // manually edited yet in edit mode).
+  const nameValue = useWatch({ control, name: "name" });
+  useEffect(() => {
+    if (isEditMode || dirtyFields.slug) return;
+    const generated = nameValue
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    setValue("slug", generated, { shouldValidate: false });
+  }, [nameValue, isEditMode, dirtyFields.slug, setValue]);
 
   const clearFileInput = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -202,10 +218,25 @@ export function AdminCategoriesForm(props: AdminCategoriesFormProps) {
                       sizes="(max-width: 768px) 100vw, 240px"
                       className="rounded object-cover"
                     />
+                    {/* Remove image button — always visible on mobile */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFile(null);
+                        setValue("image", undefined);
+                        setValue("imageUrl", "", { shouldValidate: true });
+                        clearFileInput();
+                      }}
+                      className="absolute top-1.5 right-1.5 bg-black/70 hover:bg-black text-white p-1 rounded text-xs opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all flex items-center gap-1"
+                      aria-label="Remove image"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                    {/* Re-crop button — always visible on mobile */}
                     <button
                       type="button"
                       onClick={() => setCropSrc(preview || categoryData?.imageUrl || null)}
-                      className="absolute top-1.5 left-1.5 bg-black/70 hover:bg-black text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1"
+                      className="absolute top-1.5 left-1.5 bg-black/70 hover:bg-black text-white px-2 py-1 rounded text-xs opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all flex items-center gap-1"
                       aria-label="Re-crop image"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
