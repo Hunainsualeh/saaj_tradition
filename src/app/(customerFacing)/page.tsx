@@ -30,7 +30,6 @@ import {
   getActiveTestimonials,
   getMarqueeProducts,
 } from "@/lib/server/queries";
-import { seedSiteContentDefaults } from "@/app/admin/site-content/seed";
 
 export const metadata: Metadata = {
   title: {
@@ -39,9 +38,6 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  // Ensure all site content defaults (including marquee) exist in DB
-  await seedSiteContentDefaults();
-
   // === QUERIES (parallel) ===
   const [products, blogPostsResponse, collectionsResponse, contentMapResponse, testimonialsResponse] =
     await Promise.all([
@@ -109,6 +105,7 @@ export default async function HomePage() {
       <HeroSection
         heading={c.hero_heading}
         subheading={c.hero_subheading}
+        imageUrl={c.hero_image}
       />
 
       <BaseSection className="py-16 xl:py-20" id="hero-image">
@@ -206,7 +203,12 @@ export default async function HomePage() {
       </div>
 
       <HomeVideoSectionWrapper>
-        <HomeVideoSection text={c.video_section_text} />
+        <HomeVideoSection
+          text={c.video_section_text}
+          videoMp4={c.hero_video_mp4}
+          videoWebm={c.hero_video_webm}
+          poster={c.hero_video_poster}
+        />
       </HomeVideoSectionWrapper>
 
       <BaseSection

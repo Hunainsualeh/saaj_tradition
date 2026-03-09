@@ -65,6 +65,9 @@ type ProductFormData = {
   collectionIds?: string[];
   /** Labels of existing sizes (for edit mode pre-selection) */
   existingSizeLabels?: string[];
+  stockStatus?: "AVAILABLE" | "LOW_STOCK" | "OUT_OF_STOCK";
+  lowStockThreshold?: number | null;
+  showLowStockWarning?: boolean;
 };
 
 type AdminProductsFormProps = {
@@ -105,6 +108,12 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
 
   // === HOOKS ===
   const newImagePreviews = usePreviewUrls(files);
+  const isMounted = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const {
     register,
@@ -132,6 +141,9 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
       isFeatured: productData?.isFeatured ?? false,
       imageUrls: productData?.images || [],
       collectionIds: productData?.collectionIds || [],
+      stockStatus: productData?.stockStatus ?? "AVAILABLE",
+      lowStockThreshold: productData?.lowStockThreshold ?? undefined,
+      showLowStockWarning: productData?.showLowStockWarning ?? false,
     },
   });
 
@@ -144,6 +156,8 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
   const imageUrlsValue = watch("imageUrls");
   const collectionIdsValue = watch("collectionIds") || [];
   const nameValue = watch("name");
+  const stockStatusValue = watch("stockStatus");
+  const showLowStockWarningValue = watch("showLowStockWarning");
 
   // Auto-generate slug from name in add mode.
   const slugManuallyEdited = useRef(!!productData?.slug);
@@ -239,10 +253,12 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
   };
 
   const handleCropConfirm = async (croppedFile: File) => {
+    if (!isMounted.current) return;
     // Revoke the just-cropped object URL
     if (activeCrop) URL.revokeObjectURL(activeCrop.src);
 
     const compressed = await compressImage(croppedFile);
+    if (!isMounted.current) return;
     if (compressed) {
       const updated = [...files, compressed];
       setFiles(updated);
@@ -256,6 +272,7 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
   };
 
   const handleCropClose = () => {
+    if (!isMounted.current) return;
     // Revoke all pending object URLs to free memory
     if (activeCrop) URL.revokeObjectURL(activeCrop.src);
     cropQueue.forEach((item) => URL.revokeObjectURL(item.src));
@@ -276,6 +293,7 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
   };
 
   const handleReCropConfirm = async (croppedFile: File) => {
+    if (!isMounted.current) return;
     if (!reCrop) return;
     const snap = reCrop;
     setReCrop(null);
@@ -289,6 +307,7 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
     }
 
     const compressed = await compressImage(croppedFile);
+    if (!isMounted.current) return;
     if (compressed) {
       let updated: File[];
       if (snap.fileIndex !== null) {
@@ -303,6 +322,7 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
   };
 
   const handleReCropClose = () => {
+    if (!isMounted.current) return;
     if (reCrop && reCrop.fileIndex !== null) URL.revokeObjectURL(reCrop.src);
     setReCrop(null);
   };
@@ -318,6 +338,7 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
     productId?: string;
     existingImageUrls?: string[];
   }) => {
+    if (!isMounted.current) return;
     try {
       let uploadedUrls: string[] = [];
 
@@ -364,6 +385,7 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
         );
       }
 
+      if (!isMounted.current) return;
       toast.success(
         isEdit
           ? "Product updated successfully!"
@@ -372,11 +394,12 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
       router.back();
     } catch (err) {
       console.error(err);
-      setIsActionLocked(false);
-      toast.error("An unexpected error occurred");
+      if (isMounted.current) {
+        setIsActionLocked(false);
+        toast.error("An unexpected error occurred");
+      }
     }
   };
-
   const onAddSubmit = (data: AdminProductsFormData) => {
     setIsActionLocked(true);
     void handleProductSubmit({ data });
@@ -689,12 +712,9 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
                 </AdminSelectTrigger>
                 <AdminSelectContent>
                   <AdminSelectGroup>
-                    {/* ShoeSize excluded — this is a clothing store */}
-                    {Object.entries(SIZE_TEMPLATES)
-                      .filter(([key]) => key !== SIZE_TYPES.SHOE)
-                      .map(([key, labels]) => (
+                    {Object.entries(SIZE_TEMPLATES).map(([key, labels]) => (
                         <AdminSelectItem key={key} value={key}>
-                          {key} ({labels.join(", ")})
+                          {key} ({labels.slice(0, 3).join(", ")}{labels.length > 3 ? "…" : ""})
                         </AdminSelectItem>
                       ))}
                   </AdminSelectGroup>
@@ -785,6 +805,87 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
               </div>
               <AdminFieldError errors={[errors.isActive]} />
             </AdminField>
+
+            {/* STOCK STATUS */}
+            <AdminField>
+              <AdminFieldLabel htmlFor="stockStatus">Stock Status</AdminFieldLabel>
+              <AdminFieldDescription>
+                Set how you want to manage the stock availability of this product.
+              </AdminFieldDescription>
+              <AdminSelect
+                value={stockStatusValue ?? "AVAILABLE"}
+                onValueChange={(val) => {
+                  setValue("stockStatus", val as "AVAILABLE" | "LOW_STOCK" | "OUT_OF_STOCK", {
+                    shouldValidate: true,
+                  });
+                }}
+              >
+                <AdminSelectTrigger id="stockStatus">
+                  <AdminSelectValue />
+                </AdminSelectTrigger>
+                <AdminSelectContent>
+                  <AdminSelectGroup>
+                    <AdminSelectItem value="AVAILABLE">Available</AdminSelectItem>
+                    <AdminSelectItem value="LOW_STOCK">Low Stock</AdminSelectItem>
+                    <AdminSelectItem value="OUT_OF_STOCK">Out of Stock</AdminSelectItem>
+                  </AdminSelectGroup>
+                </AdminSelectContent>
+              </AdminSelect>
+              <AdminFieldError errors={[errors.stockStatus]} />
+            </AdminField>
+
+            {/* LOW STOCK THRESHOLD (shown when LOW_STOCK is selected) */}
+            {stockStatusValue === "LOW_STOCK" && (
+              <AdminField>
+                <AdminFieldLabel htmlFor="lowStockThreshold">
+                  Low Stock Threshold (optional)
+                </AdminFieldLabel>
+                <AdminFieldDescription>
+                  Leave empty to show warning without numbers. Enter a number to show &ldquo;Only X left in stock&rdquo;.
+                </AdminFieldDescription>
+                <AdminInput
+                  id="lowStockThreshold"
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="e.g., 5"
+                  {...register("lowStockThreshold", {
+                    setValueAs: (v) => (v === "" ? undefined : parseInt(v)),
+                  })}
+                />
+                <AdminFieldError errors={[errors.lowStockThreshold]} />
+              </AdminField>
+            )}
+
+            {/* SHOW LOW STOCK WARNING (shown when LOW_STOCK is selected) */}
+            {stockStatusValue === "LOW_STOCK" && (
+              <AdminField>
+                <AdminFieldLabel>Show Low Stock Warning</AdminFieldLabel>
+                <AdminFieldDescription>
+                  Enable to display a warning message on the product page.
+                </AdminFieldDescription>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={showLowStockWarningValue}
+                    onClick={() => setValue("showLowStockWarning", !showLowStockWarningValue)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 ${
+                      showLowStockWarningValue ? "bg-neutral-900" : "bg-neutral-200"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        showLowStockWarningValue ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                  <span className={`text-sm font-medium ${showLowStockWarningValue ? "text-neutral-900" : "text-neutral-400"}`}>
+                    {showLowStockWarningValue ? "Enabled" : "Disabled"}
+                  </span>
+                </div>
+                <AdminFieldError errors={[errors.showLowStockWarning]} />
+              </AdminField>
+            )}
 
             {/* SUBMIT */}
             <div className="flex flex-col gap-3">

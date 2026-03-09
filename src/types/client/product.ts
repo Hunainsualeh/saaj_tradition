@@ -63,6 +63,9 @@ export type ProductWithSizes = {
     stockTotal: number;
     stockReserved: number;
   }>;
+  stockStatus?: "AVAILABLE" | "LOW_STOCK" | "OUT_OF_STOCK";
+  lowStockThreshold?: number | null;
+  showLowStockWarning?: boolean;
 };
 
 // === DASHBOARD STATS ===

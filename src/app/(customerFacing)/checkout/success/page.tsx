@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
 import { CheckoutSuccess } from "@/components/common/CheckoutSuccess/CheckoutSuccess";
-import { getCurrentOrderById } from "@/lib/server/queries";
+import { getOrderForSuccessPage } from "@/lib/server/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -26,22 +26,13 @@ export default async function CheckoutSuccessPage(
     redirect("/");
   }
 
-  const order = await getCurrentOrderById(orderId);
+  const order = await getOrderForSuccessPage(orderId);
 
   if (!order || !order.success || !order.data) {
     redirect("/");
   }
 
-  // Emails are sent from the Stripe webhook (fires exactly once on payment_intent.succeeded)
-  // so we do NOT send them here — avoids duplicate emails on every page refresh.
-
   return (
-    <div className="container mx-auto">
-      <CheckoutSuccess
-        orderNumber={order.data.orderNumber?.toString()}
-        email={order.data.deliveryEmail || undefined}
-        trackingToken={order.data.trackingToken || undefined}
-      />
-    </div>
+    <CheckoutSuccess order={order.data} />
   );
 }

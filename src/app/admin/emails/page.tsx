@@ -22,6 +22,9 @@ export default async function AdminEmailsPage() {
       <div className="flex items-center justify-between mb-6">
         <AdminHeading heading="Email Management" />
         <div className="flex gap-2">
+          <Link href={adminRoutes.emailSubscribers}>
+            <AdminButton variant="outline">View Subscribers</AdminButton>
+          </Link>
           <Link href={adminRoutes.emailBroadcast}>
             <AdminButton variant="outline">Send Newsletter</AdminButton>
           </Link>

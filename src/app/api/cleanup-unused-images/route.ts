@@ -1,14 +1,16 @@
 import { prisma } from "@/lib/prisma";
-import { BLOB_STORAGE_PREFIXES } from "@/lib";
-import { cleanupUnusedBlobs } from "@/lib/utils";
+import { cleanupUnusedCloudinaryImages } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 
 /*
 
-    This CRON job cleans up unused images from blob storage for all resources:
+    This CRON job cleans up unused images from Cloudinary for all resources:
     - Author avatars
     - Blog images
     - Product images
+    
+    Note: Cloudinary images are automatically optimized and served via CDN.
+    This endpoint tracks used images and reports on any unused assets.
 
 */
 
@@ -39,8 +41,8 @@ export async function GET(req: NextRequest) {
 
       const validAuthorUrls = new Set(authors.map((a) => a.avatarUrl));
 
-      const authorResult = await cleanupUnusedBlobs({
-        prefix: BLOB_STORAGE_PREFIXES.AUTHORS,
+      const authorResult = await cleanupUnusedCloudinaryImages({
+        folder: "authors",
         validUrls: validAuthorUrls,
         resourceName: "author",
       });
@@ -60,8 +62,8 @@ export async function GET(req: NextRequest) {
 
       const validBlogUrls = new Set(blogs.map((b) => b.blogImageUrl));
 
-      const blogResult = await cleanupUnusedBlobs({
-        prefix: BLOB_STORAGE_PREFIXES.BLOGS,
+      const blogResult = await cleanupUnusedCloudinaryImages({
+        folder: "blogs",
         validUrls: validBlogUrls,
         resourceName: "blog",
       });
@@ -81,8 +83,8 @@ export async function GET(req: NextRequest) {
 
       const validProductUrls = new Set(products.flatMap((p) => p.images));
 
-      const productResult = await cleanupUnusedBlobs({
-        prefix: BLOB_STORAGE_PREFIXES.PRODUCTS,
+      const productResult = await cleanupUnusedCloudinaryImages({
+        folder: "products",
         validUrls: validProductUrls,
         resourceName: "product",
       });

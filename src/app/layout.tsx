@@ -47,6 +47,13 @@ export const metadata: Metadata = {
       "Traditional Bahawalpuri Suits — curated fashion and premium essentials.",
     images: ["/assets/logo.png"],
   },
+  icons: {
+    icon: [
+      { url: "/assets/logo/Saaj Tradition Golden.png", type: "image/png" },
+    ],
+    apple: "/assets/logo/Saaj Tradition Golden.png",
+    shortcut: "/assets/logo/Saaj Tradition Golden.png",
+  },
 };
 
 export default function RootLayout({

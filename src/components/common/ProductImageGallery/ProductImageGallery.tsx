@@ -31,30 +31,46 @@ export function ProductImageGallery({
     [],
   );
 
+  // === DERIVED VALUES (computed before handlers to avoid TDZ issues) ===
+
+  // Keep original indices so onError always references the correct image in `images`
+  const validImageEntries = images
+    .map((img, i) => ({ img, i }))
+    .filter(({ i }) => !failedIndexes.has(i));
+
+  const effectiveIndex = Math.min(activeIndex, validImageEntries.length - 1);
+  const activeEntry = validImageEntries[effectiveIndex];
+  const activeImage = activeEntry?.img ?? "";
+  const activeOriginalIndex = activeEntry?.i ?? 0;
+
+  // === HANDLERS ===
+
   const handleThumbClick = (index: number) => {
     setActiveIndex(index);
     scrollToThumb(index);
   };
 
   const handlePrev = () => {
-    const next = activeIndex === 0 ? images.length - 1 : activeIndex - 1;
+    const count = validImageEntries.length;
+    const next = effectiveIndex === 0 ? count - 1 : effectiveIndex - 1;
     setActiveIndex(next);
     scrollToThumb(next);
   };
 
   const handleNext = () => {
-    const next = activeIndex === images.length - 1 ? 0 : activeIndex + 1;
+    const count = validImageEntries.length;
+    const next = effectiveIndex === count - 1 ? 0 : effectiveIndex + 1;
     setActiveIndex(next);
     scrollToThumb(next);
   };
 
-  const handleImageError = (index: number) => {
-    setFailedIndexes((prev) => new Set(prev).add(index));
+  const handleImageError = (originalIndex: number) => {
+    // Guard: if already failed, do nothing to avoid infinite re-renders
+    if (failedIndexes.has(originalIndex)) return;
+    setFailedIndexes((prev) => new Set(prev).add(originalIndex));
   };
 
-  const validImages = images.filter((_, i) => !failedIndexes.has(i));
-
-  if (images.length === 0 || validImages.length === 0) {
+  if (images.length === 0 || validImageEntries.length === 0) {
     return (
       <div className="flex flex-col gap-3 w-full">
         <div className="relative aspect-[3/4] w-full max-h-[75vh] overflow-hidden rounded-sm bg-neutral-100 flex items-center justify-center">
@@ -76,10 +92,6 @@ export function ProductImageGallery({
     );
   }
 
-  // Re-map activeIndex to validImages
-  const effectiveIndex = Math.min(activeIndex, validImages.length - 1);
-  const activeImage = validImages[effectiveIndex];
-
   return (
     <div className="flex flex-col gap-3 w-full">
       {/* Main Image */}
@@ -91,11 +103,11 @@ export function ProductImageGallery({
           priority
           sizes="(max-width: 768px) 100vw, (max-width: 1280px) 60vw, 55vw"
           className="object-cover"
-          onError={() => handleImageError(effectiveIndex)}
+          onError={() => handleImageError(activeOriginalIndex)}
         />
 
         {/* Navigation Arrows */}
-        {validImages.length > 1 && (
+        {validImageEntries.length > 1 && (
           <>
             <button
               onClick={handlePrev}
@@ -119,22 +131,22 @@ export function ProductImageGallery({
         )}
 
         {/* Image Counter (mobile) */}
-        {validImages.length > 1 && (
+        {validImageEntries.length > 1 && (
           <span className="absolute bottom-2 right-2 sm:hidden bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full">
-            {effectiveIndex + 1}/{validImages.length}
+            {effectiveIndex + 1}/{validImageEntries.length}
           </span>
         )}
       </div>
 
       {/* Thumbnail Strip */}
-      {validImages.length > 1 && (
+      {validImageEntries.length > 1 && (
         <div
           ref={thumbContainerRef}
           className="flex gap-2 overflow-x-auto scrollbar-hide pb-1"
         >
-          {validImages.map((img, index) => (
+          {validImageEntries.map(({ img, i }, index) => (
             <button
-              key={index}
+              key={i}
               onClick={() => handleThumbClick(index)}
               className={`relative shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded overflow-hidden cursor-pointer transition-all duration-200 ${
                 index === effectiveIndex

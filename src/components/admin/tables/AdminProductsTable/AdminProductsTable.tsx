@@ -36,7 +36,7 @@ import {
 } from "@/lib";
 import { productColumns, defaultVisibleProductColumnIds } from "./columns";
 import { ProductGetAllCounts } from "@/types/client";
-import { deleteProductById, toggleProductFeatured } from "@/lib/server/actions";
+import { deleteProductById, deleteProductsByIds, toggleProductFeatured } from "@/lib/server/actions";
 
 export function AdminProductsTable({
   products,
@@ -51,6 +51,9 @@ export function AdminProductsTable({
   // === STATE ===
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
+  const [deletingIds, setDeletingIds] = useState<boolean>(false);
   const [columnsVisible, setColumnsVisible] = useState<Set<string>>(
     defaultVisibleProductColumnIds,
   );
@@ -71,6 +74,41 @@ export function AdminProductsTable({
     setPendingDeleteId(null);
     setProductsState((prev) => prev.filter((product) => product.id !== id));
     toast.success("Product deleted successfully.");
+  };
+
+  const deleteProducts = async (ids: string[]) => {
+    const deleted = await deleteProductsByIds(ids);
+
+    if (!deleted.success) {
+      console.error("Error deleting products:", deleted.error);
+      toast.error("Failed to delete products. Please try again.");
+      return;
+    }
+
+    setPendingDeleteIds(null);
+    setProductsState((prev) => prev.filter((product) => !ids.includes(product.id)));
+    setSelectedIds(new Set());
+    toast.success(`${ids.length} product(s) deleted successfully.`);
+  };
+
+  const toggleAllSelected = (allPaginatedIds: string[]) => {
+    if (selectedIds.size === allPaginatedIds.length) {
+      // All selected, deselect all
+      setSelectedIds(new Set());
+    } else {
+      // Select all on current page
+      setSelectedIds(new Set(allPaginatedIds));
+    }
+  };
+
+  const toggleSelectId = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
   };
 
   const formatProducts = (products: ProductGetAllCounts[]) => {
@@ -104,6 +142,8 @@ export function AdminProductsTable({
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   );
+  const paginatedProductIds = paginatedProducts.map((p) => p.id);
+  const allAreSelected = paginatedProductIds.length > 0 && paginatedProductIds.every((id) => selectedIds.has(id));
 
   return (
     <>
@@ -127,6 +167,15 @@ export function AdminProductsTable({
         >
           Add Product
         </Link>
+        {selectedIds.size > 0 && (
+          <AdminButton
+            variant="destructive"
+            onClick={() => setPendingDeleteIds(Array.from(selectedIds))}
+            className="me-3"
+          >
+            Delete Selected ({selectedIds.size})
+          </AdminButton>
+        )}
         <div className="flex justify-end">
           {/* === COLUMN TOGGLER === */}
           <AdminDropdownMenu>
@@ -162,6 +211,35 @@ export function AdminProductsTable({
         data={paginatedProducts}
         onRowClick={(row) => router.push(`${adminRoutes.products}/${row.id}/view`)}
         columns={[
+          {
+            id: "select",
+            enableHiding: false,
+            header: () => (
+              <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={allAreSelected}
+                  onChange={() => toggleAllSelected(paginatedProductIds)}
+                  aria-label="Select all products"
+                  className="cursor-pointer"
+                />
+              </div>
+            ),
+            cell: (cell) => {
+              const product = cell.row.original;
+              return (
+                <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(product.id)}
+                    onChange={() => toggleSelectId(product.id)}
+                    aria-label={`Select ${product.name}`}
+                    className="cursor-pointer"
+                  />
+                </div>
+              );
+            },
+          },
           ...productColumns.filter((column) =>
             columnsVisible.has(column.accessorKey),
           ),
@@ -310,6 +388,42 @@ export function AdminProductsTable({
               }}
             >
               {deletingId ? "Deleting..." : "Delete"}
+            </AdminAlertDialogAction>
+          </AdminAlertDialogFooter>
+        </AdminAlertDialogContent>
+      </AdminAlertDialog>
+
+      {/* === BULK DELETE CONFIRMATION MODAL === */}
+      <AdminAlertDialog
+        open={!!pendingDeleteIds}
+        onOpenChange={() => setPendingDeleteIds(null)}
+      >
+        <AdminAlertDialogContent>
+          <AdminAlertDialogHeader>
+            <AdminAlertDialogTitle>
+              Are you sure you want to delete {pendingDeleteIds?.length} product(s)?
+            </AdminAlertDialogTitle>
+            <AdminAlertDialogDescription>
+              This action cannot be undone.
+            </AdminAlertDialogDescription>
+          </AdminAlertDialogHeader>
+
+          <AdminAlertDialogFooter>
+            <AdminAlertDialogCancel disabled={deletingIds}>
+              Cancel
+            </AdminAlertDialogCancel>
+
+            <AdminAlertDialogAction
+              disabled={deletingIds}
+              onClick={() => {
+                setDeletingIds(true);
+                if (pendingDeleteIds) {
+                  deleteProducts(pendingDeleteIds);
+                  setDeletingIds(false);
+                }
+              }}
+            >
+              {deletingIds ? "Deleting..." : "Delete"}
             </AdminAlertDialogAction>
           </AdminAlertDialogFooter>
         </AdminAlertDialogContent>

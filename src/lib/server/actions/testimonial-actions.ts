@@ -1,7 +1,6 @@
 "use server";
 
-import { put } from "@vercel/blob";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { TestimonialMutationInput, ServerActionResponse } from "@/types/server";
@@ -10,10 +9,10 @@ import {
   AdminFormAddTestimonialData,
   AdminFormEditTestimonialData,
 } from "@/components/admin/forms/AdminTestimonialsForm/schema";
-import { BLOB_STORAGE_PREFIXES } from "@/lib/constants";
 import { adminRoutes, routes } from "@/lib/routing";
 import { wrapServerCall } from "../helpers/generic-helpers";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
+import { uploadToCloudinary } from "@/lib/server/helpers/cloudinary-upload";
 
 export async function deleteTestimonialById(
   id: string,
@@ -25,7 +24,7 @@ export async function deleteTestimonialById(
     const deleted = await prisma.testimonial.delete({ where: { id } });
     revalidatePath(adminRoutes.testimonials);
     revalidatePath(routes.home);
-    revalidateTag(CACHE_TAG_TESTIMONIAL, "max");
+    updateTag(CACHE_TAG_TESTIMONIAL);
     return { id: deleted.id };
   });
 }
@@ -40,14 +39,12 @@ export async function createTestimonial(
 
     let imageSrc: string | null = null;
     if (data.image) {
-      const imageFileName =
-        BLOB_STORAGE_PREFIXES.TESTIMONIALS +
-        data.name.toLowerCase().replace(/\s+/g, "-");
-      const blob = await put(imageFileName, data.image, {
-        access: "public",
-        addRandomSuffix: true,
-      });
-      imageSrc = blob.url;
+      const buffer = await data.image.arrayBuffer();
+      imageSrc = await uploadToCloudinary(
+        Buffer.from(buffer),
+        data.name.toLowerCase().replace(/\s+/g, "-"),
+        "testimonials",
+      );
     }
 
     const maxOrder = await prisma.testimonial.aggregate({
@@ -65,7 +62,7 @@ export async function createTestimonial(
     });
     revalidatePath(adminRoutes.testimonials);
     revalidatePath(routes.home);
-    revalidateTag(CACHE_TAG_TESTIMONIAL, "max");
+    updateTag(CACHE_TAG_TESTIMONIAL);
     return { id: created.id };
   });
 }
@@ -88,14 +85,12 @@ export async function updateTestimonialById(
     };
 
     if (data.image) {
-      const imageFileName =
-        BLOB_STORAGE_PREFIXES.TESTIMONIALS +
-        data.name.toLowerCase().replace(/\s+/g, "-");
-      const blob = await put(imageFileName, data.image, {
-        access: "public",
-        addRandomSuffix: true,
-      });
-      updateData.imageSrc = blob.url;
+      const buffer = await data.image.arrayBuffer();
+      updateData.imageSrc = await uploadToCloudinary(
+        Buffer.from(buffer),
+        data.name.toLowerCase().replace(/\s+/g, "-"),
+        "testimonials",
+      );
     }
 
     await prisma.testimonial.update({
@@ -105,7 +100,7 @@ export async function updateTestimonialById(
 
     revalidatePath(adminRoutes.testimonials);
     revalidatePath(routes.home);
-    revalidateTag(CACHE_TAG_TESTIMONIAL, "max");
+    updateTag(CACHE_TAG_TESTIMONIAL);
     return { id };
   });
 }

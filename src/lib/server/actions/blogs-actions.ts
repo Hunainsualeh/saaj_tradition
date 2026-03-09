@@ -1,13 +1,11 @@
 "use server";
 
 import { BlogCategory } from "@prisma/client";
-import { put } from "@vercel/blob";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { BlogMutationInput, ServerActionResponse } from "@/types/server";
 import { getReadingMinutes, wrapServerCall } from "@/lib/server/helpers";
-import { BLOB_STORAGE_PREFIXES } from "@/lib/constants";
 import { adminRoutes, routes } from "@/lib/routing";
 import { CACHE_TAG_BLOG } from "@/lib/constants/cache-tags";
 import {
@@ -15,6 +13,7 @@ import {
   AdminFormEditBlogsData,
 } from "@/components/admin/forms/AdminBlogsForm/schema";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
+import { uploadToCloudinary } from "@/lib/server/helpers/cloudinary-upload";
 
 // === MUTATIONS ===
 export async function createBlog(
@@ -26,12 +25,12 @@ export async function createBlog(
     }
 
     const imageFile = data.image;
-    const imageFileName = BLOB_STORAGE_PREFIXES.BLOGS + data.slug;
-
-    const blob = await put(imageFileName, imageFile, {
-      access: "public",
-      addRandomSuffix: true,
-    });
+    const buffer = await imageFile.arrayBuffer();
+    const imageUrl = await uploadToCloudinary(
+      Buffer.from(buffer),
+      data.slug,
+      "blogs",
+    );
 
     const created = await prisma.blogPost.create({
       data: {
@@ -44,11 +43,11 @@ export async function createBlog(
         createdAt: new Date(),
         updatedAt: new Date(),
         duration: getReadingMinutes(data.content),
-        blogImageUrl: blob.url,
+        blogImageUrl: imageUrl,
       },
     });
 
-    revalidateTag(CACHE_TAG_BLOG, "max");
+    updateTag(CACHE_TAG_BLOG);
     revalidatePath(adminRoutes.blogs);
     revalidatePath(routes.blog);
     revalidatePath(routes.home);
@@ -66,19 +65,19 @@ export async function updateBlogById(
       return { id };
     }
 
-    revalidateTag(CACHE_TAG_BLOG, "max");
+    updateTag(CACHE_TAG_BLOG);
     revalidatePath(adminRoutes.blogs);
     revalidatePath(routes.blog);
     revalidatePath(routes.home);
 
     if (data.image) {
       const imageFile = data.image;
-      const imageFileName = BLOB_STORAGE_PREFIXES.BLOGS + data.slug;
-
-      const blob = await put(imageFileName, imageFile, {
-        access: "public",
-        addRandomSuffix: true,
-      });
+      const buffer = await imageFile.arrayBuffer();
+      const imageUrl = await uploadToCloudinary(
+        Buffer.from(buffer),
+        data.slug,
+        "blogs",
+      );
 
       const updated = await prisma.blogPost.update({
         where: { id },
@@ -92,7 +91,7 @@ export async function updateBlogById(
           createdAt: new Date(),
           updatedAt: new Date(),
           duration: getReadingMinutes(data.content),
-          blogImageUrl: blob.url,
+          blogImageUrl: imageUrl,
         },
       });
 
@@ -127,7 +126,7 @@ export async function deleteBlogById(
     }
 
     const deleted = await prisma.blogPost.delete({ where: { id } });
-    revalidateTag(CACHE_TAG_BLOG, "max");
+    updateTag(CACHE_TAG_BLOG);
     revalidatePath(adminRoutes.blogs);
     revalidatePath(routes.blog);
     revalidatePath(routes.home);

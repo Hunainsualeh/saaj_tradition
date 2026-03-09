@@ -55,4 +55,6 @@ export const adminRoutes = {
   emailsCreate: "/admin/emails/create",
   emailSubscribers: "/admin/emails/subscribers",
   emailBroadcast: "/admin/emails/broadcast",
+
+  customers: "/admin/customers",
 };

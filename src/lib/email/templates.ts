@@ -1,19 +1,24 @@
 /**
  * Default HTML email templates for Saaj Tradition.
  * Templates support variable substitution using {{variableName}} syntax.
- * 
- * Available variables per template type:
- *   ORDER_CONFIRMATION:      {{customerName}}, {{orderNumber}}, {{orderDate}}, {{orderStatus}}, {{items}}, {{subtotal}}, {{shipping}}, {{discount}}, {{total}}, {{deliveryAddress}}, {{storeUrl}}
- *   ORDER_ADMIN_NOTIFICATION: {{customerName}}, {{customerEmail}}, {{customerPhone}}, {{orderNumber}}, {{orderDate}}, {{items}}, {{subtotal}}, {{shipping}}, {{discount}}, {{total}}, {{deliveryAddress}}, {{adminOrderUrl}}
- *   ORDER_STATUS_UPDATE:     {{customerName}}, {{orderNumber}}, {{orderStatus}}, {{storeUrl}}
- *   NEWSLETTER:              {{subscriberName}}, {{subject}}, {{body}}, {{storeUrl}}
- *   PRODUCT_UPDATE:          {{productName}}, {{productDescription}}, {{productPrice}}, {{productImageUrl}}, {{productUrl}}, {{storeUrl}}
- *   COLLECTION_UPDATE:       {{collectionName}}, {{collectionDescription}}, {{collectionImageUrl}}, {{collectionUrl}}, {{storeUrl}}
+ * * Available variables per template type:
+ * ORDER_CONFIRMATION:      {{customerName}}, {{orderNumber}}, {{orderDate}}, {{orderStatus}}, {{items}}, {{subtotal}}, {{shipping}}, {{discount}}, {{total}}, {{deliveryAddress}}, {{storeUrl}}
+ * ORDER_ADMIN_NOTIFICATION: {{customerName}}, {{customerEmail}}, {{customerPhone}}, {{orderNumber}}, {{orderDate}}, {{items}}, {{subtotal}}, {{shipping}}, {{discount}}, {{total}}, {{deliveryAddress}}, {{adminOrderUrl}}
+ * ORDER_STATUS_UPDATE:     {{customerName}}, {{orderNumber}}, {{orderStatus}}, {{storeUrl}}
+ * NEWSLETTER:              {{subscriberName}}, {{subject}}, {{body}}, {{storeUrl}}
+ * PRODUCT_UPDATE:          {{productName}}, {{productDescription}}, {{productPrice}}, {{productImageUrl}}, {{productUrl}}, {{storeUrl}}
+ * COLLECTION_UPDATE:       {{collectionName}}, {{collectionDescription}}, {{collectionImageUrl}}, {{collectionUrl}}, {{storeUrl}}
  */
 
-const BRAND_GRADIENT = "background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);";
-const ACCENT_COLOR = "#e94560";
-const GOLD_COLOR = "#c9a84c";
+// Elegant Pastel Color Palette
+const BG_BODY = "#FAF8F5"; 
+const BG_CARD = "#FFFFFF";
+const PASTEL_ACCENT = "#F0EBE1"; 
+const PASTEL_HIGHLIGHT = "#E6DAC3"; 
+const TEXT_DARK = "#2C2C2C";
+const TEXT_MUTED = "#737373";
+
+const LOGO_URL = "https://res.cloudinary.com/db5uillhc/image/upload/v1773048715/saaj-tradition/logo-golden.png";
 
 const emailBase = (content: string) => `
 <!DOCTYPE html>
@@ -24,50 +29,83 @@ const emailBase = (content: string) => `
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>Saaj Tradition</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Lato:wght@300;400;700&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Lato', Arial, sans-serif; background: #f5f0eb; color: #2c2c2c; }
+    body { font-family: 'Lato', Arial, sans-serif; background-color: ${BG_BODY}; color: ${TEXT_DARK}; -webkit-font-smoothing: antialiased; }
     a { color: inherit; }
     img { max-width: 100%; height: auto; display: block; }
+    
+    /* Defensive CSS to fix white tracking ID from backend */
+    .fix-tracking-color, .fix-tracking-color a, .fix-tracking-color span, .fix-tracking-color td {
+      color: ${TEXT_DARK} !important;
+    }
+
+    /* Premium Button Styles */
+    .btn {
+      display: inline-block;
+      background-color: ${PASTEL_HIGHLIGHT};
+      color: ${TEXT_DARK} !important;
+      text-decoration: none;
+      padding: 16px 42px;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      transition: opacity 0.3s ease;
+    }
+    
+    .btn-outline {
+      display: inline-block;
+      background-color: transparent;
+      border: 1px solid ${TEXT_DARK};
+      color: ${TEXT_DARK} !important;
+      text-decoration: none;
+      padding: 15px 42px;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    /* Responsive Styles for Mobile */
     @media (max-width: 600px) {
-      .email-wrapper { padding: 0 !important; }
-      .email-body { padding: 24px 16px !important; }
+      .email-wrapper { padding: 16px 8px !important; }
+      .email-body { padding: 32px 20px !important; border-radius: 16px !important; }
       .info-grid { display: block !important; }
-      .info-grid td { display: block !important; width: 100% !important; padding-bottom: 16px !important; }
+      .info-grid td { display: block !important; width: 100% !important; border-right: none !important; border-bottom: 1px solid rgba(0,0,0,0.05) !important; padding: 16px 0 !important; }
+      .info-grid td:last-child { border-bottom: none !important; }
       .item-image { display: none !important; }
+      h2 { font-size: 20px !important; }
     }
   </style>
 </head>
-<body>
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0eb;min-height:100vh;">
-  <tr><td align="center" class="email-wrapper" style="padding:32px 16px;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
-      <!-- HEADER -->
+<body style="background-color: ${BG_BODY}; margin: 0; padding: 0;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color: ${BG_BODY}; min-height: 100vh;">
+  <tr><td align="center" class="email-wrapper" style="padding: 60px 24px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 800px; margin: 0 auto;">
       <tr>
-        <td style="${BRAND_GRADIENT} padding:32px 40px; border-radius:16px 16px 0 0; text-align:center;">
-          <div style="display:inline-block;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);border-radius:4px;padding:4px 16px;margin-bottom:12px;">
-            <span style="font-family:'Lato',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;color:${GOLD_COLOR};text-transform:uppercase;">Saaj Tradition</span>
+        <td style="text-align: center; padding-bottom: 40px;">
+          <a href="{{storeUrl}}" style="display: inline-block;">
+            <img src="${LOGO_URL}" alt="Saaj Tradition" width="90" height="90" style="width: 90px; height: 90px; object-fit: contain; display: inline-block;" />
+          </a>
+          <div style="font-family: 'Playfair Display', Georgia, serif; font-size: 26px; font-weight: 500; color: ${TEXT_DARK}; letter-spacing: 3px; line-height: 1.2; margin-top: 16px; text-transform: uppercase;">
+            Saaj Tradition
           </div>
-          <div style="font-family:'Playfair Display',Georgia,serif;font-size:28px;font-weight:700;color:#ffffff;letter-spacing:1px;line-height:1.2;">
-            Elegance in Every Thread
-          </div>
-          <div style="margin-top:8px;height:2px;background:linear-gradient(90deg,transparent,${GOLD_COLOR},transparent);max-width:200px;margin-left:auto;margin-right:auto;"></div>
         </td>
       </tr>
-      <!-- CONTENT -->
       <tr>
-        <td style="background:#ffffff;padding:40px;border-radius:0 0 16px 16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);" class="email-body">
+        <td style="background-color: ${BG_CARD}; padding: 56px 64px; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.04);" class="email-body">
           ${content}
         </td>
       </tr>
-      <!-- FOOTER -->
       <tr>
-        <td style="padding:24px 0; text-align:center;">
-          <p style="font-family:'Lato',sans-serif;font-size:11px;color:#999;line-height:1.6;">
+        <td style="padding: 40px 0; text-align: center;">
+          <p style="font-family: 'Lato', sans-serif; font-size: 12px; color: ${TEXT_MUTED}; line-height: 1.6; letter-spacing: 0.5px;">
             © ${new Date().getFullYear()} Saaj Tradition. Bahawalpur, Pakistan.<br/>
-            <a href="{{storeUrl}}" style="color:${ACCENT_COLOR};text-decoration:none;">Visit our store</a>
+            <a href="{{storeUrl}}" style="color: ${TEXT_DARK}; text-decoration: underline; margin-top: 8px; display: inline-block;">Visit our store</a>
           </p>
-          <div style="margin-top:12px;height:1px;background:linear-gradient(90deg,transparent,#d4c5b5,transparent);"></div>
         </td>
       </tr>
     </table>
@@ -78,36 +116,35 @@ const emailBase = (content: string) => `
 `;
 
 const sectionHeading = (text: string) => `
-  <h2 style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#1a1a2e;margin-bottom:8px;">${text}</h2>
-  <div style="width:48px;height:2px;background:${GOLD_COLOR};margin-bottom:20px;"></div>
+  <h2 style="font-family: 'Playfair Display', Georgia, serif; font-size: 20px; font-weight: 600; color: ${TEXT_DARK}; margin-bottom: 24px; text-transform: capitalize; letter-spacing: 0.5px;">${text}</h2>
 `;
 
 // ─── ORDER CONFIRMATION (Customer) ───────────────────────────────────────────
 export const ORDER_CONFIRMATION_TEMPLATE = {
   subject: "Order Confirmed — #{{orderNumber}} | Saaj Tradition",
   html: emailBase(`
-    ${sectionHeading("Your Order is Confirmed!")}
-    <p style="color:#555;line-height:1.7;margin-bottom:20px;">
-      Dear <strong style="color:#1a1a2e;">{{customerName}}</strong>,<br/><br/>
-      Thank you for shopping with <strong>Saaj Tradition</strong>. We've received your order and it's being processed with care.
+    <p style="font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 600; color: ${TEXT_DARK}; margin-bottom: 16px;">
+      Thank you, {{customerName}}.
+    </p>
+    <p style="color: ${TEXT_MUTED}; line-height: 1.8; margin-bottom: 32px; font-size: 15px;">
+      Your order has been beautifully received and is currently being prepared with care. We will notify you the moment it ships.
     </p>
 
-    <!-- Order Meta -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#1a1a2e,#0f3460);border-radius:12px;padding:20px;margin-bottom:28px;">
+    <table width="100%" cellpadding="0" cellspacing="0" class="fix-tracking-color" style="background-color: ${PASTEL_ACCENT}; border-radius: 16px; padding: 32px; margin-bottom: 40px;">
       <tr>
-        <td style="padding:16px;">
+        <td>
           <table width="100%" cellpadding="0" cellspacing="0" class="info-grid">
             <tr>
-              <td style="padding:8px 16px;border-right:1px solid rgba(255,255,255,0.1);text-align:center;">
-                <p style="font-size:10px;font-weight:700;letter-spacing:2px;color:${GOLD_COLOR};text-transform:uppercase;margin-bottom:6px;">Order Number</p>
-                <p style="font-size:20px;font-weight:700;color:#fff;font-family:'Playfair Display',Georgia,serif;">#{{orderNumber}}</p>
+              <td style="padding: 0 24px; border-right: 1px solid rgba(0,0,0,0.08); text-align: center;">
+                <p style="font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: ${TEXT_MUTED}; text-transform: uppercase; margin-bottom: 8px;">Order No.</p>
+                <p style="font-size: 20px; font-weight: 600; color: ${TEXT_DARK}; font-family: 'Playfair Display', Georgia, serif;">#{{orderNumber}}</p>
               </td>
-              <td style="padding:8px 16px;border-right:1px solid rgba(255,255,255,0.1);text-align:center;">
-                <p style="font-size:10px;font-weight:700;letter-spacing:2px;color:${GOLD_COLOR};text-transform:uppercase;margin-bottom:6px;">Date</p>
-                <p style="font-size:14px;font-weight:500;color:#fff;">{{orderDate}}</p>
+              <td style="padding: 0 24px; border-right: 1px solid rgba(0,0,0,0.08); text-align: center;">
+                <p style="font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: ${TEXT_MUTED}; text-transform: uppercase; margin-bottom: 8px;">Date</p>
+                <p style="font-size: 15px; font-weight: 500; color: ${TEXT_DARK};">{{orderDate}}</p>
               </td>
-              <td style="padding:8px 16px;text-align:center;">
-                <p style="font-size:10px;font-weight:700;letter-spacing:2px;color:${GOLD_COLOR};text-transform:uppercase;margin-bottom:6px;">Status</p>
+              <td style="padding: 0 24px; text-align: center;">
+                <p style="font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: ${TEXT_MUTED}; text-transform: uppercase; margin-bottom: 8px;">Status</p>
                 <p>{{orderStatusBadge}}</p>
               </td>
             </tr>
@@ -117,38 +154,38 @@ export const ORDER_CONFIRMATION_TEMPLATE = {
       {{trackingIdRow}}
     </table>
 
-    <!-- Order Items -->
     ${sectionHeading("Order Summary")}
-    {{items}}
+    <div style="margin-bottom: 32px;">
+      {{items}}
+    </div>
 
-    <!-- Price Breakdown -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;border-top:2px solid #f0ece8;">
-      <tr><td style="padding:8px 0;color:#666;font-size:14px;">Subtotal</td><td align="right" style="padding:8px 0;font-size:14px;color:#1a1a2e;">Rs. {{subtotal}}</td></tr>
-      <tr><td style="padding:8px 0;color:#666;font-size:14px;">Shipping</td><td align="right" style="padding:8px 0;font-size:14px;color:#1a1a2e;">{{shipping}}</td></tr>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 16px; padding-top: 24px; border-top: 1px solid ${PASTEL_ACCENT};">
+      <tr><td style="padding: 8px 0; color: ${TEXT_MUTED}; font-size: 15px;">Subtotal</td><td align="right" style="padding: 8px 0; font-size: 15px; color: ${TEXT_DARK};">Rs. {{subtotal}}</td></tr>
+      <tr><td style="padding: 8px 0; color: ${TEXT_MUTED}; font-size: 15px;">Shipping</td><td align="right" style="padding: 8px 0; font-size: 15px; color: ${TEXT_DARK};">{{shipping}}</td></tr>
       {{discountRow}}
-      <tr style="border-top:2px solid #1a1a2e;">
-        <td style="padding:12px 0;font-family:'Playfair Display',Georgia,serif;font-size:18px;font-weight:700;color:#1a1a2e;">Total</td>
-        <td align="right" style="padding:12px 0;font-size:22px;font-weight:700;color:#1a1a2e;">Rs. {{total}}</td>
+      <tr>
+        <td style="padding: 24px 0 0 0; font-family: 'Playfair Display', Georgia, serif; font-size: 20px; font-weight: 600; color: ${TEXT_DARK};">Total</td>
+        <td align="right" style="padding: 24px 0 0 0; font-size: 22px; font-weight: 700; color: ${TEXT_DARK};">Rs. {{total}}</td>
       </tr>
     </table>
 
-    <!-- Delivery Address -->
-    {{deliverySection}}
+    <div style="margin-top: 48px;">
+      {{deliverySection}}
+    </div>
 
-    <!-- CTA -->
-    <div style="text-align:center;margin-top:32px;">
-      <a href="{{trackingUrl}}" style="display:inline-block;background:#c9a84c;color:#1a1a2e;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:12px;">
-        🔍 Track My Order
+    <div style="text-align: center; margin-top: 56px;">
+      <a href="{{trackingUrl}}" class="btn" style="margin-bottom: 16px; margin-right: 12px;">
+        Track My Order
       </a>
-      <br/>
-      <a href="{{storeUrl}}" style="display:inline-block;background:linear-gradient(135deg,#1a1a2e,#0f3460);color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:1px;">
+      <a href="{{storeUrl}}" class="btn-outline">
         Continue Shopping
       </a>
     </div>
 
-    <div style="margin-top:28px;padding:16px;background:#faf8f5;border-left:3px solid ${GOLD_COLOR};border-radius:4px;">
-      <p style="font-size:13px;color:#666;line-height:1.6;">
-        Questions about your order? Reply to this email or contact us at <a href="mailto:{{storeEmail}}" style="color:${ACCENT_COLOR};">{{storeEmail}}</a>
+    <div style="margin-top: 48px; text-align: center;">
+      <p style="font-size: 14px; color: ${TEXT_MUTED}; line-height: 1.6;">
+        Questions about your order? Reach out to us at <br/>
+        <a href="mailto:{{storeEmail}}" style="color: ${TEXT_DARK}; font-weight: 600;">{{storeEmail}}</a>
       </p>
     </div>
   `),
@@ -159,66 +196,57 @@ export const ORDER_ADMIN_NOTIFICATION_TEMPLATE = {
   subject: "🛍️ New Order #{{orderNumber}} — Rs. {{total}}",
   html: emailBase(`
     ${sectionHeading("New Order Received")}
-    <div style="background:#fff8e1;border:1px solid ${GOLD_COLOR};border-radius:8px;padding:16px;margin-bottom:24px;">
-      <p style="font-size:13px;color:#555;line-height:1.7;">
-        A new order has been placed on <strong>Saaj Tradition</strong>. Review the details below.
-      </p>
-    </div>
-
-    <!-- Order Meta -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#1a1a2e,#0f3460);border-radius:12px;margin-bottom:28px;">
-      <tr><td style="padding:20px;">
+    
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: ${PASTEL_HIGHLIGHT}; border-radius: 16px; margin-bottom: 40px;">
+      <tr><td style="padding: 32px;">
         <table width="100%" cellpadding="0" cellspacing="0" class="info-grid">
           <tr>
-            <td style="padding:8px 16px;border-right:1px solid rgba(255,255,255,0.1);text-align:center;">
-              <p style="font-size:10px;font-weight:700;letter-spacing:2px;color:${GOLD_COLOR};text-transform:uppercase;margin-bottom:6px;">Order #</p>
-              <p style="font-size:22px;font-weight:700;color:#fff;font-family:'Playfair Display',Georgia,serif;">#{{orderNumber}}</p>
+            <td style="padding: 0 24px; border-right: 1px solid rgba(0,0,0,0.08); text-align: center;">
+              <p style="font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: ${TEXT_MUTED}; text-transform: uppercase; margin-bottom: 8px;">Order No.</p>
+              <p style="font-size: 22px; font-weight: 600; color: ${TEXT_DARK}; font-family: 'Playfair Display', Georgia, serif;">#{{orderNumber}}</p>
             </td>
-            <td style="padding:8px 16px;border-right:1px solid rgba(255,255,255,0.1);text-align:center;">
-              <p style="font-size:10px;font-weight:700;letter-spacing:2px;color:${GOLD_COLOR};text-transform:uppercase;margin-bottom:6px;">Total</p>
-              <p style="font-size:20px;font-weight:700;color:#fff;">Rs. {{total}}</p>
+            <td style="padding: 0 24px; border-right: 1px solid rgba(0,0,0,0.08); text-align: center;">
+              <p style="font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: ${TEXT_MUTED}; text-transform: uppercase; margin-bottom: 8px;">Total</p>
+              <p style="font-size: 20px; font-weight: 700; color: ${TEXT_DARK};">Rs. {{total}}</p>
             </td>
-            <td style="padding:8px 16px;text-align:center;">
-              <p style="font-size:10px;font-weight:700;letter-spacing:2px;color:${GOLD_COLOR};text-transform:uppercase;margin-bottom:6px;">Date</p>
-              <p style="font-size:14px;font-weight:500;color:#fff;">{{orderDate}}</p>
+            <td style="padding: 0 24px; text-align: center;">
+              <p style="font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: ${TEXT_MUTED}; text-transform: uppercase; margin-bottom: 8px;">Date</p>
+              <p style="font-size: 15px; font-weight: 500; color: ${TEXT_DARK};">{{orderDate}}</p>
             </td>
           </tr>
         </table>
       </td></tr>
     </table>
 
-    <!-- Customer Info -->
     ${sectionHeading("Customer Details")}
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f5;border-radius:8px;margin-bottom:24px;">
-      <tr><td style="padding:16px;">
-        <p style="margin-bottom:6px;font-size:14px;color:#555;"><strong style="color:#1a1a2e;">Name:</strong> {{customerName}}</p>
-        <p style="margin-bottom:6px;font-size:14px;color:#555;"><strong style="color:#1a1a2e;">Email:</strong> {{customerEmail}}</p>
-        <p style="font-size:14px;color:#555;"><strong style="color:#1a1a2e;">Phone:</strong> {{customerPhone}}</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: ${BG_BODY}; border-radius: 12px; margin-bottom: 40px; border: 1px solid rgba(0,0,0,0.03);">
+      <tr><td style="padding: 32px;">
+        <p style="margin-bottom: 12px; font-size: 15px; color: ${TEXT_MUTED};"><strong style="color: ${TEXT_DARK}; min-width: 70px; display: inline-block;">Name:</strong> {{customerName}}</p>
+        <p style="margin-bottom: 12px; font-size: 15px; color: ${TEXT_MUTED};"><strong style="color: ${TEXT_DARK}; min-width: 70px; display: inline-block;">Email:</strong> {{customerEmail}}</p>
+        <p style="font-size: 15px; color: ${TEXT_MUTED};"><strong style="color: ${TEXT_DARK}; min-width: 70px; display: inline-block;">Phone:</strong> {{customerPhone}}</p>
       </td></tr>
     </table>
 
-    <!-- Items -->
     ${sectionHeading("Order Items")}
     {{items}}
 
-    <!-- Totals -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;border-top:2px solid #f0ece8;">
-      <tr><td style="padding:8px 0;color:#666;font-size:14px;">Subtotal</td><td align="right" style="padding:8px 0;font-size:14px;">Rs. {{subtotal}}</td></tr>
-      <tr><td style="padding:8px 0;color:#666;font-size:14px;">Shipping</td><td align="right" style="padding:8px 0;font-size:14px;">{{shipping}}</td></tr>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 16px; padding-top: 24px; border-top: 1px solid ${PASTEL_ACCENT};">
+      <tr><td style="padding: 8px 0; color: ${TEXT_MUTED}; font-size: 15px;">Subtotal</td><td align="right" style="padding: 8px 0; font-size: 15px;">Rs. {{subtotal}}</td></tr>
+      <tr><td style="padding: 8px 0; color: ${TEXT_MUTED}; font-size: 15px;">Shipping</td><td align="right" style="padding: 8px 0; font-size: 15px;">{{shipping}}</td></tr>
       {{discountRow}}
-      <tr style="border-top:2px solid #1a1a2e;">
-        <td style="padding:12px 0;font-size:18px;font-weight:700;color:#1a1a2e;font-family:'Playfair Display',Georgia,serif;">Total</td>
-        <td align="right" style="padding:12px 0;font-size:22px;font-weight:700;color:#1a1a2e;">Rs. {{total}}</td>
+      <tr>
+        <td style="padding: 24px 0 0 0; font-size: 20px; font-weight: 600; color: ${TEXT_DARK}; font-family: 'Playfair Display', Georgia, serif;">Total</td>
+        <td align="right" style="padding: 24px 0 0 0; font-size: 22px; font-weight: 700; color: ${TEXT_DARK};">Rs. {{total}}</td>
       </tr>
     </table>
 
-    <!-- Delivery -->
-    {{deliverySection}}
+    <div style="margin-top: 48px;">
+      {{deliverySection}}
+    </div>
 
-    <!-- CTA -->
-    <div style="text-align:center;margin-top:32px;">
-      <a href="{{adminOrderUrl}}" style="display:inline-block;background:linear-gradient(135deg,#1a1a2e,#0f3460);color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:1px;">
-        View Order in Admin
+    <div style="text-align: center; margin-top: 56px;">
+      <a href="{{adminOrderUrl}}" class="btn">
+        View In Dashboard
       </a>
     </div>
   `),
@@ -228,28 +256,27 @@ export const ORDER_ADMIN_NOTIFICATION_TEMPLATE = {
 export const ORDER_STATUS_UPDATE_TEMPLATE = {
   subject: "Order #{{orderNumber}} Update — {{orderStatus}} | Saaj Tradition",
   html: emailBase(`
-    ${sectionHeading("Order Status Update")}
-    <p style="color:#555;line-height:1.7;margin-bottom:24px;">
-      Dear <strong style="color:#1a1a2e;">{{customerName}}</strong>,<br/><br/>
-      We have an update for your order. Please find the latest status below.
+    <p style="font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 600; color: ${TEXT_DARK}; margin-bottom: 16px;">
+      Order Update
+    </p>
+    <p style="color: ${TEXT_MUTED}; line-height: 1.8; margin-bottom: 32px; font-size: 15px;">
+      Dear <strong>{{customerName}}</strong>,<br/><br/>
+      We wanted to let you know that the status of your order has changed.
     </p>
 
-    <!-- Status Card -->
-    <div style="background:linear-gradient(135deg,#1a1a2e,#0f3460);border-radius:12px;padding:28px;text-align:center;margin-bottom:28px;">
-      <p style="font-size:10px;font-weight:700;letter-spacing:3px;color:${GOLD_COLOR};text-transform:uppercase;margin-bottom:8px;">Order #{{orderNumber}}</p>
-      <p style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px;">Current Status</p>
-      <div>{{orderStatusBadge}}</div>
-      <p style="margin-top:16px;font-size:13px;color:rgba(255,255,255,0.7);">{{statusMessage}}</p>
+    <div class="fix-tracking-color" style="background-color: ${PASTEL_ACCENT}; border-radius: 16px; padding: 40px; text-align: center; margin-bottom: 48px;">
+      <p style="font-size: 11px; font-weight: 700; letter-spacing: 2px; color: ${TEXT_MUTED}; text-transform: uppercase; margin-bottom: 16px;">Order #{{orderNumber}}</p>
+      <div style="margin-bottom: 20px;">{{orderStatusBadge}}</div>
+      <p style="font-size: 15px; color: ${TEXT_DARK}; line-height: 1.6;">{{statusMessage}}</p>
     </div>
 
     {{customMessage}}
 
-    <div style="text-align:center;margin-top:28px;">
-      <a href="{{trackingUrl}}" style="display:inline-block;background:#c9a84c;color:#1a1a2e;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:12px;">
-        🔍 Track My Order
+    <div style="text-align: center; margin-top: 56px;">
+      <a href="{{trackingUrl}}" class="btn" style="margin-bottom: 16px; margin-right: 12px;">
+        Track My Order
       </a>
-      <br/>
-      <a href="{{storeUrl}}" style="display:inline-block;background:linear-gradient(135deg,#1a1a2e,#0f3460);color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:1px;">
+      <a href="{{storeUrl}}" class="btn-outline">
         Visit Store
       </a>
     </div>
@@ -261,26 +288,28 @@ export const NEWSLETTER_TEMPLATE = {
   subject: "{{subject}} | Saaj Tradition",
   html: emailBase(`
     ${sectionHeading("{{emailHeading}}")}
-    <p style="color:#555;line-height:1.7;margin-bottom:20px;">
-      Dear <strong style="color:#1a1a2e;">{{subscriberName}}</strong>,
+    <p style="color: ${TEXT_MUTED}; line-height: 1.8; margin-bottom: 24px; font-size: 15px;">
+      Dear <strong>{{subscriberName}}</strong>,
     </p>
 
-    <div style="color:#444;line-height:1.8;font-size:15px;">
+    <div style="color: ${TEXT_DARK}; line-height: 1.8; font-size: 15px; margin-bottom: 40px;">
       {{body}}
     </div>
 
-    {{imageSection}}
+    <div style="border-radius: 16px; overflow: hidden;">
+      {{imageSection}}
+    </div>
 
-    <div style="text-align:center;margin-top:32px;">
-      <a href="{{ctaUrl}}" style="display:inline-block;background:linear-gradient(135deg,#1a1a2e,#0f3460);color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:1px;">
+    <div style="text-align: center; margin-top: 56px;">
+      <a href="{{ctaUrl}}" class="btn">
         {{ctaText}}
       </a>
     </div>
 
-    <div style="margin-top:28px;padding-top:20px;border-top:1px solid #f0ece8;text-align:center;">
-      <p style="font-size:11px;color:#aaa;">
-        You're receiving this because you subscribed to Saaj Tradition updates.<br/>
-        <a href="{{unsubscribeUrl}}" style="color:#999;text-decoration:underline;">Unsubscribe</a>
+    <div style="margin-top: 56px; padding-top: 32px; border-top: 1px solid ${PASTEL_ACCENT}; text-align: center;">
+      <p style="font-size: 13px; color: ${TEXT_MUTED}; line-height: 1.6;">
+        You're receiving this because you subscribed to our elegant updates.<br/>
+        <a href="{{unsubscribeUrl}}" style="color: ${TEXT_DARK}; text-decoration: underline;">Unsubscribe</a>
       </p>
     </div>
   `),
@@ -288,35 +317,33 @@ export const NEWSLETTER_TEMPLATE = {
 
 // ─── PRODUCT UPDATE ───────────────────────────────────────────────────────────
 export const PRODUCT_UPDATE_TEMPLATE = {
-  subject: "✨ New Arrival: {{productName}} | Saaj Tradition",
+  subject: "New Arrival: {{productName}} | Saaj Tradition",
   html: emailBase(`
-    ${sectionHeading("New Arrival")}
-    <p style="color:#555;line-height:1.7;margin-bottom:24px;">
-      We're thrilled to introduce our latest addition to the Saaj Tradition collection.
+    <p style="font-family: 'Playfair Display', Georgia, serif; font-size: 26px; font-weight: 600; color: ${TEXT_DARK}; margin-bottom: 16px; text-align: center;">
+      Just Arrived
+    </p>
+    <p style="color: ${TEXT_MUTED}; line-height: 1.8; margin-bottom: 40px; font-size: 15px; text-align: center;">
+      Discover the latest addition to our carefully curated collection.
     </p>
 
-    <!-- Product Card -->
-    <div style="border:1px solid #f0ece8;border-radius:12px;overflow:hidden;margin-bottom:28px;">
+    <div style="background-color: ${BG_BODY}; border-radius: 16px; overflow: hidden; margin-bottom: 48px; border: 1px solid rgba(0,0,0,0.03);">
       {{productImageSection}}
-      <div style="padding:24px;">
-        <h3 style="font-family:'Playfair Display',Georgia,serif;font-size:20px;font-weight:600;color:#1a1a2e;margin-bottom:8px;">{{productName}}</h3>
-        <p style="font-size:14px;color:#666;line-height:1.7;margin-bottom:16px;">{{productDescription}}</p>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <span style="font-size:22px;font-weight:700;color:#1a1a2e;font-family:'Playfair Display',Georgia,serif;">Rs. {{productPrice}}</span>
-        </div>
+      <div style="padding: 40px 32px; text-align: center;">
+        <h3 style="font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 500; color: ${TEXT_DARK}; margin-bottom: 16px;">{{productName}}</h3>
+        <p style="font-size: 15px; color: ${TEXT_MUTED}; line-height: 1.6; margin-bottom: 24px;">{{productDescription}}</p>
+        <span style="font-size: 20px; font-weight: 600; color: ${TEXT_DARK}; font-family: 'Lato', sans-serif;">Rs. {{productPrice}}</span>
       </div>
     </div>
 
-    <div style="text-align:center;margin-top:8px;">
-      <a href="{{productUrl}}" style="display:inline-block;background:linear-gradient(135deg,#1a1a2e,#0f3460);color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:1px;">
+    <div style="text-align: center;">
+      <a href="{{productUrl}}" class="btn">
         Shop Now
       </a>
     </div>
 
-    <div style="margin-top:28px;padding-top:20px;border-top:1px solid #f0ece8;text-align:center;">
-      <p style="font-size:11px;color:#aaa;">
-        You're receiving this because you subscribed to Saaj Tradition updates.<br/>
-        <a href="{{unsubscribeUrl}}" style="color:#999;text-decoration:underline;">Unsubscribe</a>
+    <div style="margin-top: 56px; padding-top: 32px; border-top: 1px solid ${PASTEL_ACCENT}; text-align: center;">
+      <p style="font-size: 13px; color: ${TEXT_MUTED}; line-height: 1.6;">
+        <a href="{{unsubscribeUrl}}" style="color: ${TEXT_DARK}; text-decoration: underline;">Unsubscribe</a>
       </p>
     </div>
   `),
@@ -324,33 +351,127 @@ export const PRODUCT_UPDATE_TEMPLATE = {
 
 // ─── COLLECTION UPDATE ────────────────────────────────────────────────────────
 export const COLLECTION_UPDATE_TEMPLATE = {
-  subject: "✨ New Collection: {{collectionName}} | Saaj Tradition",
+  subject: "New Collection: {{collectionName}} | Saaj Tradition",
   html: emailBase(`
-    ${sectionHeading("New Collection")}
-    <p style="color:#555;line-height:1.7;margin-bottom:24px;">
-      We're excited to present our newest collection — crafted with tradition and passion.
+    <p style="font-family: 'Playfair Display', Georgia, serif; font-size: 26px; font-weight: 600; color: ${TEXT_DARK}; margin-bottom: 16px; text-align: center;">
+      A New Story Begins
+    </p>
+    <p style="color: ${TEXT_MUTED}; line-height: 1.8; margin-bottom: 40px; font-size: 15px; text-align: center;">
+      Immerse yourself in our newest collection, crafted with patience and passion.
     </p>
 
-    <!-- Collection Card -->
-    <div style="border-radius:12px;overflow:hidden;margin-bottom:28px;background:linear-gradient(135deg,#1a1a2e,#0f3460);">
+    <div style="border-radius: 16px; overflow: hidden; margin-bottom: 48px; background-color: ${PASTEL_ACCENT};">
       {{collectionImageSection}}
-      <div style="padding:24px;">
-        <h3 style="font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600;color:#fff;margin-bottom:8px;">{{collectionName}}</h3>
-        <p style="font-size:14px;color:rgba(255,255,255,0.75);line-height:1.7;">{{collectionDescription}}</p>
+      <div style="padding: 40px 32px; text-align: center;">
+        <h3 style="font-family: 'Playfair Display', Georgia, serif; font-size: 28px; font-weight: 500; color: ${TEXT_DARK}; margin-bottom: 16px;">{{collectionName}}</h3>
+        <p style="font-size: 15px; color: ${TEXT_DARK}; line-height: 1.8; opacity: 0.85;">{{collectionDescription}}</p>
       </div>
     </div>
 
-    <div style="text-align:center;margin-top:8px;">
-      <a href="{{collectionUrl}}" style="display:inline-block;background:${GOLD_COLOR};color:#1a1a2e;text-decoration:none;padding:14px 36px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:1px;">
+    <div style="text-align: center;">
+      <a href="{{collectionUrl}}" class="btn">
         Explore Collection
       </a>
     </div>
 
-    <div style="margin-top:28px;padding-top:20px;border-top:1px solid #f0ece8;text-align:center;">
-      <p style="font-size:11px;color:#aaa;">
-        You're receiving this because you subscribed to Saaj Tradition updates.<br/>
-        <a href="{{unsubscribeUrl}}" style="color:#999;text-decoration:underline;">Unsubscribe</a>
+    <div style="margin-top: 56px; padding-top: 32px; border-top: 1px solid ${PASTEL_ACCENT}; text-align: center;">
+      <p style="font-size: 13px; color: ${TEXT_MUTED}; line-height: 1.6;">
+        <a href="{{unsubscribeUrl}}" style="color: ${TEXT_DARK}; text-decoration: underline;">Unsubscribe</a>
       </p>
     </div>
+  `),
+};
+
+// ─── WELCOME EMAIL (new subscriber) ─────────────────────────────────────────
+export const WELCOME_EMAIL_TEMPLATE = {
+  subject: "Welcome to Saaj Tradition",
+  html: emailBase(`
+    <div style="text-align: center; margin-bottom: 40px;">
+      <p style="font-family: 'Playfair Display', Georgia, serif; font-size: 32px; font-weight: 600; color: ${TEXT_DARK}; margin-bottom: 20px;">
+        Welcome.
+      </p>
+      <p style="color: ${TEXT_MUTED}; line-height: 1.8; font-size: 15px;">
+        Dear <strong>{{subscriberName}}</strong>,<br/><br/>
+        We're honored to have you with us. You've joined a space that celebrates elegance, heritage, and meticulous craftsmanship.
+      </p>
+    </div>
+
+    <div style="background-color: ${PASTEL_ACCENT}; border-radius: 16px; padding: 48px 32px; margin-bottom: 48px; text-align: center;">
+      <p style="font-family: 'Playfair Display', Georgia, serif; font-size: 22px; color: ${TEXT_DARK}; font-weight: 500; margin-bottom: 40px;">What awaits you</p>
+      
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="padding: 0 16px; text-align: center; width: 33.33%;">
+            <p style="font-size: 12px; font-weight: 700; color: ${TEXT_DARK}; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">Collections</p>
+            <p style="font-size: 14px; color: ${TEXT_MUTED}; line-height: 1.6;">First access to new arrivals</p>
+          </td>
+          <td style="padding: 0 16px; text-align: center; width: 33.33%;">
+            <p style="font-size: 12px; font-weight: 700; color: ${TEXT_DARK}; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">Privileges</p>
+            <p style="font-size: 14px; color: ${TEXT_MUTED}; line-height: 1.6;">Exclusive member rewards</p>
+          </td>
+          <td style="padding: 0 16px; text-align: center; width: 33.33%;">
+            <p style="font-size: 12px; font-weight: 700; color: ${TEXT_DARK}; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;">Heritage</p>
+            <p style="font-size: 14px; color: ${TEXT_MUTED}; line-height: 1.6;">Stories behind the craft</p>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="text-align: center; margin-bottom: 48px;">
+      <a href="{{storeUrl}}" class="btn">
+        Step Inside
+      </a>
+    </div>
+
+    <p style="color: ${TEXT_MUTED}; font-size: 15px; line-height: 1.8; text-align: center; font-style: italic;">
+      Warm regards,<br/>
+      <strong style="color: ${TEXT_DARK}; font-style: normal;">The Saaj Tradition Team</strong>
+    </p>
+
+    <div style="margin-top: 48px; padding-top: 32px; border-top: 1px solid ${PASTEL_ACCENT}; text-align: center;">
+      <p style="font-size: 13px; color: ${TEXT_MUTED};">
+        <a href="{{unsubscribeUrl}}" style="color: ${TEXT_DARK}; text-decoration: underline;">Unsubscribe</a>
+      </p>
+    </div>
+  `),
+};
+
+// ─── THANK-YOU EMAIL (order customer) ───────────────────────────────────────
+export const THANK_YOU_EMAIL_TEMPLATE = {
+  subject: "With Gratitude | Saaj Tradition",
+  html: emailBase(`
+    <div style="text-align: center; margin-bottom: 40px;">
+      <p style="font-family: 'Playfair Display', Georgia, serif; font-size: 32px; font-weight: 600; color: ${TEXT_DARK}; margin-bottom: 20px;">
+        Thank You.
+      </p>
+      <p style="color: ${TEXT_MUTED}; line-height: 1.8; font-size: 15px;">
+        Dear <strong>{{customerName}}</strong>,<br/><br/>
+        We wanted to pause and personally thank you for your order <strong>#{{orderNumber}}</strong>.
+      </p>
+    </div>
+
+    <div class="fix-tracking-color" style="background-color: ${PASTEL_HIGHLIGHT}; border-radius: 16px; padding: 48px 40px; margin-bottom: 48px; text-align: center;">
+      <p style="font-family: 'Playfair Display', Georgia, serif; font-size: 22px; color: ${TEXT_DARK}; font-weight: 500; margin-bottom: 20px;">
+        A testament to tradition.
+      </p>
+      <p style="font-size: 15px; color: ${TEXT_DARK}; line-height: 1.8; max-width: 500px; margin: 0 auto; opacity: 0.85;">
+        Every piece is made with intention. We hope it brings an unparalleled sense of elegance to your wardrobe.
+      </p>
+    </div>
+
+    <p style="color: ${TEXT_MUTED}; line-height: 1.8; margin-bottom: 48px; text-align: center; font-size: 15px;">
+      If you need anything at all, simply reply to this email. We are always here for you.
+    </p>
+
+    <div style="text-align: center; margin-bottom: 48px;">
+      <a href="{{storeUrl}}" class="btn">
+        Return to Store
+      </a>
+    </div>
+
+    <p style="color: ${TEXT_MUTED}; font-size: 15px; line-height: 1.8; text-align: center; font-style: italic;">
+      With sincere gratitude,<br/>
+      <strong style="color: ${TEXT_DARK}; font-style: normal;">The Saaj Tradition Team</strong>
+    </p>
   `),
 };

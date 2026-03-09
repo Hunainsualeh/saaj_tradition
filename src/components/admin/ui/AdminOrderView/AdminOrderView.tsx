@@ -14,8 +14,9 @@ import {
   AdminSelectTrigger,
   AdminSelectValue,
 } from "../AdminSelect";
-import { updateOrderStatus, updatePaymentStatus } from "@/lib/server/actions/order-actions";
-import { sendCustomEmailToOrderCustomer } from "@/lib/server/actions/email-actions";
+import { updateOrderStatus, updatePaymentStatus, recalculateOrderTotal } from "@/lib/server/actions/order-actions";
+import { sendCustomEmailToOrderCustomer, previewStatusEmail } from "@/lib/server/actions/email-actions";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 const ORDER_STATUSES = [
   "PENDING",
@@ -40,14 +41,14 @@ export function AdminOrderView(props: AdminOrderViewProps) {
   // === STATE ===
   const [orderStatus, setOrderStatus] = useState(order.status);
   const [paymentStat, setPaymentStat] = useState(order.paymentStatus);
-  const [sendEmail, setSendEmail] = useState(false);
+  const [sendEmail, setSendEmail] = useState(order.deliveryEmail ? true : false);
   const [statusMessage, setStatusMessage] = useState("");
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [customSubject, setCustomSubject] = useState("");
-  const [customBody, setCustomBody] = useState("");
   const [emailSending, setEmailSending] = useState(false);
+  const [fixingTotal, setFixingTotal] = useState(false);
+  const [displayedTotal, setDisplayedTotal] = useState(order.totalPrice);
 
   const handleExportPDF = () => {
+    // build same html string as before (copy minus the printing part)
     const subtotalVal = order.cart.items.reduce(
       (sum, item) => sum + item.unitPrice * item.quantity,
       0,
@@ -62,8 +63,8 @@ export function AdminOrderView(props: AdminOrderViewProps) {
             <div style="color:#6b7280;font-size:12px;">Size: ${item.size.label}</div>
           </td>
           <td style="padding:8px 4px;border-bottom:1px solid #e5e5e5;text-align:center;color:#6b7280;">${item.quantity}</td>
-          <td style="padding:8px 4px;border-bottom:1px solid #e5e5e5;text-align:right;color:#6b7280;">Rs.${item.unitPrice.toFixed(2)}</td>
-          <td style="padding:8px 4px;border-bottom:1px solid #e5e5e5;text-align:right;font-weight:500;">Rs.${(item.unitPrice * item.quantity).toFixed(2)}</td>
+          <td style="padding:8px 4px;border-bottom:1px solid #e5e5e5;text-align:right;color:#6b7280;">Rs.${Math.round(item.unitPrice)}</td>
+          <td style="padding:8px 4px;border-bottom:1px solid #e5e5e5;text-align:right;font-weight:500;">Rs.${Math.round(item.unitPrice * item.quantity)}</td>
         </tr>`,
       )
       .join("");
@@ -93,7 +94,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
     const couponHtml = order.couponCode
       ? `<tr>
           <td colspan="2" style="padding:4px 0;color:#16a34a;">Coupon (${order.couponCode}${order.discountPercent ? ` — ${order.discountPercent}%` : ""})</td>
-          <td style="padding:4px 0;text-align:right;color:#16a34a;">${order.discountAmount ? `-Rs.${order.discountAmount.toFixed(2)}` : "—"}</td>
+          <td style="padding:4px 0;text-align:right;color:#16a34a;">${order.discountAmount ? `-Rs.${Math.round(order.discountAmount)}` : "—"}</td>
         </tr>`
       : "";
 
@@ -108,7 +109,6 @@ export function AdminOrderView(props: AdminOrderViewProps) {
     h1 { font-size: 22px; font-weight: 700; }
     h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #e5e5e5; }
     table { width: 100%; border-collapse: collapse; }
-    @media print { body { padding: 20px; } }
   </style>
 </head>
 <body>
@@ -146,16 +146,16 @@ export function AdminOrderView(props: AdminOrderViewProps) {
       <tbody>
         <tr>
           <td colspan="2" style="padding:4px 0;color:#6b7280;">Subtotal</td>
-          <td style="padding:4px 0;text-align:right;">Rs.${subtotalVal.toFixed(2)}</td>
+          <td style="padding:4px 0;text-align:right;">Rs.${Math.round(subtotalVal)}</td>
         </tr>
         <tr>
           <td colspan="2" style="padding:4px 0;color:#6b7280;">Shipping</td>
-          <td style="padding:4px 0;text-align:right;">${order.shippingAmount === 0 ? "Free" : `Rs.${order.shippingAmount?.toFixed(2) ?? "—"}`}</td>
+          <td style="padding:4px 0;text-align:right;">${order.shippingAmount === 0 ? "Free" : `Rs.${Math.round(order.shippingAmount ?? 0)}`}</td>
         </tr>
         ${couponHtml}
         <tr style="border-top:2px solid #111;">
           <td colspan="2" style="padding:8px 0 0;font-weight:700;font-size:15px;">Total</td>
-          <td style="padding:8px 0 0;text-align:right;font-weight:700;font-size:18px;">Rs.${order.totalPrice.toFixed(2)}</td>
+          <td style="padding:8px 0 0;text-align:right;font-weight:700;font-size:18px;">Rs.${Math.round(order.totalPrice)}</td>
         </tr>
       </tbody>
     </table>
@@ -175,32 +175,25 @@ export function AdminOrderView(props: AdminOrderViewProps) {
 </html>`;
 
     const win = window.open("", "_blank");
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(() => {
-      win.print();
-    }, 500);
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      setTimeout(() => win.print(), 600);
+    }
   };
 
   const handleEmailOrder = async () => {
-    setShowEmailModal(true);
-  };
-
-  const handleSendCustomEmail = async () => {
-    if (!customSubject.trim() || !customBody.trim()) {
-      toast.error("Subject and body are required");
-      return;
-    }
     setEmailSending(true);
     try {
-      const result = await sendCustomEmailToOrderCustomer(order.id, customSubject, customBody);
+      const preview = await previewStatusEmail(order.id, statusMessage || undefined);
+      if (!preview.success) {
+        toast.error("Failed to build email template");
+        return;
+      }
+      const result = await sendCustomEmailToOrderCustomer(order.id, preview.data.subject, preview.data.html);
       if (result.success) {
         toast.success("Email sent to customer");
-        setShowEmailModal(false);
-        setCustomSubject("");
-        setCustomBody("");
       } else {
         toast.error("Failed to send email");
       }
@@ -237,66 +230,28 @@ export function AdminOrderView(props: AdminOrderViewProps) {
     (sum, item) => sum + item.unitPrice * item.quantity,
     0,
   );
+  const shipping = order.shippingAmount ?? 0;
+  const discount = order.discountAmount ?? 0;
+  const computedTotal = Math.max(subtotal + shipping - discount, 0);
+  const hasTotalMismatch = Math.abs(computedTotal - displayedTotal) > 0.01;
+
+  const handleFixTotal = async () => {
+    setFixingTotal(true);
+    try {
+      const result = await recalculateOrderTotal(order.id);
+      if (result.success) {
+        setDisplayedTotal(result.data);
+        toast.success(`Order total updated to Rs.${Math.round(result.data)}`);
+      } else {
+        toast.error("Failed to recalculate total");
+      }
+    } finally {
+      setFixingTotal(false);
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg border border-neutral-04 p-4 md:p-6 space-y-6">
-      {/* Custom Email Modal */}
-      {showEmailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-neutral-11 flex items-center gap-2">
-                <Mail size={18} /> Email to Customer
-              </h3>
-              <button
-                onClick={() => setShowEmailModal(false)}
-                className="cursor-pointer text-neutral-08 hover:text-neutral-11 text-xl leading-none"
-              >
-                ×
-              </button>
-            </div>
-            <p className="text-xs text-neutral-08">
-              Sending to: <strong>{order.deliveryEmail}</strong>
-            </p>
-            <div>
-              <label className="block text-sm font-medium text-neutral-10 mb-1">Subject</label>
-              <input
-                type="text"
-                value={customSubject}
-                onChange={(e) => setCustomSubject(e.target.value)}
-                placeholder="e.g. Update on your Saaj Tradition order"
-                className="w-full border border-neutral-04 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-06"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-10 mb-1">
-                Message Body (HTML supported)
-              </label>
-              <textarea
-                value={customBody}
-                onChange={(e) => setCustomBody(e.target.value)}
-                rows={6}
-                placeholder="Write your message here. You can use HTML tags."
-                className="w-full border border-neutral-04 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-06 resize-none font-mono"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <AdminButton variant="outline" onClick={() => setShowEmailModal(false)}>
-                Cancel
-              </AdminButton>
-              <AdminButton
-                onClick={handleSendCustomEmail}
-                disabled={emailSending}
-                className="flex items-center gap-2"
-              >
-                {emailSending && <Loader2 size={14} className="animate-spin" />}
-                {emailSending ? "Sending…" : "Send Email"}
-              </AdminButton>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Header with Actions */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 border-b border-neutral-04 pb-4">
         <div className="flex-1">
@@ -315,11 +270,15 @@ export function AdminOrderView(props: AdminOrderViewProps) {
           <AdminButton
             variant="default"
             onClick={handleEmailOrder}
-            disabled={!order.deliveryEmail}
+            disabled={!order.deliveryEmail || emailSending}
             className="flex items-center gap-2"
           >
-            <Mail size={14} />
-            Email to Customer
+            {emailSending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Mail size={14} />
+            )}
+            {emailSending ? "Loading…" : "Email to Customer"}
           </AdminButton>
         </div>
       </div>
@@ -359,7 +318,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
           </div>
           <div className="bg-neutral-01 p-4 rounded">
             <p className="text-sm text-neutral-09 mb-1">Payment Method</p>
-            <p className="font-semibold text-neutral-11">{order.paymentMethod}</p>
+            <p className="font-semibold text-neutral-11">{order.paymentMethod === "COD" ? "Cash on Delivery" : order.paymentMethod}</p>
           </div>
         </div>
 
@@ -435,11 +394,11 @@ export function AdminOrderView(props: AdminOrderViewProps) {
               </div>
               <div className="text-right shrink-0">
                 <p className="font-semibold text-sm md:text-base text-neutral-11">
-                  Rs.{(item.unitPrice * item.quantity).toFixed(2)}
+                  Rs.{Math.round(item.unitPrice * item.quantity)}
                 </p>
                 <p className="text-xs md:text-sm text-neutral-09">
                   <span>x{item.quantity + " "}</span>
-                  <span>Rs.{item.unitPrice.toFixed(2)}</span>
+                  <span>Rs.{Math.round(item.unitPrice)}</span>
                 </p>
               </div>
             </div>
@@ -450,7 +409,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
         <div className="border-t border-neutral-04 mt-4 pt-4 space-y-2">
           <div className="flex justify-between text-sm text-neutral-10">
             <span>Subtotal</span>
-            <span>Rs.{subtotal.toFixed(2)}</span>
+            <span>Rs.{Math.round(subtotal)}</span>
           </div>
 
           {order.shippingAmount != null && (
@@ -459,7 +418,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
               <span>
                 {order.shippingAmount === 0
                   ? "Free"
-                  : `Rs.${order.shippingAmount.toFixed(2)}`}
+                  : `Rs.${Math.round(order.shippingAmount ?? 0)}`}
               </span>
             </div>
           )}
@@ -472,7 +431,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
               </span>
               <span>
                 {order.discountAmount
-                  ? `-Rs.${order.discountAmount.toFixed(2)}`
+                  ? `-Rs.${Math.round(order.discountAmount ?? 0)}`
                   : "—"}
               </span>
             </div>
@@ -481,9 +440,36 @@ export function AdminOrderView(props: AdminOrderViewProps) {
           <div className="flex justify-between pt-2 border-t border-neutral-04">
             <span className="text-base font-bold text-neutral-11">Total</span>
             <span className="text-xl md:text-2xl font-bold text-neutral-11">
-              Rs.{order.totalPrice.toFixed(2)}
+              Rs.{Math.round(displayedTotal)}
             </span>
           </div>
+
+          {/* Total mismatch warning */}
+          {hasTotalMismatch && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
+              <div className="flex items-start gap-2 flex-1 min-w-0">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800">
+                  Stored total <strong>Rs.{Math.round(displayedTotal)}</strong> doesn&apos;t match
+                  the computed total from items <strong>Rs.{Math.round(computedTotal)}</strong>.
+                  This order may have been created with outdated prices.
+                </p>
+              </div>
+              <AdminButton
+                variant="outline"
+                onClick={handleFixTotal}
+                disabled={fixingTotal}
+                className="shrink-0 flex items-center gap-2 text-amber-700 border-amber-300 hover:bg-amber-100"
+              >
+                {fixingTotal ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <RefreshCw size={14} />
+                )}
+                {fixingTotal ? "Fixing…" : "Fix Total"}
+              </AdminButton>
+            </div>
+          )}
         </div>
       </div>
 

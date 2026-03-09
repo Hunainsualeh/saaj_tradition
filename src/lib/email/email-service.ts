@@ -10,6 +10,8 @@ import {
   NEWSLETTER_TEMPLATE,
   PRODUCT_UPDATE_TEMPLATE,
   COLLECTION_UPDATE_TEMPLATE,
+  WELCOME_EMAIL_TEMPLATE,
+  THANK_YOU_EMAIL_TEMPLATE,
 } from "./templates";
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -34,10 +36,10 @@ function buildOrderItemsHtml(items: OrderItem[]): string {
         <td style="padding:12px;vertical-align:middle;">
           <p style="font-weight:600;color:#1a1a2e;font-size:14px;margin-bottom:4px;">${item.title}</p>
           <p style="font-size:12px;color:#888;margin-bottom:2px;">Size: ${item.size}</p>
-          <p style="font-size:12px;color:#888;">Qty: ${item.quantity} × Rs. ${item.unitPrice.toFixed(2)}</p>
+          <p style="font-size:12px;color:#888;">Qty: ${item.quantity} × Rs. ${Math.round(item.unitPrice)}</p>
         </td>
         <td align="right" style="padding:12px;vertical-align:middle;">
-          <p style="font-weight:700;color:#1a1a2e;font-size:15px;">Rs. ${(item.unitPrice * item.quantity).toFixed(2)}</p>
+          <p style="font-weight:700;color:#1a1a2e;font-size:15px;">Rs. ${Math.round(item.unitPrice * item.quantity)}</p>
         </td>
       </tr>
     </table>
@@ -133,9 +135,9 @@ export type SendOrderConfirmationInput = {
 
 function buildTrackingIdRow(trackingToken?: string): string {
   if (!trackingToken) return "";
-  return `<tr><td style="padding:8px 16px;text-align:center;border-top:1px solid rgba(255,255,255,0.1);" colspan="3">
+  return `<tr><td style="padding:8px 16px;text-align:center;border-top:1px solid rgba(0,0,0,0.1);" colspan="3">
     <p style="font-size:10px;font-weight:700;letter-spacing:2px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">Tracking ID</p>
-    <p style="font-size:13px;font-weight:600;color:#fff;font-family:monospace;letter-spacing:1px;word-break:break-all;">${trackingToken}</p>
+    <p style="font-size:13px;font-weight:600;color:#2c2c2c;font-family:monospace;letter-spacing:1px;word-break:break-all;">${trackingToken}</p>
   </td></tr>`;
 }
 
@@ -168,7 +170,7 @@ export async function sendOrderConfirmationEmail(input: SendOrderConfirmationInp
     : "";
 
   const discountRow = input.discount && input.discount > 0
-    ? `<tr><td style="padding:8px 0;color:#16a34a;font-size:14px;">Discount${input.couponCode ? ` (${input.couponCode})` : ""}</td><td align="right" style="padding:8px 0;font-size:14px;color:#16a34a;">−Rs. ${input.discount.toFixed(2)}</td></tr>`
+    ? `<tr><td style="padding:8px 0;color:#16a34a;font-size:14px;">Discount${input.couponCode ? ` (${input.couponCode})` : ""}</td><td align="right" style="padding:8px 0;font-size:14px;color:#16a34a;">−Rs. ${Math.round(input.discount)}</td></tr>`
     : "";
 
   const vars: Record<string, string> = {
@@ -178,10 +180,10 @@ export async function sendOrderConfirmationEmail(input: SendOrderConfirmationInp
     orderStatus: input.orderStatus,
     orderStatusBadge: statusBadgeHtml(input.orderStatus),
     items: buildOrderItemsHtml(input.items),
-    subtotal: input.subtotal.toFixed(2),
-    shipping: input.shipping === 0 ? "Free" : `${input.shipping.toFixed(2)}`,
+    subtotal: Math.round(input.subtotal).toString(),
+    shipping: input.shipping === 0 ? "Free" : `${Math.round(input.shipping)}`,
     discountRow,
-    total: input.total.toFixed(2),
+    total: Math.round(input.total).toString(),
     deliverySection,
     storeUrl: STORE_URL,
     storeEmail: STORE_EMAIL,
@@ -227,7 +229,7 @@ export async function sendAdminOrderNotificationEmail(input: SendOrderConfirmati
   </div>`;
 
   const discountRow = input.discount && input.discount > 0
-    ? `<tr><td style="padding:8px 0;color:#16a34a;font-size:14px;">Discount${input.couponCode ? ` (${input.couponCode})` : ""}</td><td align="right" style="padding:8px 0;font-size:14px;color:#16a34a;">−Rs. ${input.discount.toFixed(2)}</td></tr>`
+    ? `<tr><td style="padding:8px 0;color:#16a34a;font-size:14px;">Discount${input.couponCode ? ` (${input.couponCode})` : ""}</td><td align="right" style="padding:8px 0;font-size:14px;color:#16a34a;">−Rs. ${Math.round(input.discount)}</td></tr>`
     : "";
 
   const vars: Record<string, string> = {
@@ -238,10 +240,10 @@ export async function sendAdminOrderNotificationEmail(input: SendOrderConfirmati
     orderDate: input.orderDate,
     orderStatusBadge: statusBadgeHtml(input.orderStatus),
     items: buildOrderItemsHtml(input.items),
-    subtotal: input.subtotal.toFixed(2),
-    shipping: input.shipping === 0 ? "Free" : `${input.shipping.toFixed(2)}`,
+    subtotal: Math.round(input.subtotal).toString(),
+    shipping: input.shipping === 0 ? "Free" : `${Math.round(input.shipping)}`,
     discountRow,
-    total: input.total.toFixed(2),
+    total: Math.round(input.total).toString(),
     deliverySection,
     adminOrderUrl: `${STORE_URL}/admin/orders/${input.orderId}`,
     storeUrl: STORE_URL,
@@ -298,6 +300,42 @@ export async function sendOrderStatusUpdateEmail(input: {
     subject: applyVariables(subject, vars),
     html: applyVariables(html, vars),
   });
+}
+
+// helper that builds the same subject/html but does not send, used for admin previews
+export async function renderOrderStatusUpdateEmail(input: {
+  customerName: string;
+  orderNumber: number;
+  orderStatus: string;
+  customMessage?: string;
+  orderId: string;
+  trackingUrl?: string;
+}): Promise<{ subject: string; html: string }> {
+  const { subject, html } = await resolveTemplate(
+    EmailTemplateType.ORDER_STATUS_UPDATE,
+    ORDER_STATUS_UPDATE_TEMPLATE,
+  );
+
+  const customMessage = input.customMessage
+    ? `<div style="margin-top:20px;padding:16px;background:#faf8f5;border-left:3px solid #c9a84c;border-radius:4px;"><p style="font-size:14px;color:#444;line-height:1.8;">${input.customMessage}</p></div>`
+    : "";
+
+  const vars: Record<string, string> = {
+    customerName: input.customerName,
+    orderNumber: input.orderNumber.toString(),
+    orderStatus: input.orderStatus,
+    orderStatusBadge: statusBadgeHtml(input.orderStatus),
+    statusMessage: STATUS_MESSAGES[input.orderStatus] ?? "",
+    customMessage,
+    storeUrl: STORE_URL,
+    storeEmail: STORE_EMAIL,
+    trackingUrl: input.trackingUrl ?? STORE_URL,
+  };
+
+  return {
+    subject: applyVariables(subject, vars),
+    html: applyVariables(html, vars),
+  };
 }
 
 // ─── NEWSLETTER / PRODUCT / COLLECTION ───────────────────────────────────────
@@ -500,4 +538,40 @@ export async function sendCustomEmail(input: {
     subject: input.subject,
     html: input.html,
   });
+}
+
+// ─── WELCOME EMAIL (new subscriber) ─────────────────────────────────────────
+
+export async function sendWelcomeEmail(input: {
+  to: string;
+  name?: string;
+}) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
+
+  const subscriberName = input.name ?? "Valued Customer";
+  const html = WELCOME_EMAIL_TEMPLATE.html
+    .replace(/\{\{subscriberName\}\}/g, subscriberName)
+    .replace(/\{\{storeUrl\}\}/g, STORE_URL)
+    .replace(/\{\{unsubscribeUrl\}\}/g, `${STORE_URL}/unsubscribe`);
+  const subject = WELCOME_EMAIL_TEMPLATE.subject;
+
+  await transporter.sendMail({ from: EMAIL_FROM, to: input.to, subject, html });
+}
+
+// ─── THANK-YOU EMAIL (to an existing order customer) ────────────────────────
+
+export async function sendThankYouEmail(input: {
+  to: string;
+  customerName: string;
+  orderNumber?: number | string;
+}) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
+
+  const html = THANK_YOU_EMAIL_TEMPLATE.html
+    .replace(/\{\{customerName\}\}/g, input.customerName)
+    .replace(/\{\{orderNumber\}\}/g, String(input.orderNumber ?? ""))
+    .replace(/\{\{storeUrl\}\}/g, STORE_URL);
+  const subject = THANK_YOU_EMAIL_TEMPLATE.subject;
+
+  await transporter.sendMail({ from: EMAIL_FROM, to: input.to, subject, html });
 }

@@ -6,7 +6,6 @@ export const orderColumns = [
   { accessorKey: "deliveryCity", header: "City" },
   { accessorKey: "itemsCount", header: "Items" },
   { accessorKey: "totalPrice", header: "Total" },
-  { accessorKey: "status", header: "Status" },
   { accessorKey: "paymentStatus", header: "Payment" },
   { accessorKey: "paymentMethod", header: "Payment Method" },
   { accessorKey: "couponCode", header: "Coupon" },
@@ -21,6 +20,5 @@ export const defaultVisibleOrderColumnIds = new Set([
   "delieveryName",
   "itemsCount",
   "totalPrice",
-  "status",
   "createdAt",
 ]);

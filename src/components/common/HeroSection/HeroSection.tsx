@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { BaseSection } from "@/components/layout";
 import { AnimateFadeIn } from "@/components/ui";
@@ -9,16 +9,50 @@ import { cn } from "@/lib";
 import { HeroSectionButton } from "./HeroSectionButton";
 
 const WAIT_FOR_IMAGE_TIMEOUT = 1800; // ms
+const LS_KEY = "saaj_hero";
+
+type CachedHero = { image: string; heading: string; subheading: string };
+
+function readCache(): CachedHero | null {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as CachedHero;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(data: CachedHero) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(data));
+  } catch {
+    // quota exceeded — ignore
+  }
+}
 
 type HeroSectionProps = {
   heading?: string;
   subheading?: string;
+  imageUrl?: string;
 };
 
 export function HeroSection({
-  heading = "Traditional Bahawalpuri Suits",
-  subheading = "Experience tradition, woven into every thread.",
+  heading: headingProp,
+  subheading: subheadingProp,
+  imageUrl: imageUrlProp,
 }: HeroSectionProps) {
+  // DB props → localStorage cache → hardcoded fallback
+  const cached = useMemo(() => readCache(), []);
+
+  const heading = headingProp || cached?.heading || "Traditional Bahawalpuri Suits";
+  const subheading = subheadingProp || cached?.subheading || "Experience tradition, woven into every thread.";
+  const imageUrl = imageUrlProp || cached?.image || "/assets/hero-landing.jpg";
+
+  // Persist to localStorage for faster subsequent loads
+  useEffect(() => {
+    writeCache({ image: imageUrl, heading, subheading });
+  }, [imageUrl, heading, subheading]);
   // === STATE ===
   const [imageReady, setImageReady] = useState(false);
 
@@ -34,7 +68,7 @@ export function HeroSection({
     >
       <div className="h-[75dvh] w-full relative mt-auto">
         <Image
-          src="/assets/hero-landing.jpg"
+          src={imageUrl}
           alt="Hero Image"
           fill
           sizes="100vw"

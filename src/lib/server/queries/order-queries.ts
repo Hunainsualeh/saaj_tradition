@@ -24,6 +24,100 @@ export async function getCurrentOrderById(
   });
 }
 
+export type OrderSuccessData = {
+  id: string;
+  orderNumber: number;
+  createdAt: Date;
+  deliveryEmail: string | null;
+  delieveryName: string | null;
+  deliveryPhone: string | null;
+  deliveryStreetAddress: string | null;
+  deliveryCity: string | null;
+  deliveryPostcode: string | null;
+  deliveryState: string | null;
+  deliveryCountry: string | null;
+  billingName: string | null;
+  billingStreetAddress: string | null;
+  billingCity: string | null;
+  billingPostcode: string | null;
+  billingState: string | null;
+  billingCountry: string | null;
+  totalPrice: number;
+  shippingAmount: number | null;
+  couponCode: string | null;
+  discountPercent: number | null;
+  discountAmount: number | null;
+  paymentMethod: string;
+  trackingToken: string | null;
+  items: {
+    id: string;
+    title: string;
+    image: string;
+    quantity: number;
+    unitPrice: number;
+    size: { label: string };
+  }[];
+};
+
+export async function getOrderForSuccessPage(
+  orderId: string,
+): Promise<ServerActionResponse<OrderSuccessData | null>> {
+  return wrapServerCall(async () => {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        cart: {
+          include: {
+            items: {
+              select: {
+                id: true,
+                quantity: true,
+                unitPrice: true,
+                title: true,
+                image: true,
+                size: { select: { label: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) return null;
+
+    return {
+      id: order.id,
+      orderNumber: order.orderNumber!,
+      createdAt: order.createdAt,
+      deliveryEmail: order.deliveryEmail,
+      delieveryName: order.delieveryName,
+      deliveryPhone: order.deliveryPhone,
+      deliveryStreetAddress: order.deliveryStreetAddress,
+      deliveryCity: order.deliveryCity,
+      deliveryPostcode: order.deliveryPostcode,
+      deliveryState: order.deliveryState,
+      deliveryCountry: order.deliveryCountry,
+      billingName: order.billingName,
+      billingStreetAddress: order.billingStreetAddress,
+      billingCity: order.billingCity,
+      billingPostcode: order.billingPostcode,
+      billingState: order.billingState,
+      billingCountry: order.billingCountry,
+      totalPrice: Number(order.totalPrice),
+      shippingAmount: order.shippingAmount ? Number(order.shippingAmount) : null,
+      couponCode: order.couponCode,
+      discountPercent: order.discountPercent,
+      discountAmount: order.discountAmount ? Number(order.discountAmount) : null,
+      paymentMethod: order.paymentMethod,
+      trackingToken: order.trackingToken,
+      items: order.cart.items.map((item) => ({
+        ...item,
+        unitPrice: Number(item.unitPrice),
+      })),
+    };
+  });
+}
+
 export async function getAdminOrderById(
   orderId: string,
 ): Promise<ServerActionResponse<GetAdminOrder | null>> {
@@ -113,12 +207,19 @@ export async function getDashboardStats(): Promise<
   ServerActionResponse<OrderDashboardStats>
 > {
   return wrapServerCall(async () => {
-    const [paidCount, pendingCount, revenueData, statusGroups, recentRaw] =
+    const REVENUE_STATUSES = [
+      OrderStatus.PAID,
+      OrderStatus.PROCESSING,
+      OrderStatus.SHIPPED,
+      OrderStatus.DELIVERED,
+    ];
+
+    const [totalOrdersCount, pendingCount, revenueData, statusGroups, recentRaw] =
       await Promise.all([
-        prisma.order.count({ where: { status: OrderStatus.PAID } }),
+        prisma.order.count(),
         prisma.order.count({ where: { status: OrderStatus.PENDING } }),
         prisma.order.aggregate({
-          where: { status: OrderStatus.PAID },
+          where: { status: { in: REVENUE_STATUSES } },
           _sum: { totalPrice: true },
         }),
         prisma.order.groupBy({ by: ["status"], _count: { _all: true } }),
@@ -138,6 +239,11 @@ export async function getDashboardStats(): Promise<
       ]);
 
     const totalRevenue = Number(revenueData._sum.totalPrice ?? 0);
+    const paidCount =
+      (statusGroups.find((g) => g.status === OrderStatus.PAID)?._count._all ?? 0) +
+      (statusGroups.find((g) => g.status === OrderStatus.PROCESSING)?._count._all ?? 0) +
+      (statusGroups.find((g) => g.status === OrderStatus.SHIPPED)?._count._all ?? 0) +
+      (statusGroups.find((g) => g.status === OrderStatus.DELIVERED)?._count._all ?? 0);
     const averageOrderValue = paidCount > 0 ? totalRevenue / paidCount : 0;
 
     const statusBreakdown: Record<string, number> = {};
@@ -152,7 +258,7 @@ export async function getDashboardStats(): Promise<
 
     return {
       totalRevenue,
-      totalOrders: paidCount,
+      totalOrders: totalOrdersCount,
       pendingOrders: pendingCount,
       averageOrderValue,
       statusBreakdown,

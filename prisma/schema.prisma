@@ -40,6 +40,9 @@ model Product {
   sizes          Size[]
   collections    Collection[]
   shippingCharge Decimal?            @db.Decimal(10, 2)
+  stockStatus    StockStatus         @default(AVAILABLE)
+  lowStockThreshold Int?
+  showLowStockWarning Boolean         @default(false)
 
   @@index([categoryId])
 }
@@ -58,6 +61,12 @@ enum SizeTypeEnum {
   Standard
   ShoeSize
   OneSize
+}
+
+enum StockStatus {
+  AVAILABLE
+  LOW_STOCK
+  OUT_OF_STOCK
 }
 
 // === CART ===
@@ -184,6 +193,7 @@ enum PaymentStatus {
 
 enum PaymentMethod {
   STRIPE
+  COD
 }
 
 // === BLOG ===

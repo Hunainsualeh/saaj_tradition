@@ -45,14 +45,15 @@ export default async function CheckoutPage() {
   const latestShipping =
     productIds.length > 0 ? await computeCartShipping(productIds) : 0;
 
-  const subtotalNum = parseFloat(summary.subtotal.replace(/[^0-9.]/g, ""));
+  // calculate subtotal directly from items (avoid parsing summary string)
+  const subtotalNum = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
   const discountAmt = order.discountAmount ? Number(order.discountAmount) : 0;
   const expectedTotal = Math.max(subtotalNum - discountAmt + latestShipping, 0);
   const currentOrderTotal = Number(order.totalPrice);
 
+  // if order record is out-of-sync, update it using the freshly computed value
   if (Math.abs(expectedTotal - currentOrderTotal) > 0.001) {
     try {
-      // Persist updated shipping/total on the order record
       await prisma.order.update({
         where: { id: orderId },
         data: {
@@ -66,13 +67,11 @@ export default async function CheckoutPage() {
     }
   }
 
-  // === Use reconciled values for display ===
+  // orderTotal always comes from expectedTotal now (trust cart data)
   const shippingAmount = latestShipping;
-  const orderTotal = Math.abs(expectedTotal - currentOrderTotal) > 0.001
-    ? expectedTotal
-    : currentOrderTotal;
+  const orderTotal = expectedTotal;
 
-  // === COUPON DISCOUNT INFO ===
+  // COUPON INFO (discountAmt already computed)
   let discount: { code: string; percent: number; amount: string } | null = null;
 
   if (order.couponCode && order.discountPercent && order.discountAmount) {
@@ -84,10 +83,12 @@ export default async function CheckoutPage() {
     summary.discountedTotal = `Rs.${orderTotal.toFixed(2)}`;
   }
 
-  // === SHIPPING & TOTAL DISPLAY ===
+  // SHIPPING & TOTAL DISPLAY
+  // round display values to whole rupees
+  summary.subtotal = `Rs.${Math.round(subtotalNum)}`; // ensure displayed matches calculation
   summary.shipping =
-    shippingAmount > 0 ? `Rs.${shippingAmount.toFixed(2)}` : "Free";
-  summary.total = `Rs.${orderTotal.toFixed(2)}`;
+    shippingAmount > 0 ? `Rs.${Math.round(shippingAmount)}` : "Free";
+  summary.total = `Rs.${Math.round(orderTotal)}`;
 
   return (
     <main>

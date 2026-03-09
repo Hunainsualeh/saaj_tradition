@@ -1,7 +1,5 @@
-import { put } from "@vercel/blob";
+import { uploadMultipleToCloudinary } from "@/lib/server/helpers/cloudinary-upload";
 import { NextRequest, NextResponse } from "next/server";
-
-import { BLOB_STORAGE_PREFIXES } from "@/lib";
 
 const ADMIN_COOKIE_NAME = "admin_session";
 const ALLOWED_MIME_TYPES = new Set([
@@ -29,44 +27,53 @@ function isAdminAuthenticated(req: NextRequest): boolean {
   }
 }
 
-/*
-
-    API route to upload product images to vercel blob storage.
-    Requires an active admin session.
-
-*/
-
+/**
+ * API route to upload product images to Cloudinary
+ * Requires an active admin session
+ * Images are automatically optimized and delivered via CDN
+ */
 export async function POST(req: NextRequest) {
   if (!isAdminAuthenticated(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const form = await req.formData();
+  try {
+    const form = await req.formData();
+    const entries = form.getAll("files");
+    const files = entries.filter((v): v is File => v instanceof File);
 
-  const entries = form.getAll("files");
-  const files = entries.filter((v): v is File => v instanceof File);
+    if (!files.length) {
+      return NextResponse.json({ error: "No files" }, { status: 400 });
+    }
 
-  if (!files.length) {
-    return NextResponse.json({ error: "No files" }, { status: 400 });
-  }
+    // Validate file types
+    const invalidFile = files.find((f) => !ALLOWED_MIME_TYPES.has(f.type));
+    if (invalidFile) {
+      return NextResponse.json(
+        { error: `Invalid file type: ${invalidFile.type}. Only images are allowed.` },
+        { status: 400 },
+      );
+    }
 
-  const invalidFile = files.find((f) => !ALLOWED_MIME_TYPES.has(f.type));
-  if (invalidFile) {
+    // Validate file sizes (max 10MB each)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const oversizedFile = files.find((f) => f.size > maxSize);
+    if (oversizedFile) {
+      return NextResponse.json(
+        { error: `File too large: ${oversizedFile.name}. Max size is 10MB.` },
+        { status: 400 },
+      );
+    }
+
+    // Upload to Cloudinary with automatic optimization
+    const urls = await uploadMultipleToCloudinary(files, "products");
+
+    return NextResponse.json({ urls });
+  } catch (error) {
+    console.error("Upload error:", error);
     return NextResponse.json(
-      { error: `Invalid file type: ${invalidFile.type}. Only images are allowed.` },
-      { status: 400 },
+      { error: "Failed to upload images" },
+      { status: 500 },
     );
   }
-
-  const uploadPromises = files.map((file) =>
-    put(BLOB_STORAGE_PREFIXES.PRODUCTS + file.name, file, {
-      access: "public",
-      addRandomSuffix: true,
-    }),
-  );
-
-  const blobs = await Promise.all(uploadPromises);
-  const urls = blobs.map((blob) => blob.url);
-
-  return NextResponse.json({ urls });
 }

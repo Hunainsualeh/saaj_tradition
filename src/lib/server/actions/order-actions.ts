@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { Order, OrderStatus, PaymentStatus, CartStatus } from "@prisma/client";
+import { Decimal } from "@prisma/client/runtime/library";
 
 import { prisma } from "@/lib/prisma";
 import { ServerActionResponse } from "@/types/server";
@@ -181,5 +182,47 @@ export async function updatePaymentStatus(
     revalidatePath(`${adminRoutes.orders}/${orderId}`);
 
     return { id: updated.id, paymentStatus: updated.paymentStatus };
+  });
+}
+
+/** Recalculate and fix order totalPrice from its cart items (admin correction tool) */
+export async function recalculateOrderTotal(
+  orderId: string,
+): Promise<ServerActionResponse<number>> {
+  return wrapServerCall(async () => {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        cart: {
+          select: {
+            items: {
+              select: { unitPrice: true, quantity: true },
+            },
+          },
+        },
+        shippingAmount: true,
+        discountAmount: true,
+      },
+    });
+
+    if (!order) throw new Error("Order not found");
+
+    const subtotal = order.cart.items.reduce(
+      (sum, item) => sum + item.unitPrice.toNumber() * item.quantity,
+      0,
+    );
+    const shipping = order.shippingAmount ? order.shippingAmount.toNumber() : 0;
+    const discount = order.discountAmount ? order.discountAmount.toNumber() : 0;
+    const newTotal = Math.max(subtotal + shipping - discount, 0);
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { totalPrice: new Decimal(newTotal), updatedAt: new Date() },
+    });
+
+    revalidatePath(`${adminRoutes.orders}/${orderId}`);
+    revalidatePath(adminRoutes.orders);
+
+    return newTotal;
   });
 }

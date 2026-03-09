@@ -84,6 +84,12 @@ const SITE_CONTENT_DEFAULTS: SiteContentDefault[] = [
   },
   // === Hero Section ===
   {
+    key: "hero_image",
+    value: "/assets/hero-landing.jpg",
+    label: "Hero Image URL (full URL or /assets/... path)",
+    group: "hero",
+  },
+  {
     key: "hero_heading",
     value: "Traditional Bahawalpuri Suits",
     label: "Hero Heading",
@@ -192,7 +198,25 @@ const SITE_CONTENT_DEFAULTS: SiteContentDefault[] = [
     value:
       "Discover a brand where style, quality, and craftsmanship come together.",
     label: "Video Section Text",
-    group: "home-page",
+    group: "video-section",
+  },
+  {
+    key: "hero_video_mp4",
+    value: "/assets/video-home-com.mp4",
+    label: "Home Video (MP4 URL or /assets/... path)",
+    group: "video-section",
+  },
+  {
+    key: "hero_video_webm",
+    value: "/assets/video-home.webm",
+    label: "Home Video (WebM URL or /assets/... path, optional)",
+    group: "video-section",
+  },
+  {
+    key: "hero_video_poster",
+    value: "/assets/video-home-poster.png",
+    label: "Home Video Poster Image (shown while video loads)",
+    group: "video-section",
   },
   // === About Page ===
   {
@@ -382,8 +406,8 @@ const SITE_CONTENT_DEFAULTS: SiteContentDefault[] = [
 // Module-level flag: only seed once per server process lifetime
 let seeded = false;
 
-export async function seedSiteContentDefaults() {
-  if (seeded) return;
+export async function seedSiteContentDefaults(): Promise<boolean> {
+  if (seeded) return false;
 
   // 1 query to find all existing keys
   const existing = await prisma.siteContent.findMany({
@@ -396,12 +420,21 @@ export async function seedSiteContentDefaults() {
   );
 
   // 1 batch insert for all missing rows (no-op if all exist)
-  if (missing.length > 0) {
+  const didInsert = missing.length > 0;
+  if (didInsert) {
     await prisma.siteContent.createMany({
       data: missing,
       skipDuplicates: true,
     });
   }
 
+  // One-time migration: move video keys out of home-page into video-section
+  const VIDEO_KEYS = ["hero_video_mp4", "hero_video_webm", "hero_video_poster", "video_section_text"];
+  await prisma.siteContent.updateMany({
+    where: { key: { in: VIDEO_KEYS }, group: "home-page" },
+    data: { group: "video-section" },
+  });
+
   seeded = true;
+  return didInsert;
 }

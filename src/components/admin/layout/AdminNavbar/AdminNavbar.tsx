@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   LayoutDashboard,
   Package,
@@ -46,8 +47,9 @@ const navItems = [
   { href: adminRoutes.products, text: "Products", icon: Package },
   { href: adminRoutes.categories, text: "Categories", icon: Tag },
   { href: adminRoutes.orders, text: "Orders", icon: ShoppingCart },
+  { href: adminRoutes.customers, text: "Customers", icon: Users },
   { href: adminRoutes.blogs, text: "Blog", icon: FileText },
-  { href: adminRoutes.authors, text: "Authors", icon: Users },
+  { href: adminRoutes.authors, text: "Authors", icon: Users2 },
   { href: adminRoutes.collections, text: "Collections", icon: Layers },
   { href: adminRoutes.team, text: "Team", icon: Users2 },
   { href: adminRoutes.testimonials, text: "Testimonials", icon: MessageSquare },
@@ -90,12 +92,16 @@ export function AdminNavbar() {
         {/* Header: brand + collapse toggle */}
         <div
           className={`flex items-center border-b border-gray-100 h-14 shrink-0 ${
-            collapsed ? "justify-between px-2" : "px-4 gap-3"
+            collapsed ? "justify-center px-2" : "px-4 gap-3"
           }`}
         >
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white text-xs font-bold">
-            S
-          </div>
+          <Image
+            src="/assets/logo/Saaj Tradition Golden.png"
+            alt="Saaj Tradition"
+            width={36}
+            height={36}
+            className="h-8 w-8 object-contain shrink-0"
+          />
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm text-gray-900 truncate leading-tight">Saaj Tradition</p>
@@ -164,9 +170,13 @@ export function AdminNavbar() {
           <Menu size={20} />
         </button>
         <div className="flex items-center gap-2 flex-1">
-          <div className="h-6 w-6 rounded-md bg-gray-900 text-white text-xs font-bold flex items-center justify-center">
-            S
-          </div>
+          <Image
+            src="/assets/logo/Saaj Tradition Golden.png"
+            alt="Saaj Tradition"
+            width={28}
+            height={28}
+            className="h-7 w-7 object-contain"
+          />
           <p className="font-semibold text-sm text-gray-900">Saaj Tradition</p>
         </div>
       </div>
@@ -188,9 +198,13 @@ export function AdminNavbar() {
         {/* Header */}
         <div className="flex items-center justify-between px-4 h-14 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-gray-900 text-white text-xs font-bold flex items-center justify-center shrink-0">
-              S
-            </div>
+            <Image
+              src="/assets/logo/Saaj Tradition Golden.png"
+              alt="Saaj Tradition"
+              width={32}
+              height={32}
+              className="h-8 w-8 object-contain shrink-0"
+            />
             <div>
               <p className="font-semibold text-sm text-gray-900 leading-tight">Saaj Tradition</p>
               <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 leading-tight">Admin</p>

@@ -1,3 +1,7 @@
+// DEPRECATED: This file is no longer used. All Vercel Blob storage has been migrated to Cloudinary.
+// Use cleanup-unused-cloudinary-images.ts instead.
+// This file is kept for historical reference only.
+
 import { list, del } from "@vercel/blob";
 
 type CleanupOptions = {
@@ -9,6 +13,7 @@ type CleanupOptions = {
 /*
 
     Cleans up unused blobs from Vercel Blob Storage.
+    [DEPRECATED - Vercel Blob has been replaced with Cloudinary]
         - prefix: The blob storage prefix to clean up.
         - validUrls: A set of URLs that are still in use.
         - resourceName: A name for the resource type (for logging purposes).

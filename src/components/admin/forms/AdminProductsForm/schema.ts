@@ -1,6 +1,8 @@
 import { SizeTypeEnum } from "@/types/client";
 import { z } from "zod";
 
+export const StockStatusEnum = z.enum(["AVAILABLE", "LOW_STOCK", "OUT_OF_STOCK"]);
+
 export const AdminProductsFormSchema = (isEditMode: boolean) =>
   z
     .object({
@@ -39,6 +41,17 @@ export const AdminProductsFormSchema = (isEditMode: boolean) =>
       isActive: z.boolean(),
 
       isFeatured: z.boolean().optional().default(false),
+
+      stockStatus: StockStatusEnum.default("AVAILABLE"),
+
+      lowStockThreshold: z.coerce
+        .number()
+        .positive("Low stock threshold must be positive")
+        .int("Low stock threshold must be a whole number")
+        .optional()
+        .or(z.literal("").transform(() => undefined)),
+
+      showLowStockWarning: z.boolean().optional().default(false),
 
       sizeType: SizeTypeEnum.optional().refine((val) => val !== undefined, {
         message: "Size type is required",

@@ -1,12 +1,66 @@
+"use client";
+
+import { useEffect, useMemo } from "react";
+
 import { cn } from "@/lib";
+
+const LS_KEY = "saaj_home_video";
+
+type CachedVideo = {
+  mp4: string;
+  webm: string;
+  poster: string;
+  text: string;
+};
+
+function readCache(): CachedVideo | null {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as CachedVideo;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(data: CachedVideo) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(data));
+  } catch {
+    // quota exceeded — ignore
+  }
+}
 
 type HomeVideoSectionProps = {
   text?: string;
+  videoMp4?: string;
+  videoWebm?: string;
+  poster?: string;
 };
 
 export function HomeVideoSection({
-  text = "Discover a brand where style, quality, and craftsmanship come together.",
+  text: textProp,
+  videoMp4: mp4Prop,
+  videoWebm: webmProp,
+  poster: posterProp,
 }: HomeVideoSectionProps) {
+  // Defaults from DB props → localStorage cache → hardcoded fallback
+  const cached = useMemo(() => readCache(), []);
+
+  const text =
+    textProp ||
+    cached?.text ||
+    "Discover a brand where style, quality, and craftsmanship come together.";
+  const videoMp4 = mp4Prop || cached?.mp4 || "/assets/video-home-com.mp4";
+  const videoWebm = webmProp || cached?.webm || "/assets/video-home.webm";
+  const poster =
+    posterProp || cached?.poster || "/assets/video-home-poster.png";
+
+  // Persist to localStorage whenever the resolved values change
+  useEffect(() => {
+    writeCache({ mp4: videoMp4, webm: videoWebm, poster, text });
+  }, [videoMp4, videoWebm, poster, text]);
+
   return (
     <>
       <video
@@ -16,10 +70,10 @@ export function HomeVideoSection({
         loop
         playsInline
         preload="none"
-        poster="/assets/video-home-poster.png"
+        poster={poster}
       >
-        <source src="/assets/video-home.webm" type="video/webm" />
-        <source src="/assets/video-home-com.mp4" type="video/mp4" />
+        {videoWebm && <source src={videoWebm} type="video/webm" />}
+        {videoMp4 && <source src={videoMp4} type="video/mp4" />}
         Your browser does not support the video tag.
       </video>
       <div

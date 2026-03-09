@@ -18,6 +18,7 @@ function AccordionItem({
 }: React.ComponentProps<typeof AccordionPrimitive.Item>) {
   return (
     <AccordionPrimitive.Item
+      suppressHydrationWarning
       data-slot="accordion-item"
       className={cn("border-b last:border-b-0", className)}
       {...props}
@@ -34,8 +35,9 @@ function AccordionTrigger({
   smallVariant?: boolean;
 }) {
   return (
-    <AccordionPrimitive.Header className="flex">
+    <AccordionPrimitive.Header className="flex" suppressHydrationWarning>
       <AccordionPrimitive.Trigger
+        suppressHydrationWarning
         data-slot="accordion-trigger"
         className={cn(
           "cursor-pointer focus-visible:border-ring focus-visible:ring-ring/50 flex flex-1 items-start justify-between gap-4 rounded-md text-neutral-11 text-left font-normal tracking-tight transition-all outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 [&[data-state=open]>svg]:rotate-180",
@@ -68,6 +70,7 @@ function AccordionContent({
 }) {
   return (
     <AccordionPrimitive.Content
+      suppressHydrationWarning
       data-slot="accordion-content"
       className={cn(
         "data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-hidden text-neutral-10",
@@ -76,7 +79,7 @@ function AccordionContent({
       )}
       {...props}
     >
-      <div className={cn(smallVariant ? "pt-0 pb-3" : "pt-0 pb-4", className)}>
+      <div suppressHydrationWarning className={cn(smallVariant ? "pt-0 pb-3" : "pt-0 pb-4", className)}>
         {children}
       </div>
     </AccordionPrimitive.Content>

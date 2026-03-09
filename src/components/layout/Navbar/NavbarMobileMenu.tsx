@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib";
 import type { NavItemType } from "./types";
 
@@ -63,17 +64,13 @@ export function NavbarMobileMenu({
                 <span>Back</span>
               </button>
             ) : (
-              <div className="flex flex-col">
-                <span
-                  className="text-[14px] font-semibold tracking-[0.02em] text-neutral-12"
-                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-                >
-                  SAAJ
-                </span>
-                <span className="text-[7px] font-medium tracking-[0.2em] uppercase text-neutral-07 -mt-0.5">
-                  Tradition
-                </span>
-              </div>
+              <Image
+                src="/assets/logo/Saaj Tradition Golden.png"
+                alt="Saaj Tradition"
+                width={44}
+                height={44}
+                className="h-[38px] w-auto object-contain"
+              />
             )}
             <button
               onClick={() => { setShowMobileMenu(false); setActiveSubMenu(null); }}

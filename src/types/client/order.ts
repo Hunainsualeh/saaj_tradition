@@ -1,4 +1,4 @@
-type PaymentMethod = "STRIPE";
+type PaymentMethod = "STRIPE" | "COD";
 type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED";
 type OrderStatus =
   | "PENDING"

@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 import { Decimal } from "@prisma/client/runtime/library";
 
@@ -36,6 +36,16 @@ export async function createProduct(
       stockTotal: 10,
     }));
 
+    // Validate collection IDs exist before connecting to prevent P2025
+    const safeCollectionIds = data.collectionIds?.length
+      ? (
+          await prisma.collection.findMany({
+            where: { id: { in: data.collectionIds } },
+            select: { id: true },
+          })
+        ).map((c) => c.id)
+      : [];
+
     const created = await prisma.product.create({
       data: {
         name: data.name,
@@ -48,6 +58,9 @@ export async function createProduct(
         slug: data.slug,
         isActive: data.isActive,
         isFeatured: data.isFeatured ?? false,
+        stockStatus: data.stockStatus ?? "AVAILABLE",
+        lowStockThreshold: data.lowStockThreshold ?? null,
+        showLowStockWarning: data.showLowStockWarning ?? false,
         images: data.imageUrls,
         sizeType: data.sizeType,
 
@@ -55,14 +68,14 @@ export async function createProduct(
           create: sizes,
         },
 
-        ...(data.collectionIds?.length
-          ? { collections: { connect: data.collectionIds.map((id) => ({ id })) } }
+        ...(safeCollectionIds.length
+          ? { collections: { connect: safeCollectionIds.map((id) => ({ id })) } }
           : {}),
       },
     });
 
     revalidatePath(adminRoutes.products);
-    revalidateTag(CACHE_TAG_PRODUCT, "max");
+    updateTag(CACHE_TAG_PRODUCT);
 
     return { id: created.id };
   });
@@ -83,6 +96,16 @@ export async function updateProductById(
       : null;
     const sizeTypeChanged = current && current.sizeType !== data.sizeType;
 
+    // Validate collection IDs exist before connecting to prevent P2025
+    const safeCollectionIds = data.collectionIds?.length
+      ? (
+          await prisma.collection.findMany({
+            where: { id: { in: data.collectionIds } },
+            select: { id: true },
+          })
+        ).map((c) => c.id)
+      : [];
+
     const created = await prisma.product.update({
       where: { id },
       data: {
@@ -96,10 +119,13 @@ export async function updateProductById(
         slug: data.slug,
         isActive: data.isActive,
         isFeatured: data.isFeatured ?? false,
+        stockStatus: data.stockStatus ?? "AVAILABLE",
+        lowStockThreshold: data.lowStockThreshold ?? null,
+        showLowStockWarning: data.showLowStockWarning ?? false,
         images: data.imageUrls,
         sizeType: data.sizeType,
         collections: {
-          set: (data.collectionIds || []).map((cid) => ({ id: cid })),
+          set: safeCollectionIds.map((cid) => ({ id: cid })),
         },
         ...(sizeTypeChanged && data.sizeType
           ? {
@@ -119,7 +145,7 @@ export async function updateProductById(
     });
 
     revalidatePath(adminRoutes.products);
-    revalidateTag(CACHE_TAG_PRODUCT, "max");
+    updateTag(CACHE_TAG_PRODUCT);
 
     return { id: created.id };
   });
@@ -136,9 +162,29 @@ export async function deleteProductById(
     const deleted = await prisma.product.delete({ where: { id } });
 
     revalidatePath(adminRoutes.products);
-    revalidateTag(CACHE_TAG_PRODUCT, "max");
+    updateTag(CACHE_TAG_PRODUCT);
 
     return { id: deleted.id };
+  });
+}
+
+/** Delete multiple products by their IDs */
+export async function deleteProductsByIds(
+  ids: string[],
+): Promise<ServerActionResponse<{ count: number }>> {
+  return wrapServerCall(async () => {
+    if (isDemoMode()) {
+      return { count: ids.length };
+    }
+
+    const result = await prisma.product.deleteMany({
+      where: { id: { in: ids } },
+    });
+
+    revalidatePath(adminRoutes.products);
+    updateTag(CACHE_TAG_PRODUCT);
+
+    return { count: result.count };
   });
 }
 
@@ -160,7 +206,7 @@ export async function toggleProductFeatured(
     });
 
     revalidatePath(adminRoutes.products);
-    revalidateTag(CACHE_TAG_PRODUCT, "max");
+    updateTag(CACHE_TAG_PRODUCT);
 
     return { id: updated.id, isFeatured: updated.isFeatured };
   });

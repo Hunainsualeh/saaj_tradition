@@ -62,10 +62,11 @@ export async function sendOrderConfirmationEmails(
       size: item.size.label,
     }));
 
+    // recompute values directly so we never rely on potentially stale/wrong order.totalPrice
     const subtotal = items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
     const shipping = order.shippingAmount ? Number(order.shippingAmount) : 0;
     const discount = order.discountAmount ? Number(order.discountAmount) : 0;
-    const total = Number(order.totalPrice);
+    const total = Math.max(subtotal - discount + shipping, 0);
 
     const deliveryAddress = order.delieveryName
       ? {
@@ -330,6 +331,41 @@ export async function sendCustomEmailToOrderCustomer(
   });
 }
 
+// allow admin UI to fetch a preview of the status update template
+export async function previewStatusEmail(
+  orderId: string,
+  customMessage?: string,
+): Promise<ServerActionResponse<{ subject: string; html: string }>> {
+  return wrapServerCall(async () => {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        deliveryEmail: true,
+        delieveryName: true,
+        orderNumber: true,
+        status: true,
+        trackingToken: true,
+      },
+    });
+    if (!order) throw new Error("Order not found");
+
+    const { renderOrderStatusUpdateEmail } = await import(
+      "@/lib/email/email-service"
+    );
+
+    return renderOrderStatusUpdateEmail({
+      customerName: order.delieveryName ?? "Valued Customer",
+      orderNumber: order.orderNumber,
+      orderStatus: order.status,
+      customMessage,
+      orderId,
+      trackingUrl: order.trackingToken
+        ? `${STORE_URL}/track/${order.trackingToken}`
+        : undefined,
+    });
+  });
+}
+
 /**
  * Send test emails of every type to a given address.
  * Used by admin to verify the email system is working.
@@ -434,5 +470,74 @@ export async function sendTestEmailsToAddress(
     }
 
     return { sent, failed };
+  });
+}
+
+// ─── CUSTOMER MANAGEMENT ─────────────────────────────────────────────────────
+
+export type OrderCustomer = {
+  email: string;
+  name: string;
+  orderCount: number;
+  lastOrderAt: Date;
+};
+
+/** Get distinct customers from orders (with email), sorted by most recent */
+export async function getOrderCustomers(): Promise<
+  ServerActionResponse<OrderCustomer[]>
+> {
+  return wrapServerCall(async () => {
+    const rows = await prisma.order.findMany({
+      where: { deliveryEmail: { not: null } },
+      select: {
+        deliveryEmail: true,
+        delieveryName: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Group by email
+    const map = new Map<string, OrderCustomer>();
+    for (const row of rows) {
+      const email = row.deliveryEmail!;
+      if (map.has(email)) {
+        map.get(email)!.orderCount += 1;
+      } else {
+        map.set(email, {
+          email,
+          name: row.delieveryName ?? "—",
+          orderCount: 1,
+          lastOrderAt: row.createdAt,
+        });
+      }
+    }
+
+    return Array.from(map.values()).sort(
+      (a, b) => b.lastOrderAt.getTime() - a.lastOrderAt.getTime(),
+    );
+  });
+}
+
+/** Send a welcome email to a newsletter subscriber */
+export async function sendWelcomeEmailAction(
+  email: string,
+  name?: string,
+): Promise<ServerActionResponse<void>> {
+  return wrapServerCall(async () => {
+    const { sendWelcomeEmail } = await import("@/lib/email/email-service");
+    await sendWelcomeEmail({ to: email, name });
+  });
+}
+
+/** Send a thank-you email to a customer who ordered */
+export async function sendThankYouEmailAction(
+  email: string,
+  customerName: string,
+  orderNumber?: number | string,
+): Promise<ServerActionResponse<void>> {
+  return wrapServerCall(async () => {
+    const { sendThankYouEmail } = await import("@/lib/email/email-service");
+    await sendThankYouEmail({ to: email, customerName, orderNumber });
   });
 }

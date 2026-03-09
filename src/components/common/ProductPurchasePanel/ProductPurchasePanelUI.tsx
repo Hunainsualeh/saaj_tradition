@@ -74,6 +74,40 @@ export function ProductPurchasePanelUI(props: ProductPurchasePanelUIProps) {
       </div>
 
       <div className="flex flex-col gap-6">
+        {/* OUT OF STOCK WARNING */}
+        {product.stockStatus === "OUT_OF_STOCK" && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start gap-2">
+            <div className="text-red-600 fill-current flex-shrink-0 mt-0.5">
+              <svg className="w-5 h-5" viewBox="0 0 20 20">
+                <path d="M10 .5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19zM9 4h2v11H9V4zm0 12h2v2H9v-2z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h4 className="font-semibold text-sm text-red-900">Out of Stock</h4>
+              <p className="text-xs text-red-800 mt-1">This product is currently unavailable.</p>
+            </div>
+          </div>
+        )}
+
+        {/* LOW STOCK WARNING */}
+        {product.stockStatus === "LOW_STOCK" && product.showLowStockWarning && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 flex items-start gap-2">
+            <div className="text-yellow-600 fill-current flex-shrink-0 mt-0.5">
+              <svg className="w-5 h-5" viewBox="0 0 20 20">
+                <path d="M10 .5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19zM9 4h2v11H9V4zm0 12h2v2H9v-2z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h4 className="font-semibold text-sm text-yellow-900">Limited Stock</h4>
+              <p className="text-xs text-yellow-800 mt-1">
+                {product.lowStockThreshold
+                  ? `Only ${product.lowStockThreshold} left in stock`
+                  : "Limited quantity available"}
+              </p>
+            </div>
+          </div>
+        )}
+
         {product.sizes && product.sizes.length > 1 && (
           <div className="flex flex-col gap-3">
             <label
@@ -126,6 +160,7 @@ export function ProductPurchasePanelUI(props: ProductPurchasePanelUIProps) {
           variant={"dark"}
           onClick={handleAddToCart}
           isLoading={isLoading}
+          disabled={product.stockStatus === "OUT_OF_STOCK"}
           className={"w-full"}
         />
       </div>

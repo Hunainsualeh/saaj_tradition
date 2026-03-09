@@ -1,14 +1,14 @@
 "use server";
 
-import { put } from "@vercel/blob";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { CategoryMutationInput, ServerActionResponse } from "@/types/server";
 import { adminRoutes, routes } from "@/lib/routing";
-import { BLOB_STORAGE_PREFIXES, CACHE_TAG_CATEGORY } from "@/lib/constants";
+import { CACHE_TAG_CATEGORY } from "@/lib/constants";
 import { wrapServerCall } from "../helpers/generic-helpers";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
+import { uploadToCloudinary } from "@/lib/server/helpers/cloudinary-upload";
 
 type CategoryInput = {
   name: string;
@@ -30,12 +30,12 @@ export async function createCategory(
     let resolvedImageUrl = data.imageUrl ?? "";
 
     if (data.image && data.image.size > 0) {
-      const blob = await put(
-        BLOB_STORAGE_PREFIXES.CATEGORIES + data.slug,
-        data.image,
-        { access: "public", addRandomSuffix: true },
+      const buffer = await data.image.arrayBuffer();
+      resolvedImageUrl = await uploadToCloudinary(
+        Buffer.from(buffer),
+        data.slug,
+        "categories",
       );
-      resolvedImageUrl = blob.url;
     }
 
     const maxOrder = await prisma.category.aggregate({
@@ -54,7 +54,7 @@ export async function createCategory(
 
     revalidatePath(adminRoutes.categories);
     revalidatePath(routes.shop);
-    revalidateTag(CACHE_TAG_CATEGORY, "max");
+    updateTag(CACHE_TAG_CATEGORY);
 
     return { id: created.id };
   });
@@ -72,12 +72,12 @@ export async function updateCategoryById(
     let resolvedImageUrl = data.imageUrl ?? "";
 
     if (data.image && data.image.size > 0) {
-      const blob = await put(
-        BLOB_STORAGE_PREFIXES.CATEGORIES + data.slug,
-        data.image,
-        { access: "public", addRandomSuffix: true },
+      const buffer = await data.image.arrayBuffer();
+      resolvedImageUrl = await uploadToCloudinary(
+        Buffer.from(buffer),
+        data.slug,
+        "categories",
       );
-      resolvedImageUrl = blob.url;
     }
 
     const updated = await prisma.category.update({
@@ -92,7 +92,7 @@ export async function updateCategoryById(
 
     revalidatePath(adminRoutes.categories);
     revalidatePath(routes.shop);
-    revalidateTag(CACHE_TAG_CATEGORY, "max");
+    updateTag(CACHE_TAG_CATEGORY);
 
     return { id: updated.id };
   });
@@ -116,7 +116,7 @@ export async function deleteCategoryById(
 
     revalidatePath(adminRoutes.categories);
     revalidatePath(routes.shop);
-    revalidateTag(CACHE_TAG_CATEGORY, "max");
+    updateTag(CACHE_TAG_CATEGORY);
 
     return { id: deleted.id };
   });

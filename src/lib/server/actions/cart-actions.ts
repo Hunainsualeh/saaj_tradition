@@ -1,7 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { nanoid } from "nanoid";
 
 import { prisma } from "@/lib/prisma";
@@ -223,7 +223,7 @@ export async function addToCart({
 
     refreshCartCookie(cookieStore, cartId);
 
-    revalidateTag(CACHE_TAG_CART, "max");
+    updateTag(CACHE_TAG_CART);
 
     return { quantity: cartQuantity };
   });
@@ -281,7 +281,7 @@ export async function updateCartItemQuantity({
       return newCartTotal;
     });
 
-    revalidateTag(CACHE_TAG_CART, "max");
+    updateTag(CACHE_TAG_CART);
 
     refreshCartCookie(cookieStore, existingCartId);
 
@@ -318,7 +318,7 @@ export async function removeCartItem({
       return items.reduce((sum, item) => sum + item.quantity, 0);
     });
 
-    revalidateTag(CACHE_TAG_CART, "max");
+    updateTag(CACHE_TAG_CART);
 
     refreshCartCookie(cookieStore, existingCartId);
 
@@ -416,7 +416,7 @@ export async function initiateCheckout(
               : {}),
           },
         });
-        revalidateTag(CACHE_TAG_CART, "max");
+        updateTag(CACHE_TAG_CART);
       }
       return;
     }
@@ -482,12 +482,15 @@ export async function initiateCheckout(
           0,
         );
 
-        // Apply coupon discount
+        // Apply coupon discount (cap percent to [0,100])
         let discountAmount = 0;
         if (validCoupon) {
-          discountAmount = (subtotal * validCoupon.discountPercent) / 100;
+          const pct = Math.min(Math.max(validCoupon.discountPercent, 0), 100);
+          discountAmount = (subtotal * pct) / 100;
         }
-        const totalPrice = Math.max(subtotal - discountAmount + shippingCharge, 0);
+        let totalPrice = Math.max(subtotal - discountAmount + shippingCharge, 0);
+        // round to nearest rupee before storing
+        totalPrice = Math.round(totalPrice);
 
         // Update cart and create/return order atomically
         if (existingOrder) {
@@ -506,7 +509,7 @@ export async function initiateCheckout(
               where: { id: existingOrder.id },
               data: {
                 couponCode: validCoupon.code,
-                discountPercent: validCoupon.discountPercent,
+                discountPercent: Math.min(Math.max(validCoupon.discountPercent, 0), 100),
                 discountAmount: new Decimal(discountAmount),
                 shippingAmount: shippingCharge > 0 ? new Decimal(shippingCharge) : null,
                 totalPrice: new Decimal(totalPrice),
@@ -533,7 +536,7 @@ export async function initiateCheckout(
                 trackingToken: nanoid(32),
                 shippingAmount: shippingCharge > 0 ? new Decimal(shippingCharge) : null,
                 status: OrderStatus.PENDING,
-                paymentMethod: PaymentMethod.STRIPE,
+                paymentMethod: PaymentMethod.COD,
                 ...(validCoupon
                   ? {
                       couponCode: validCoupon.code,
@@ -575,8 +578,8 @@ export async function initiateCheckout(
       },
     });
 
-    revalidateTag(CACHE_TAG_CART, "max");
-    revalidateTag(CACHE_TAG_PRODUCT, "max");
+    updateTag(CACHE_TAG_CART);
+    updateTag(CACHE_TAG_PRODUCT);
   });
 }
 
@@ -584,5 +587,5 @@ export async function initiateCheckout(
 export async function clearCart(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_CART_ID);
-  revalidateTag(CACHE_TAG_CART, "max");
+  updateTag(CACHE_TAG_CART);
 }
