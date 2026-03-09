@@ -28,6 +28,8 @@ export async function getCurrentOrder(): Promise<
     const cookieStore = await cookies();
     const cartId = cookieStore.get(COOKIE_CART_ID)?.value;
 
+    if (!cartId) return null;
+
     const order = await prisma.order.findUnique({
       where: { cartId },
     });

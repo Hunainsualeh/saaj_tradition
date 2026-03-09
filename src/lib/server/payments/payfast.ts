@@ -161,7 +161,12 @@ async function requestPayFastToken(input: {
     null;
 
   if (statusCode >= 400 || !token) {
-    const message = data.message ?? data.code ?? "Token generation failed";
+    const message =
+      data.errorDescription ??
+      data.message ??
+      data.code ??
+      data.errorCode ??
+      "Token generation failed";
     throw new Error(`PayFast token error: ${message}`);
   }
 
