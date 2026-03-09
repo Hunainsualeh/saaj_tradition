@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// === CATEGORY ===
 model Category {
   id        String    @id @default(cuid())
   name      String
@@ -20,7 +19,6 @@ model Category {
   products  Product[]
 }
 
-// === PRODUCT ===
 model Product {
   id             String              @id @default(cuid())
   name           String
@@ -69,7 +67,6 @@ enum StockStatus {
   OUT_OF_STOCK
 }
 
-// === CART ===
 model Cart {
   id          String     @id @default(cuid())
   userId      String?
@@ -114,20 +111,16 @@ enum CartStatus {
   ORDERED
 }
 
-// === ORDER ===
 model Order {
   id          String @id @default(cuid())
   orderNumber Int    @default(autoincrement())
 
-  // === Cart ===
   cartId String @unique
   cart   Cart   @relation(fields: [cartId], references: [id])
 
-  // === Date Details ===
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // === Delivery Details ===
   delieveryName         String?
   deliveryEmail         String?
   deliveryPhone         String?
@@ -137,7 +130,6 @@ model Order {
   deliveryState         String?
   deliveryCountry       String?
 
-  // === Billing Details ===
   billingName          String?
   billingStreetAddress String?
   billingCity          String?
@@ -145,27 +137,21 @@ model Order {
   billingState         String?
   billingCountry       String?
 
-  // === Tracking ===
   trackingToken   String? @unique
 
-  // === Payment Gateway Details ===
   paymentSessionId String? @unique @map("stripeSessionId")
 
-  // === Payment & Status Details ===
   totalPrice      Decimal       @db.Decimal(10, 2)
   paymentMethod   PaymentMethod @default(COD)
   paymentStatus   PaymentStatus @default(PENDING)
   status          OrderStatus   @default(PENDING)
 
-  // === Shipping Details ===
   shippingAmount  Decimal?      @db.Decimal(10, 2)
 
-  // === Coupon Details ===
   couponCode      String?
   discountPercent Int?
   discountAmount  Decimal?      @db.Decimal(10, 2)
 
-  // === Customer Note ===
   orderNote       String?
 
   @@index([deliveryEmail])
@@ -196,7 +182,6 @@ enum PaymentMethod {
   COD
 }
 
-// === BLOG ===
 model BlogPost {
   id           String       @id @default(cuid())
   title        String
@@ -229,7 +214,6 @@ enum BlogCategory {
   FASHION_NEWS
 }
 
-// === COLLECTION ===
 model Collection {
   id        String    @id @default(cuid())
   name      String
@@ -242,7 +226,6 @@ model Collection {
   products  Product[]
 }
 
-// === TEAM MEMBER ===
 model TeamMember {
   id        String   @id @default(cuid())
   name      String
@@ -253,7 +236,6 @@ model TeamMember {
   updatedAt DateTime @updatedAt
 }
 
-// === SITE CONTENT (CMS) ===
 model SiteContent {
   id        String   @id @default(cuid())
   key       String   @unique
@@ -264,7 +246,6 @@ model SiteContent {
   updatedAt DateTime @updatedAt
 }
 
-// === TESTIMONIAL ===
 model Testimonial {
   id        String   @id @default(cuid())
   name      String
@@ -277,7 +258,6 @@ model Testimonial {
   updatedAt DateTime @updatedAt
 }
 
-// === COUPON ===
 model Coupon {
   id              String    @id @default(cuid())
   code            String    @unique
@@ -290,7 +270,6 @@ model Coupon {
   updatedAt       DateTime  @updatedAt
 }
 
-// === ADMIN USER ===
 model AdminUser {
   id           String        @id @default(cuid())
   email        String        @unique
@@ -307,7 +286,6 @@ enum AdminRoleEnum {
   ADMIN
 }
 
-// === EMAIL TEMPLATES ===
 model EmailTemplate {
   id          String            @id @default(cuid())
   type        EmailTemplateType
@@ -329,7 +307,6 @@ enum EmailTemplateType {
   CUSTOM
 }
 
-// === NEWSLETTER SUBSCRIBERS ===
 model NewsletterSubscriber {
   id           String   @id @default(cuid())
   email        String   @unique

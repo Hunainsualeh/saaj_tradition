@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { CartStatus, OrderStatus, PaymentStatus } from "@prisma/client";
+import { CartStatus, OrderStatus, PaymentMethod, PaymentStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { adminRoutes } from "@/lib/routing/routes";
@@ -10,7 +10,6 @@ import {
   extractPayFastOrderId,
   isPayFastSuccess,
 } from "@/lib/server/payments/payfast";
-import { getOnlinePaymentMethodForDb } from "@/lib/server/payments/payment-method";
 
 function redirectToCheckoutResult(
   req: NextRequest,
@@ -58,13 +57,11 @@ async function markOrderPaymentFailed(orderId: string): Promise<void> {
   if (!existingOrder) return;
   if (existingOrder.paymentStatus === PaymentStatus.PAID) return;
 
-  const onlinePaymentMethod = await getOnlinePaymentMethodForDb();
-
   await prisma.order.update({
     where: { id: orderId },
     data: {
       paymentStatus: PaymentStatus.FAILED,
-      paymentMethod: onlinePaymentMethod,
+      paymentMethod: PaymentMethod.PAYFAST,
       updatedAt: new Date(),
     },
   });
@@ -73,8 +70,6 @@ async function markOrderPaymentFailed(orderId: string): Promise<void> {
 async function markOrderPaymentSucceeded(
   orderId: string,
 ): Promise<{ transitioned: boolean }> {
-  const onlinePaymentMethod = await getOnlinePaymentMethodForDb();
-
   const result = await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { id: orderId },
@@ -115,7 +110,7 @@ async function markOrderPaymentSucceeded(
         data: {
           status: OrderStatus.PAID,
           paymentStatus: PaymentStatus.PAID,
-          paymentMethod: onlinePaymentMethod,
+          paymentMethod: PaymentMethod.PAYFAST,
           updatedAt: new Date(),
         },
       }),
