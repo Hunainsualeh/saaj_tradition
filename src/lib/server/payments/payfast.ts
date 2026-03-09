@@ -33,10 +33,12 @@ function getStoreUrl(): string {
       : `https://${vercelUrl}`
     : null;
 
+  // On Vercel, VERCEL_URL is the production domain → prefer it over
+  // NEXT_PUBLIC_SITE_URL which is usually set to localhost for local dev.
   const siteUrl =
+    normalizedVercelUrl ??
     process.env.NEXT_PUBLIC_SITE_URL ??
     process.env.NEXTAUTH_URL ??
-    normalizedVercelUrl ??
     "http://localhost:3000";
 
   return siteUrl.endsWith("/") ? siteUrl.slice(0, -1) : siteUrl;
