@@ -19,6 +19,7 @@ import { COOKIE_CART_ID } from "@/lib/constants";
 import { adminRoutes } from "@/lib/routing";
 import { sendOrderConfirmationEmails, sendOrderStatusEmail } from "./email-actions";
 import { buildPayFastPaymentPayload } from "@/lib/server/payments/payfast";
+import { getOnlinePaymentMethodForDb } from "@/lib/server/payments/payment-method";
 
 // === QUERIES ===
 export async function getCurrentOrder(): Promise<
@@ -184,10 +185,12 @@ export async function initiatePayFastCheckout(
       orderNumber: order.orderNumber,
     });
 
+    const onlinePaymentMethod = await getOnlinePaymentMethodForDb();
+
     await prisma.order.update({
       where: { id: orderId },
       data: {
-        paymentMethod: PaymentMethod.PAYFAST,
+        paymentMethod: onlinePaymentMethod,
         paymentStatus: PaymentStatus.PENDING,
         paymentSessionId: `payfast_${order.id}`,
         updatedAt: new Date(),

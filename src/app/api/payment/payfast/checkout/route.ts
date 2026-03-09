@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PaymentMethod, PaymentStatus, OrderStatus } from "@prisma/client";
+import { PaymentStatus, OrderStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { COOKIE_CART_ID } from "@/lib/constants";
 import { buildPayFastPaymentPayload } from "@/lib/server/payments/payfast";
+import { getOnlinePaymentMethodForDb } from "@/lib/server/payments/payment-method";
 
 function redirectToCheckout(req: NextRequest, params?: Record<string, string>) {
   const url = new URL("/checkout", req.nextUrl.origin);
@@ -117,10 +118,12 @@ export async function GET(req: NextRequest) {
       customerIp: normalizedIp,
     });
 
+    const onlinePaymentMethod = await getOnlinePaymentMethodForDb();
+
     await prisma.order.update({
       where: { id: order.id },
       data: {
-        paymentMethod: PaymentMethod.PAYFAST,
+        paymentMethod: onlinePaymentMethod,
         paymentStatus: PaymentStatus.PENDING,
         paymentSessionId: `payfast_${order.id}`,
         updatedAt: new Date(),
