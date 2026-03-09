@@ -579,7 +579,7 @@ async function main() {
           billingPostcode: orderData.deliveryPostcode,
           billingCountry: orderData.deliveryCountry,
           totalPrice: orderTotal,
-          paymentMethod: PaymentMethod.STRIPE,
+          paymentMethod: PaymentMethod.PAYFAST,
           paymentStatus: orderData.paymentStatus,
           status: orderData.status,
         },

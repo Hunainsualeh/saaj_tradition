@@ -120,9 +120,9 @@ export async function GET(req: NextRequest) {
     await prisma.order.update({
       where: { id: order.id },
       data: {
-        paymentMethod: PaymentMethod.STRIPE,
+        paymentMethod: PaymentMethod.PAYFAST,
         paymentStatus: PaymentStatus.PENDING,
-        stripeSessionId: `payfast_${order.id}`,
+        paymentSessionId: `payfast_${order.id}`,
         updatedAt: new Date(),
       },
     });

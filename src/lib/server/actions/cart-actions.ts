@@ -5,7 +5,6 @@ import { updateTag } from "next/cache";
 import { nanoid } from "nanoid";
 
 import { prisma } from "@/lib/prisma";
-import { stripe } from "@/lib/utils/stripe";
 import {
   COOKIE_CART_ID,
   MAX_CART_ITEM_QUANTITY,
@@ -374,11 +373,11 @@ export async function initiateCheckout(
     // === STEP 1: CHECK IF ORDER ALREADY EXISTS (outside transaction) ===
     const existingOrder = await prisma.order.findUnique({
       where: { cartId },
-      select: { id: true, stripeSessionId: true, totalPrice: true },
+      select: { id: true, paymentSessionId: true, totalPrice: true },
     });
 
-    if (existingOrder?.stripeSessionId) {
-      // Check if total has changed (e.g. shipping rate was updated after PI was created)
+    if (existingOrder?.paymentSessionId) {
+      // Check if total has changed (e.g. shipping rate was updated after order creation)
       const subtotal = cartItemsForShipping.reduce(
         (s, i) => s + i.unitPrice.toNumber() * i.quantity,
         0,
@@ -391,16 +390,6 @@ export async function initiateCheckout(
       const existingTotal = existingOrder.totalPrice.toNumber();
 
       if (Math.abs(newTotal - existingTotal) > 0.001) {
-        const isMockSession = existingOrder.stripeSessionId.startsWith("mock_");
-
-        if (!isMockSession) {
-          // Real Stripe PI — update amount
-          const piId = existingOrder.stripeSessionId.split("_secret_")[0];
-          await stripe.paymentIntents.update(piId, {
-            amount: Math.round(newTotal * 100),
-          });
-        }
-
         await prisma.order.update({
           where: { id: existingOrder.id },
           data: {
@@ -563,18 +552,11 @@ export async function initiateCheckout(
       { timeout: 6500 }, // TO DO: IMPROVE PERFORMANCE TO AVOID LONG TRANSACTIONS
     );
 
-    // === STEP 3 & 4: SAVE MOCK SESSION REFERENCE (Stripe disabled) ===
-    // TODO: Re-enable Stripe — replace block below with:
-    // const pi = await stripe.paymentIntents.create({
-    //   amount: Math.round(order.totalPrice.toNumber() * 100),
-    //   currency: PKR_CURRENCY,  // "pkr"
-    //   metadata: { orderId: order.id },
-    // });
-    // await prisma.order.update({ where: { id: order.id }, data: { stripeSessionId: pi.client_secret } });
+    // Persist a payment session marker used by the hosted PayFast handoff.
     await prisma.order.update({
       where: { id: order.id },
       data: {
-        stripeSessionId: `mock_${order.id}`,
+        paymentSessionId: `payfast_${order.id}`,
       },
     });
 

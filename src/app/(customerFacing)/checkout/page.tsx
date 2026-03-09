@@ -25,7 +25,6 @@ export default async function CheckoutPage() {
   if (
     !orderResult.success ||
     !orderResult.data ||
-    !orderResult.data.stripeSessionId ||
     !cartResult.success ||
     cartResult.data.items.length === 0
   ) {
@@ -39,7 +38,7 @@ export default async function CheckoutPage() {
 
   // === RECONCILE SHIPPING ===
   // getCart() already computes the latest shipping from DB.
-  // But the order (and its Stripe PI) may be stale if admin changed
+  // But the order total may be stale if admin changed
   // the shipping rate after the order was created. Reconcile here.
   const productIds = items.map((item) => item.productId);
   const latestShipping =

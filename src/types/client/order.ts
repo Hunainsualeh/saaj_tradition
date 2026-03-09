@@ -1,4 +1,4 @@
-type PaymentMethod = "STRIPE" | "COD";
+type PaymentMethod = "PAYFAST" | "COD";
 type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED";
 type OrderStatus =
   | "PENDING"
@@ -43,7 +43,7 @@ export type OrderWithCart = {
   billingPostcode: string | null;
   billingState: string | null;
   billingCountry: string | null;
-  stripeSessionId: string | null;
+  paymentSessionId: string | null;
   totalPrice: number;
   shippingAmount: number | null;
   couponCode: string | null;
@@ -97,7 +97,7 @@ export type GetAdminOrder = {
   billingPostcode: string | null;
   billingState: string | null;
   billingCountry: string | null;
-  stripeSessionId: string | null;
+  paymentSessionId: string | null;
   totalPrice: number;
   shippingAmount: number | null;
   couponCode: string | null;

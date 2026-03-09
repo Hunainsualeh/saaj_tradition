@@ -69,7 +69,6 @@ export const deliveryDetailsSchema = z
 // Payment Schema
 export const paymentSchema = z.object({
   paymentMethod: z.enum(["PAYFAST", "COD"]),
-  stripePaymentIntentId: z.string().optional(),
 });
 
 // Combined Checkout Form Schema

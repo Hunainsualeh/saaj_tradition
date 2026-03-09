@@ -41,9 +41,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
   const paymentMethodLabel =
     order.paymentMethod === "COD"
       ? "Cash on Delivery"
-      : order.stripeSessionId?.startsWith("payfast_")
-        ? "PayFast"
-        : "Online Payment";
+      : "PayFast";
 
   // === STATE ===
   const [orderStatus, setOrderStatus] = useState(order.status);

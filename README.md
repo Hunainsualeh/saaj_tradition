@@ -37,7 +37,7 @@ It includes a customer-facing storefront and an admin back office for managing p
 | Animation | Framer Motion                      | Section and component transitions                                |
 | Forms     | react-hook-form + zod              | Checkout and admin form validation                               |
 | Data      | Prisma ORM + PostgreSQL            | Products, sizes, carts, orders, blog posts, authors              |
-| Payments  | Stripe                             | Payment intents + webhook event processing                       |
+| Payments  | PayFast                            | Hosted checkout handoff + callback-driven order/payment updates  |
 | Storage   | Vercel Blob                        | Product/blog/author asset storage                                |
 | Tables    | TanStack React Table               | Admin listing tables                                             |
 | Tooling   | ESLint, Prettier, Storybook, Husky | Linting/formatting/component development and pre-commit workflow |
@@ -164,7 +164,7 @@ The app is configured for **Vercel** deployment.
 
 - Add authentication for admin dashboard rather then using demo flag
 - Add automated tests for server actions, webhook flows, and checkout steps
-- Add observability around Stripe webhook and background cleanup jobs
+- Add observability around PayFast callbacks and background cleanup jobs
 - Improve product recommendation logic on product detail pages
 
 ---

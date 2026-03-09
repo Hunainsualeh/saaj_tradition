@@ -61,7 +61,7 @@ async function markOrderPaymentFailed(orderId: string): Promise<void> {
     where: { id: orderId },
     data: {
       paymentStatus: PaymentStatus.FAILED,
-      paymentMethod: PaymentMethod.STRIPE,
+      paymentMethod: PaymentMethod.PAYFAST,
       updatedAt: new Date(),
     },
   });
@@ -110,7 +110,7 @@ async function markOrderPaymentSucceeded(
         data: {
           status: OrderStatus.PAID,
           paymentStatus: PaymentStatus.PAID,
-          paymentMethod: PaymentMethod.STRIPE,
+          paymentMethod: PaymentMethod.PAYFAST,
           updatedAt: new Date(),
         },
       }),

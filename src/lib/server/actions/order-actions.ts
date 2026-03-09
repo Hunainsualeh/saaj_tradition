@@ -108,7 +108,7 @@ export async function updateOrderDetails(
   });
 }
 
-/** Mark an order as paid + cart as ORDERED (used when Stripe is bypassed) */
+/** Mark an order as paid + cart as ORDERED for COD orders. */
 export async function markOrderAsPaid(
   orderId: string,
 ): Promise<ServerActionResponse<void>> {
@@ -126,6 +126,7 @@ export async function markOrderAsPaid(
         data: {
           status: OrderStatus.PROCESSING,
           paymentStatus: PaymentStatus.PAID,
+          paymentMethod: PaymentMethod.COD,
           updatedAt: new Date(),
         },
       }),
@@ -186,9 +187,9 @@ export async function initiatePayFastCheckout(
     await prisma.order.update({
       where: { id: orderId },
       data: {
-        paymentMethod: PaymentMethod.STRIPE,
+        paymentMethod: PaymentMethod.PAYFAST,
         paymentStatus: PaymentStatus.PENDING,
-        stripeSessionId: `payfast_${order.id}`,
+        paymentSessionId: `payfast_${order.id}`,
         updatedAt: new Date(),
       },
     });

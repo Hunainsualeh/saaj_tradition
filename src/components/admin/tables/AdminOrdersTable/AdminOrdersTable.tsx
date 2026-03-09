@@ -95,9 +95,7 @@ export function AdminOrdersTable(props: AdminOrdersTableProps) {
         paymentMethod:
           order.paymentMethod === "COD"
             ? "Cash on Delivery"
-            : order.stripeSessionId?.startsWith("payfast_")
-              ? "PayFast"
-              : "Online Payment",
+            : "PayFast",
         createdAt: formatDateToYYYYMMDD(order.createdAt) ?? "",
         updatedAt: formatDateToYYYYMMDD(order.updatedAt) ?? "",
       };
