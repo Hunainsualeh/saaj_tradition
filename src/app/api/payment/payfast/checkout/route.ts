@@ -82,7 +82,15 @@ export async function GET(req: NextRequest) {
     return redirectToCheckout(req, { payment: "failed" });
   }
 
-  if (order.status !== OrderStatus.PENDING || order.paymentStatus === PaymentStatus.PAID) {
+  // Allow payment retry as long as the order has not already been paid and is
+  // not in a terminal fulfilment state (shipped / delivered / cancelled).
+  const alreadyPaid = order.paymentStatus === PaymentStatus.PAID;
+  const isTerminalStatus =
+    order.status === OrderStatus.SHIPPED ||
+    order.status === OrderStatus.DELIVERED ||
+    order.status === OrderStatus.CANCELLED ||
+    order.status === OrderStatus.REFUNDED;
+  if (alreadyPaid || isTerminalStatus) {
     return redirectToCheckout(req, { payment: "failed", orderId });
   }
 

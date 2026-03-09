@@ -51,7 +51,17 @@ export async function updateOrderDetails(
       throw new Error("Order not found");
     }
 
-    if (existingOrder.status !== OrderStatus.PENDING) {
+    // Block modification only when payment is confirmed or the order is in a
+    // terminal fulfilment state. FAILED paymentStatus (after a failed PayFast
+    // attempt) keeps the order open for retry.
+    const isPaid = existingOrder.paymentStatus === PaymentStatus.PAID;
+    const isTerminal = (
+      existingOrder.status === OrderStatus.SHIPPED ||
+      existingOrder.status === OrderStatus.DELIVERED ||
+      existingOrder.status === OrderStatus.CANCELLED ||
+      existingOrder.status === OrderStatus.REFUNDED
+    );
+    if (isPaid || isTerminal) {
       throw new Error("Order cannot be modified");
     }
 
