@@ -17,14 +17,14 @@ import { SerializedProduct } from "@/types/client";
 function serializeProduct<T extends { price: unknown; compareAtPrice?: unknown; categories?: unknown }>(product: T) {
   // `categories` is optional on the generic but we always want an array in the
   // serialized output that matches `SerializedProduct`.
-  const base = {
+  const base: Record<string, unknown> = {
     ...product,
     price: Number(product.price),
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null,
-  } as any;
+  };
 
-  if (product.hasOwnProperty("categories")) {
-    base.categories = (product as any).categories || [];
+  if ("categories" in product) {
+    base.categories = (product as { categories?: unknown }).categories || [];
   }
 
   return base;
