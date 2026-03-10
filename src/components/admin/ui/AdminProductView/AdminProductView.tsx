@@ -24,8 +24,7 @@ type AdminProductViewProps = {
     updatedAt: Date;
     images: string[];
     slug: string;
-    categoryId: string | null;
-    category?: { name: string; slug: string } | null;
+    categories: { name: string; slug: string }[];
     sizeType: string | null;
     sizes: ProductSize[];
     collections: { id: string; name: string }[];
@@ -82,7 +81,7 @@ export function AdminProductView(props: AdminProductViewProps) {
         <div className="bg-neutral-01 p-4 rounded">
           <p className="text-sm text-neutral-09 mb-1">Category</p>
           <p className="font-semibold text-neutral-11">
-            {product.category?.name ?? "Uncategorized"}
+            {product.categories?.[0]?.name ?? "Uncategorized"}
           </p>
         </div>
       </div>

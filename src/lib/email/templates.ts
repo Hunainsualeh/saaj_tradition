@@ -106,6 +106,15 @@ const emailBase = (content: string) => `
             © ${new Date().getFullYear()} Saaj Tradition. Bahawalpur, Pakistan.<br/>
             <a href="{{storeUrl}}" style="color: ${TEXT_DARK}; text-decoration: underline; margin-top: 8px; display: inline-block;">Visit our store</a>
           </p>
+          <p style="font-family: 'Lato', sans-serif; font-size: 11px; color: ${TEXT_MUTED}; margin-top: 12px; line-height: 2;">
+            <a href="{{storeUrl}}/return-policy" style="color: ${TEXT_MUTED}; text-decoration: underline;">Return Policy</a>
+            &nbsp;&middot;&nbsp;
+            <a href="{{storeUrl}}/privacy-policy" style="color: ${TEXT_MUTED}; text-decoration: underline;">Privacy Policy</a>
+            &nbsp;&middot;&nbsp;
+            <a href="{{storeUrl}}/terms-of-use" style="color: ${TEXT_MUTED}; text-decoration: underline;">Terms of Use</a>
+            &nbsp;&middot;&nbsp;
+            <a href="{{storeUrl}}/terms-of-sale" style="color: ${TEXT_MUTED}; text-decoration: underline;">Terms of Sale</a>
+          </p>
         </td>
       </tr>
     </table>

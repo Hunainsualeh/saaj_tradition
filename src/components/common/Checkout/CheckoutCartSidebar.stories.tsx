@@ -41,7 +41,7 @@ const baseItems = [
     title: "Classic Wool Coat",
     image: "/assets/clothes-model.jpg",
     createdAt: new Date(),
-    uodatedAt: new Date(),
+    updatedAt: new Date(),
     size: { id: "size_m", label: "M" },
   },
   {
@@ -55,7 +55,7 @@ const baseItems = [
     title: "Cashmere Turtleneck",
     image: "/assets/clothes-model.jpg",
     createdAt: new Date(),
-    uodatedAt: new Date(),
+    updatedAt: new Date(),
     size: { id: "size_s", label: "S" },
   },
 ];

@@ -40,6 +40,12 @@ export async function sendOrderConfirmationEmails(
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
+        orderItems: {
+          include: {
+            // no size join needed — sizeLabel is stored directly on OrderItem
+          },
+        },
+        // Legacy fallback for orders without orderItems
         cart: {
           include: {
             items: {
@@ -54,13 +60,24 @@ export async function sendOrderConfirmationEmails(
 
     if (!order) throw new Error("Order not found");
 
-    const items = order.cart.items.map((item) => ({
-      title: item.title,
-      quantity: item.quantity,
-      unitPrice: Number(item.unitPrice),
-      image: item.image,
-      size: item.size.label,
-    }));
+    const rawItems =
+      order.orderItems.length > 0
+        ? order.orderItems.map((item) => ({
+            title: item.title,
+            quantity: item.quantity,
+            unitPrice: Number(item.unitPrice),
+            image: item.image,
+            size: item.sizeLabel,
+          }))
+        : order.cart.items.map((item) => ({
+            title: item.title,
+            quantity: item.quantity,
+            unitPrice: Number(item.unitPrice),
+            image: item.image,
+            size: item.size.label,
+          }));
+
+    const items = rawItems;
 
     // recompute values directly so we never rely on potentially stale/wrong order.totalPrice
     const subtotal = items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);

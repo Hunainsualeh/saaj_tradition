@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { CheckoutStep } from "@/types/client";
 import { DeliveryDetailsData } from "./schema";
@@ -116,20 +117,32 @@ function CheckoutFormComponent(props: CheckoutFormComponentProps) {
 
 type CheckoutFormProps = {
   orderId: string;
+  paymentFailed?: boolean;
+  prefillDelivery?: DeliveryDetailsData | null;
 };
 
 export function CheckoutForm(props: CheckoutFormProps) {
   // === PROPS ===
-  const { orderId } = props;
+  const { orderId, paymentFailed, prefillDelivery } = props;
 
   // === STATE ===
-  const [currentStep, setCurrentStep] = useState<CheckoutStep>(1);
+  // When returning from a failed payment with pre-filled delivery, skip to step 2
+  const [currentStep, setCurrentStep] = useState<CheckoutStep>(
+    paymentFailed && prefillDelivery ? 2 : 1,
+  );
 
   const [deliveryData, setDeliveryData] = useState<DeliveryDetailsData | null>(
-    null,
+    prefillDelivery ?? null,
   );
   const [paymentMethod, setPaymentMethod] =
     useState<CheckoutPaymentMethod>("PAYFAST");
+
+  // Show a one-time banner when landing back from a failed payment
+  useState(() => {
+    if (paymentFailed) {
+      toast.error("Payment failed. Please try again or choose a different method.");
+    }
+  });
 
   // === FUNCTIONS ===
   const handleConfirmDelivery = (deliveryData: DeliveryDetailsData) => {

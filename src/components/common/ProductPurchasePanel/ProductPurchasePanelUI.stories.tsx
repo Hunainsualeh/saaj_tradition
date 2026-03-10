@@ -50,8 +50,7 @@ const baseArgs = {
     updatedAt: new Date(),
     images: ["/assets/clothes-model.jpg"],
     slug: "mock-product",
-    categoryId: null,
-    category: { name: "Dresses", slug: "dresses" },
+    categories: [{ name: "Dresses", slug: "dresses" }],
     sizeType: "Standard",
     sizes: [
       {

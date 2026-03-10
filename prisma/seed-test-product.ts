@@ -47,7 +47,7 @@ async function main() {
       isFeatured: false,
       images: [],
       slug: "payfast-test-product",
-      categoryId: category.id,
+      categories: { connect: { id: category.id } },
       sizeType: SizeTypeEnum.OneSize,
       sizes: {
         create: [

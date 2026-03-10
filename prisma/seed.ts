@@ -474,7 +474,9 @@ async function main() {
         description: product.description,
         price: new Decimal(product.price),
         compareAtPrice: product.compareAtPrice ? new Decimal(product.compareAtPrice) : null,
-        categoryId: categoryMap[product.categorySlug] || null,
+        categories: categoryMap[product.categorySlug]
+          ? { connect: { id: categoryMap[product.categorySlug] } }
+          : undefined,
         slug: product.slug,
         isActive: true,
         images: getPlaceholderImages(product.slug),

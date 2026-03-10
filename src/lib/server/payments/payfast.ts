@@ -26,22 +26,29 @@ function getRequiredEnv(name: string): string {
 }
 
 function getStoreUrl(): string {
+  // Priority:
+  // 1. NEXT_PUBLIC_SITE_URL — explicit custom domain set by the user (most reliable)
+  // 2. VERCEL_PROJECT_PRODUCTION_URL — stable Vercel production URL, never changes per deploy
+  // 3. VERCEL_URL — deployment-specific URL (e.g. project-abc123.vercel.app), changes per deploy
+  // 4. localhost fallback for local dev
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL;
+  if (explicit) {
+    return explicit.endsWith("/") ? explicit.slice(0, -1) : explicit;
+  }
+
+  const productionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (productionUrl) {
+    const url = `https://${productionUrl}`;
+    return url.endsWith("/") ? url.slice(0, -1) : url;
+  }
+
   const vercelUrl = process.env.VERCEL_URL;
-  const normalizedVercelUrl = vercelUrl
-    ? /^https?:\/\//i.test(vercelUrl)
-      ? vercelUrl
-      : `https://${vercelUrl}`
-    : null;
+  if (vercelUrl) {
+    const url = /^https?:\/\//i.test(vercelUrl) ? vercelUrl : `https://${vercelUrl}`;
+    return url.endsWith("/") ? url.slice(0, -1) : url;
+  }
 
-  // On Vercel, VERCEL_URL is the production domain → prefer it over
-  // NEXT_PUBLIC_SITE_URL which is usually set to localhost for local dev.
-  const siteUrl =
-    normalizedVercelUrl ??
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    process.env.NEXTAUTH_URL ??
-    "http://localhost:3000";
-
-  return siteUrl.endsWith("/") ? siteUrl.slice(0, -1) : siteUrl;
+  return "http://localhost:3000";
 }
 
 function parseExtraFields(raw: string | undefined): Record<string, string> {

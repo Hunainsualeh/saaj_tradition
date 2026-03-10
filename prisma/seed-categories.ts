@@ -62,13 +62,13 @@ async function main() {
   const allCategories = await prisma.category.findMany();
   const slugToId = Object.fromEntries(allCategories.map((c) => [c.slug, c.id]));
 
-  // Get all products that don't have a categoryId yet
+  // Get all products that don't have a category yet (M2M)
   const products = await prisma.product.findMany({
-    where: { categoryId: null },
+    where: { categories: { none: {} } },
   });
 
   if (products.length === 0) {
-    console.log("All products already have a categoryId. Done!");
+    console.log("All products already have a category. Done!");
     return;
   }
 
@@ -118,7 +118,7 @@ async function main() {
 
     await prisma.product.update({
       where: { id: product.id },
-      data: { categoryId },
+      data: { categories: { connect: { id: categoryId } } },
     });
 
     const catName = allCategories.find((c) => c.id === categoryId)?.name ?? "Unknown";

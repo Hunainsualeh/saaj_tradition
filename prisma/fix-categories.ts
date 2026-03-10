@@ -7,16 +7,16 @@ async function fix() {
   const slugToId = Object.fromEntries(cats.map((c) => [c.slug, c.id]));
 
   // Fix Gold Khussa Flats -> Shoes
-  await prisma.product.updateMany({
+  await prisma.product.update({
     where: { slug: "gold-khussa-flats" },
-    data: { categoryId: slugToId["shoes"] },
+    data: { categories: { connect: { id: slugToId["shoes"] } } },
   });
   console.log("Fixed: Gold Khussa Flats -> Shoes");
 
   // Fix Pearl Jhumka Earrings -> Bags & Accessories
-  await prisma.product.updateMany({
+  await prisma.product.update({
     where: { slug: "pearl-jhumka-earrings" },
-    data: { categoryId: slugToId["bags-accessories"] },
+    data: { categories: { connect: { id: slugToId["bags-accessories"] } } },
   });
   console.log("Fixed: Pearl Jhumka Earrings -> Bags & Accessories");
 

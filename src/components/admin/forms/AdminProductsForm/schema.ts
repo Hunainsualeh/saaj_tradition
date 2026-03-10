@@ -23,12 +23,7 @@ export const AdminProductsFormSchema = (isEditMode: boolean) =>
 
       collectionIds: z.array(z.string()).optional(),
 
-      category: z.string().min(1, "Category is required").optional().refine(
-        (val) => val !== undefined && val !== "",
-        {
-          message: "Category is required",
-        },
-      ),
+      categoryIds: z.array(z.string()).optional(),
 
       slug: z
         .string()

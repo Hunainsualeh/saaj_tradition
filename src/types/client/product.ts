@@ -17,8 +17,7 @@ export type SerializedProduct = {
   updatedAt: Date;
   images: string[];
   slug: string;
-  categoryId: string | null;
-  category?: { name: string; slug: string } | null;
+  categories: { name: string; slug: string }[];
   sizeType: string | null;
 };
 
@@ -35,7 +34,6 @@ export type ProductGetAllCounts = {
   updatedAt: Date;
   images: string[];
   slug: string;
-  categoryId: string | null;
   categoryName: string;
   sizeType: string | null;
   totalSold: number;
@@ -53,8 +51,7 @@ export type ProductWithSizes = {
   updatedAt: Date;
   images: string[];
   slug: string;
-  categoryId: string | null;
-  category?: { name: string; slug: string } | null;
+  categories: { name: string; slug: string }[];
   sizeType: string | null;
   sizes: Array<{
     id: string;

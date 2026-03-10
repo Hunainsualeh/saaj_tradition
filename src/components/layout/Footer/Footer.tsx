@@ -231,8 +231,17 @@ export function Footer({
           <div className="w-full h-px bg-gray-200 my-8" />
 
           {/* Bottom bar */}
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-[12px] text-gray-400">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-3 text-[12px] text-gray-400">
             <p className="text-gray-400">&copy; {new Date().getFullYear()} Saaj Tradition. All rights reserved.</p>
+
+            {/* Legal links */}
+            <div className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 text-gray-400">
+              <Link href={routes.returnPolicy} className="hover:text-gray-600 transition-colors duration-200">Returns</Link>
+              <Link href={routes.privacyPolicy} className="hover:text-gray-600 transition-colors duration-200">Privacy</Link>
+              <Link href={routes.termsOfUse} className="hover:text-gray-600 transition-colors duration-200">Terms of Use</Link>
+              <Link href={routes.termsOfSale} className="hover:text-gray-600 transition-colors duration-200">Terms of Sale</Link>
+            </div>
+
             <p className="text-gray-400">Crafted with care in Pakistan</p>
           </div>
 

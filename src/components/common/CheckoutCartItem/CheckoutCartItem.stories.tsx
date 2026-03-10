@@ -36,7 +36,7 @@ const baseItem = {
   title: "Classic Wool Coat",
   image: "/assets/clothes-model.jpg",
   createdAt: new Date(),
-  uodatedAt: new Date(),
+  updatedAt: new Date(),
   size: {
     id: "size_m",
     label: "M",

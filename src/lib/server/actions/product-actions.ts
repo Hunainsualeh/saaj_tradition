@@ -54,7 +54,9 @@ export async function createProduct(
         compareAtPrice: data.compareAtPrice
           ? new Decimal(data.compareAtPrice)
           : null,
-        categoryId: data.category || null,
+        ...(data.categoryIds?.length
+          ? { categories: { connect: data.categoryIds.map((id) => ({ id })) } }
+          : {}),
         slug: data.slug,
         isActive: data.isActive,
         isFeatured: data.isFeatured ?? false,
@@ -115,7 +117,9 @@ export async function updateProductById(
         compareAtPrice: data.compareAtPrice
           ? new Decimal(data.compareAtPrice)
           : null,
-        categoryId: data.category || null,
+        categories: {
+          set: (data.categoryIds ?? []).map((id) => ({ id })),
+        },
         slug: data.slug,
         isActive: data.isActive,
         isFeatured: data.isFeatured ?? false,

@@ -48,7 +48,7 @@ export function ProductPurchasePanel(props: ProductPurchasePanelProps) {
         price: product.price.toString(),
         imageUrl: product.images[0],
         size: sizeLabel,
-        category: product.category?.name ?? "Uncategorized",
+        category: product.categories?.[0]?.name ?? "Uncategorized",
         quantity: result.data.quantity,
       });
       setIsError(false);

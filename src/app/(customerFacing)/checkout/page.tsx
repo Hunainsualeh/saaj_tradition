@@ -16,7 +16,13 @@ export const metadata: Metadata = {
   title: "Checkout",
 };
 
-export default async function CheckoutPage() {
+export default async function CheckoutPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ payment?: string; orderId?: string }>;
+}) {
+  const { payment } = await searchParams;
+  const paymentFailed = payment === "failed";
   // === FETCH DATA ===
   const cartResult = await getCart();
   const orderResult = await getCurrentOrder();
@@ -113,6 +119,22 @@ export default async function CheckoutPage() {
             <div className="w-full md:w-[60%]">
               <CheckoutForm
                 orderId={orderId}
+                paymentFailed={paymentFailed}
+                prefillDelivery={
+                  paymentFailed && order.delieveryName
+                    ? {
+                        fullName: order.delieveryName ?? "",
+                        email: order.deliveryEmail ?? "",
+                        phone: order.deliveryPhone ?? "",
+                        address: order.deliveryStreetAddress ?? "",
+                        city: order.deliveryCity ?? "",
+                        state: order.deliveryState ?? "",
+                        zipCode: order.deliveryPostcode ?? "",
+                        country: order.deliveryCountry ?? "Pakistan",
+                        useSameBillingAddress: true,
+                      }
+                    : null
+                }
               />
             </div>
 

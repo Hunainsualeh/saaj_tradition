@@ -73,7 +73,7 @@ export type OrderWithCart = {
       title: string;
       image: string;
       createdAt: Date;
-      uodatedAt: Date;
+      updatedAt: Date;
     }>;
   };
 };

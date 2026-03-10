@@ -3,7 +3,7 @@
 import { useMemo, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, FieldError } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import imageCompression from "browser-image-compression";
@@ -60,7 +60,7 @@ type ProductFormData = {
   updatedAt: Date;
   images: string[];
   slug: string;
-  categoryId: string | null;
+  categoryIds?: string[];
   sizeType: SizeTypeEnum | null;
   collectionIds?: string[];
   /** Labels of existing sizes (for edit mode pre-selection) */
@@ -132,7 +132,7 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
       compareAtPrice: productData?.compareAtPrice
         ? Number(productData.compareAtPrice).toFixed(2)
         : "",
-      category: productData?.categoryId ?? undefined,
+      categoryIds: productData?.categoryIds ?? [],
       slug: productData?.slug,
       sizeType:
         isEditMode && productData?.sizeType ? productData?.sizeType : undefined,
@@ -148,7 +148,7 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
   });
 
   // === WATCHERS ===
-  const categoryValue = watch("category");
+  const categoryIdsValue = watch("categoryIds") || [];
   const sizeTypeValue = watch("sizeType");
   const selectedSizesValue = watch("selectedSizes") ?? [];
   const isActiveValue = watch("isActive");
@@ -623,33 +623,43 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
               <AdminFieldError errors={[errors.slug]} />
             </AdminField>
 
-            {/* CATEGORY */}
+            {/* CATEGORY — multi-select (like Collections) */}
             <AdminField>
               <AdminFieldLabel htmlFor="productCategory">
-                Category
+                Categories
               </AdminFieldLabel>
-              <AdminSelect
-                value={categoryValue ?? ""}
-                onValueChange={(val) =>
-                  setValue("category", val, {
-                    shouldValidate: true,
-                  })
-                }
-              >
-                <AdminSelectTrigger id="productCategory" className="w-[180px]">
-                  <AdminSelectValue />
-                </AdminSelectTrigger>
-                <AdminSelectContent>
-                  <AdminSelectGroup>
-                    {availableCategories.map((category) => (
-                      <AdminSelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </AdminSelectItem>
-                    ))}
-                  </AdminSelectGroup>
-                </AdminSelectContent>
-              </AdminSelect>
-              <AdminFieldError errors={[errors.category]} />
+              <AdminFieldDescription>
+                Select all categories this product belongs to.
+              </AdminFieldDescription>
+              {availableCategories.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {availableCategories.map((cat) => {
+                    const isSelected = categoryIdsValue.includes(cat.id);
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          const updated = isSelected
+                            ? categoryIdsValue.filter((id) => id !== cat.id)
+                            : [...categoryIdsValue, cat.id];
+                          setValue("categoryIds", updated);
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                          isSelected
+                            ? "bg-black text-white border-black"
+                            : "bg-white text-neutral-10 border-neutral-04 hover:border-black"
+                        }`}
+                      >
+                        {cat.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-neutral-09">No categories available.</p>
+              )}
+              <AdminFieldError errors={[errors.categoryIds as FieldError | undefined]} />
             </AdminField>
 
             {/* COLLECTIONS */}

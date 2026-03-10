@@ -106,11 +106,17 @@ export async function deleteCategoryById(
       return { id };
     }
 
-    // Before deleting, unassign products from this category
-    await prisma.product.updateMany({
-      where: { categoryId: id },
-      data: { categoryId: null },
+    // Before deleting, disconnect all products from this category (M2M)
+    const productsInCategory = await prisma.product.findMany({
+      where: { categories: { some: { id } } },
+      select: { id: true },
     });
+    if (productsInCategory.length > 0) {
+      await prisma.category.update({
+        where: { id },
+        data: { products: { disconnect: productsInCategory.map((p) => ({ id: p.id })) } },
+      });
+    }
 
     const deleted = await prisma.category.delete({ where: { id } });
 

@@ -14,12 +14,20 @@ import { SIZE_TEMPLATES, SIZE_TYPES } from "@/lib/constants";
 import { SerializedProduct } from "@/types/client";
 
 /** Convert Prisma Product Decimals to plain numbers for client serialization */
-function serializeProduct<T extends { price: unknown; compareAtPrice?: unknown }>(product: T) {
-  return {
+function serializeProduct<T extends { price: unknown; compareAtPrice?: unknown; categories?: unknown }>(product: T) {
+  // `categories` is optional on the generic but we always want an array in the
+  // serialized output that matches `SerializedProduct`.
+  const base = {
     ...product,
     price: Number(product.price),
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null,
-  };
+  } as any;
+
+  if (product.hasOwnProperty("categories")) {
+    base.categories = (product as any).categories || [];
+  }
+
+  return base;
 }
 
 // === STATIC PAGE QUERIES ===
@@ -29,9 +37,10 @@ const getThreeLatestProductsCached = unstable_cache(
       where: { isActive: true },
       orderBy: { createdAt: "desc" },
       take: 3,
+      include: { categories: { select: { name: true, slug: true } } },
     });
 
-    return products.map(serializeProduct);
+    return products.map(serializeProduct) as SerializedProduct[];
   },
   [CACHE_TAG_PRODUCT, "latest-three"],
   { tags: [CACHE_TAG_PRODUCT] },
@@ -51,9 +60,10 @@ const getFeaturedProductsCached = unstable_cache(
     const products = await prisma.product.findMany({
       where: { isActive: true, isFeatured: true },
       orderBy: { updatedAt: "desc" },
+      include: { categories: { select: { name: true, slug: true } } },
     });
 
-    return products.map(serializeProduct);
+    return products.map(serializeProduct) as SerializedProduct[];
   },
   [CACHE_TAG_PRODUCT, "featured"],
   { tags: [CACHE_TAG_PRODUCT] },
@@ -75,21 +85,23 @@ export async function getMarqueeProducts(
     if (ids.length > 0) {
       const products = await prisma.product.findMany({
         where: { id: { in: ids }, isActive: true },
+        include: { categories: { select: { name: true, slug: true } } },
       });
       // Preserve admin-defined order
       const map = new Map(products.map((p) => [p.id, p]));
       return ids
         .map((id) => map.get(id))
         .filter((p): p is NonNullable<typeof p> => p !== undefined)
-        .map(serializeProduct);
+        .map(serializeProduct) as SerializedProduct[];
     }
     // Fallback: latest 12 active products
     const products = await prisma.product.findMany({
       where: { isActive: true },
       orderBy: { createdAt: "desc" },
       take: 12,
+      include: { categories: { select: { name: true, slug: true } } },
     });
-    return products.map(serializeProduct);
+    return products.map(serializeProduct) as SerializedProduct[];
   });
 }
 
@@ -112,9 +124,10 @@ const getThreeRandomProductsCache = unstable_cache(
       where: { isActive: true, slug: { not: currentSlug } },
       orderBy: { createdAt: "desc" },
       take: 3,
+      include: { categories: { select: { name: true, slug: true } } },
     });
 
-    return products.map(serializeProduct);
+    return products.map(serializeProduct) as SerializedProduct[];
   },
   [CACHE_TAG_PRODUCT, "random-three"],
   { tags: [CACHE_TAG_PRODUCT] },
@@ -131,8 +144,9 @@ const getAllProductsWithTotalSoldCached = unstable_cache(
   async (): Promise<ProductGetAllCounts[]> => {
     const products = await prisma.product.findMany({
       include: {
-        category: {
+        categories: {
           select: { name: true },
+          take: 1,
         },
         cartItems: {
           include: {
@@ -166,11 +180,11 @@ const getAllProductsWithTotalSoldCached = unstable_cache(
 
       // Destructure to exclude cartItems (contains Decimal fields) from client payload
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { cartItems: _cartItems, category, ...productWithoutCartItems } = product;
+      const { cartItems: _cartItems, categories, ...productWithoutCartItems } = product;
 
       return {
         ...serializeProduct(productWithoutCartItems),
-        categoryName: category?.name ?? "Uncategorized",
+        categoryName: categories[0]?.name ?? "Uncategorized",
         totalSold,
       };
     });
@@ -196,21 +210,21 @@ export async function getProductsByCategorySlug(
 ): Promise<ServerActionResponse<{ products: SerializedProduct[]; total: number }>> {
   return wrapServerCall(async () => {
     const where = categorySlug
-      ? { category: { slug: categorySlug }, isActive: true as const }
+      ? { categories: { some: { slug: categorySlug } }, isActive: true as const }
       : { isActive: true as const };
 
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
-        include: { category: { select: { name: true, slug: true } } },
+        include: { categories: { select: { name: true, slug: true }, take: 1 } },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
       prisma.product.count({ where }),
-    ]);
+    ])
 
-    return { products: products.map(serializeProduct), total };
+    return { products: products.map(serializeProduct) as SerializedProduct[], total };
   });
 }
 
@@ -235,7 +249,7 @@ export async function getProductsByCollectionSlug(
       prisma.product.count({ where }),
     ]);
 
-    return { products: products.map(serializeProduct), total };
+    return { products: products.map(serializeProduct) as SerializedProduct[], total };
   });
 }
 
@@ -279,7 +293,7 @@ const getProductBySlugCached = unstable_cache(
       where: { slug },
       include: {
         sizes: true,
-        category: { select: { name: true, slug: true } },
+        categories: { select: { name: true, slug: true } },
       },
     });
 
@@ -299,7 +313,7 @@ const getProductBySlugCached = unstable_cache(
 
     return {
       ...serializeProduct(product),
-      category: product.category ?? null,
+      categories: product.categories,
       sizes: product.sizes.map((s) => ({
         ...s,
         stockTotal: s.stockTotal,
@@ -361,8 +375,8 @@ export async function getAdminProductById(
     const product = await prisma.product.findFirst({
       where: { id },
       include: {
-        category: {
-          select: { name: true, slug: true },
+        categories: {
+          select: { id: true, name: true, slug: true },
         },
         sizes: {
           select: { id: true, label: true, stockTotal: true, stockReserved: true },
@@ -374,6 +388,9 @@ export async function getAdminProductById(
     });
 
     if (!product) return null;
-    return serializeProduct(product);
+    return {
+      ...serializeProduct(product),
+      categoryIds: product.categories.map((c) => c.id),
+    };
   });
 }

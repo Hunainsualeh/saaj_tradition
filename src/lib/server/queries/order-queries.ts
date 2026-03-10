@@ -66,6 +66,17 @@ export async function getOrderForSuccessPage(
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
+        orderItems: {
+          select: {
+            id: true,
+            quantity: true,
+            unitPrice: true,
+            title: true,
+            image: true,
+            sizeLabel: true,
+          },
+        },
+        // Legacy fallback: old orders without orderItems still show items via cart
         cart: {
           include: {
             items: {
@@ -84,6 +95,12 @@ export async function getOrderForSuccessPage(
     });
 
     if (!order) return null;
+
+    // Prefer orderItems snapshot; fall back to live cart items for old orders
+    const rawItems =
+      order.orderItems.length > 0
+        ? order.orderItems.map((i) => ({ ...i, size: { label: i.sizeLabel } }))
+        : order.cart.items.map((i) => ({ ...i, size: { label: i.size.label } }));
 
     return {
       id: order.id,
@@ -110,7 +127,7 @@ export async function getOrderForSuccessPage(
       discountAmount: order.discountAmount ? Number(order.discountAmount) : null,
       paymentMethod: order.paymentMethod,
       trackingToken: order.trackingToken,
-      items: order.cart.items.map((item) => ({
+      items: rawItems.map((item) => ({
         ...item,
         unitPrice: Number(item.unitPrice),
       })),
@@ -125,6 +142,17 @@ export async function getAdminOrderById(
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
+        orderItems: {
+          select: {
+            id: true,
+            quantity: true,
+            unitPrice: true,
+            title: true,
+            image: true,
+            sizeLabel: true,
+          },
+        },
+        // Legacy fallback for orders created before OrderItem was added
         cart: {
           include: {
             items: {
@@ -150,6 +178,11 @@ export async function getAdminOrderById(
       return null;
     }
 
+    const rawItems =
+      order.orderItems.length > 0
+        ? order.orderItems.map((i) => ({ ...i, size: { label: i.sizeLabel } }))
+        : order.cart.items.map((i) => ({ ...i, size: { label: i.size.label } }));
+
     return {
       ...order,
       totalPrice: Number(order.totalPrice),
@@ -157,7 +190,7 @@ export async function getAdminOrderById(
       discountAmount: order.discountAmount ? Number(order.discountAmount) : null,
       cart: {
         ...order.cart,
-        items: order.cart.items.map((item) => ({
+        items: rawItems.map((item) => ({
           ...item,
           unitPrice: Number(item.unitPrice),
         })),

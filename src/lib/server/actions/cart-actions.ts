@@ -218,7 +218,7 @@ export async function addToCart({
       });
 
       return newCartTotal;
-    });
+    }, { timeout: 15000, maxWait: 5000 });
 
     refreshCartCookie(cookieStore, cartId);
 
@@ -278,7 +278,7 @@ export async function updateCartItemQuantity({
       });
 
       return newCartTotal;
-    });
+    }, { timeout: 15000, maxWait: 5000 });
 
     updateTag(CACHE_TAG_CART);
 
@@ -315,7 +315,7 @@ export async function removeCartItem({
       });
 
       return items.reduce((sum, item) => sum + item.quantity, 0);
-    });
+    }, { timeout: 15000, maxWait: 5000 });
 
     updateTag(CACHE_TAG_CART);
 
@@ -422,6 +422,7 @@ export async function initiateCheckout(
                 size: {
                   select: {
                     id: true,
+                    label: true,
                     stockTotal: true,
                     stockReserved: true,
                   },
@@ -516,7 +517,7 @@ export async function initiateCheckout(
 
           return { id: existingOrder.id, totalPrice: new Decimal(totalPrice) };
         } else {
-          // Create order and update cart in parallel
+          // Create order, order items, and update cart atomically
           const [newOrder] = await Promise.all([
             tx.order.create({
               data: {
@@ -533,6 +534,18 @@ export async function initiateCheckout(
                       discountAmount: new Decimal(discountAmount),
                     }
                   : {}),
+                // Snapshot cart items so order history survives cart cleanup
+                orderItems: {
+                  create: cart.items.map((item) => ({
+                    productId: item.productId,
+                    sizeId: item.sizeId,
+                    title: item.title,
+                    image: item.image,
+                    sizeLabel: item.size.label,
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                  })),
+                },
               },
               select: { id: true, totalPrice: true },
             }),
@@ -549,7 +562,7 @@ export async function initiateCheckout(
           return newOrder;
         }
       },
-      { timeout: 6500 }, // TO DO: IMPROVE PERFORMANCE TO AVOID LONG TRANSACTIONS
+      { timeout: 15000, maxWait: 5000 },
     );
 
     // Persist a payment session marker used by the hosted PayFast handoff.
