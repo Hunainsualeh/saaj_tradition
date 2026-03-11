@@ -2,7 +2,12 @@
 
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
-import ReactCrop, { type Crop, type PixelCrop, centerCrop, makeAspectCrop } from "react-image-crop";
+import ReactCrop, {
+  type Crop,
+  type PixelCrop,
+  centerCrop,
+  makeAspectCrop,
+} from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import {
   Globe,
@@ -14,8 +19,6 @@ import {
   Loader2,
   Video,
   Link2 as LinkIcon,
-  ChevronDown,
-  ChevronRight,
   Plus,
   Trash2,
   X,
@@ -27,6 +30,9 @@ import {
   Handshake,
   UploadCloud,
   Crop as CropIcon,
+  Save,
+  Check,
+  Search,
 } from "lucide-react";
 
 import { AdminButton, AdminInput } from "@/components/admin";
@@ -37,7 +43,7 @@ import {
 } from "@/lib/server/actions";
 import { SiteContentItem } from "@/types/client";
 
-// -- helpers -------------------------------------------------------------------
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function isMediaKey(key: string): boolean {
   return (
@@ -49,110 +55,136 @@ function isMediaKey(key: string): boolean {
   );
 }
 
-const GROUP_CONFIG: Record<
-  string,
-  { label: string; icon: React.ReactNode; description: string }
-> = {
+// ── Tab / Group config ───────────────────────────────────────────────────────
+
+type TabConfig = {
+  id: string;
+  label: string;
+  shortLabel: string;
+  icon: React.ReactNode;
+  description: string;
+  groups: string[];
+};
+
+const TAB_CONFIG: TabConfig[] = [
+  {
+    id: "homepage",
+    label: "Home Page",
+    shortLabel: "Home",
+    icon: <Monitor size={18} />,
+    description:
+      "Manage your homepage hero banner, headings, videos, and feature cards.",
+    groups: ["hero", "video-section", "home-page", "feature-cards"],
+  },
+  {
+    id: "about",
+    label: "About Page",
+    shortLabel: "About",
+    icon: <FileText size={18} />,
+    description: "Update your about page images, text, and feature highlights.",
+    groups: ["about-images", "about-page", "about-features"],
+  },
+  {
+    id: "social",
+    label: "Social & Contact",
+    shortLabel: "Social",
+    icon: <Globe size={18} />,
+    description: "Manage social media links, email, and contact information.",
+    groups: ["social-links", "newsletter"],
+  },
+  {
+    id: "shipping",
+    label: "Shipping & Delivery",
+    shortLabel: "Shipping",
+    icon: <Truck size={18} />,
+    description: "Set shipping charges and estimated delivery times.",
+    groups: ["shipping", "delivery-estimates"],
+  },
+  {
+    id: "marquees",
+    label: "Scrolling Bars",
+    shortLabel: "Marquees",
+    icon: <Megaphone size={18} />,
+    description:
+      "Configure the announcement bar, product showcase, and partner logos.",
+    groups: [
+      "announcement-marquee",
+      "product-marquee",
+      "partner-logos-marquee",
+    ],
+  },
+];
+
+const GROUP_META: Record<string, { label: string; icon: React.ReactNode }> = {
   "social-links": {
     label: "Social Links & Contact",
     icon: <Globe size={16} />,
-    description:
-      "Contact info and social media links shown in the footer and about page.",
   },
-  hero: {
-    label: "Hero Section",
-    icon: <ImageIcon size={16} />,
-    description: "Main banner image and text at the top of the home page.",
-  },
-  "home-page": {
-    label: "Home Page — Section Headings",
-    icon: <Monitor size={16} />,
-    description: "New arrivals, collections, and news section headings.",
-  },
-  "video-section": {
-    label: "Home Video",
-    icon: <Video size={16} />,
-    description: "The full-width video on the home page. Upload MP4/WebM and set the poster image.",
-  },
+  hero: { label: "Hero Banner", icon: <ImageIcon size={16} /> },
+  "home-page": { label: "Section Headings", icon: <Monitor size={16} /> },
+  "video-section": { label: "Home Video", icon: <Video size={16} /> },
   "feature-cards": {
-    label: "Feature Cards",
+    label: "Feature Highlights",
     icon: <Star size={16} />,
-    description: "The three feature highlight cards on the home page.",
   },
   "about-images": {
     label: "About Page Images",
     icon: <ImageIcon size={16} />,
-    description: "Images displayed on the About Us page.",
   },
-  "about-page": {
-    label: "About Page Text",
-    icon: <FileText size={16} />,
-    description: "Text content for the About page.",
-  },
-  "about-features": {
-    label: "About Page Features",
-    icon: <Star size={16} />,
-    description: "Feature cards shown on the About page.",
-  },
-  newsletter: {
-    label: "Newsletter",
-    icon: <Mail size={16} />,
-    description: "Newsletter heading and description text.",
-  },
-  shipping: {
-    label: "Shipping",
-    icon: <Truck size={16} />,
-    description: "Shipping charge settings.",
-  },
+  "about-page": { label: "About Page Text", icon: <FileText size={16} /> },
+  "about-features": { label: "About Features", icon: <Star size={16} /> },
+  newsletter: { label: "Newsletter", icon: <Mail size={16} /> },
+  shipping: { label: "Shipping Charges", icon: <Truck size={16} /> },
   "delivery-estimates": {
     label: "Delivery Estimates",
     icon: <Clock size={16} />,
-    description: "Estimated delivery times shown on order pages.",
   },
   "announcement-marquee": {
-    label: "Announcement Marquee",
+    label: "Announcement Bar",
     icon: <Megaphone size={16} />,
-    description: "Top-of-page scrolling announcement bar.",
   },
   "product-marquee": {
-    label: "Product Marquee",
+    label: "Product Showcase",
     icon: <ShoppingBag size={16} />,
-    description: "Scrolling product image marquee on the home page.",
   },
   "partner-logos-marquee": {
-    label: "Partner Logos Marquee",
+    label: "Partner Logos",
     icon: <Handshake size={16} />,
-    description: "Scrolling partner brand logos on the home page.",
   },
 };
 
-function getGroupConfig(group: string) {
+function getGroupMeta(group: string) {
   return (
-    GROUP_CONFIG[group] ?? {
+    GROUP_META[group] ?? {
       label: group
         .split("-")
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" "),
       icon: <Settings size={16} />,
-      description: "",
     }
   );
 }
 
-// -- MediaUploadField ----------------------------------------------------------
+// ── Aspect ratio helpers ─────────────────────────────────────────────────────
 
-type MediaTab = "preview" | "url" | "upload";
-
-type AspectRatioOption = { label: string; value: number | undefined; css: string };
+type AspectRatioOption = {
+  label: string;
+  value: number | undefined;
+  css: string;
+};
 const ASPECT_OPTIONS: AspectRatioOption[] = [
-  { label: "Free",     value: undefined, css: "" },
-  { label: "Banner",   value: 16 / 9,    css: "aspect-video" },
-  { label: "Square",   value: 1,         css: "aspect-square" },
-  { label: "4:3",      value: 4 / 3,     css: "aspect-[4/3]" },
-  { label: "Portrait", value: 3 / 4,     css: "aspect-[3/4]" },
+  { label: "Free", value: undefined, css: "" },
+  { label: "Banner", value: 16 / 9, css: "aspect-video" },
+  { label: "Square", value: 1, css: "aspect-square" },
+  { label: "4:3", value: 4 / 3, css: "aspect-[4/3]" },
+  { label: "Portrait", value: 3 / 4, css: "aspect-[3/4]" },
 ];
 
-function centerAspectCrop(width: number, height: number, aspect: number): Crop {
+function centerAspectCrop(
+  width: number,
+  height: number,
+  aspect: number,
+): Crop {
   return centerCrop(
     makeAspectCrop({ unit: "%", width: 90 }, aspect, width, height),
     width,
@@ -198,6 +230,138 @@ function cropImageToBlob(
   );
 }
 
+// ── CropModal ────────────────────────────────────────────────────────────────
+
+function CropModal({
+  src,
+  fileName,
+  uploading,
+  onUpload,
+  onCancel,
+}: {
+  src: string;
+  fileName: string;
+  uploading: boolean;
+  onUpload: (file: File) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null);
+  const [aspect, setAspect] = useState<number | undefined>(undefined);
+
+  const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { width, height } = e.currentTarget;
+    if (aspect !== undefined) {
+      setCrop(centerAspectCrop(width, height, aspect));
+    }
+  };
+
+  const handleCropAndUpload = async () => {
+    if (!imgRef.current || !completedCrop) {
+      if (!src) return;
+      const res = await fetch(src);
+      const blob = await res.blob();
+      const file = new File([blob], fileName.replace(/\.[^.]+$/, ".webp"), {
+        type: "image/webp",
+      });
+      await onUpload(file);
+      return;
+    }
+    const file = await cropImageToBlob(
+      imgRef.current,
+      completedCrop,
+      fileName,
+    );
+    await onUpload(file);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col gap-4 p-6 max-h-[90vh]">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-lg text-gray-900">Crop Image</h3>
+          <button
+            type="button"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            onClick={onCancel}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {ASPECT_OPTIONS.map((opt) => (
+            <button
+              key={opt.label}
+              type="button"
+              onClick={() => {
+                setAspect(opt.value);
+                if (imgRef.current && opt.value !== undefined) {
+                  const { width, height } = imgRef.current;
+                  setCrop(centerAspectCrop(width, height, opt.value));
+                }
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                aspect === opt.value
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="overflow-auto flex-1 flex justify-center rounded-xl bg-gray-50 border p-2">
+          <ReactCrop
+            crop={crop}
+            onChange={(c) => setCrop(c)}
+            onComplete={(c) => setCompletedCrop(c)}
+            aspect={aspect}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              ref={imgRef}
+              src={src}
+              alt="Crop preview"
+              onLoad={onImageLoad}
+              className="max-w-full max-h-[50vh]"
+            />
+          </ReactCrop>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-1">
+          <button
+            type="button"
+            className="px-4 py-2.5 rounded-xl border text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={handleCropAndUpload}
+            className="px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2 transition-colors"
+          >
+            {uploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CropIcon className="h-4 w-4" />
+            )}
+            {uploading ? "Uploading..." : "Crop & Upload"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MediaUploadField ─────────────────────────────────────────────────────────
+
+type MediaTab = "preview" | "url" | "upload";
+
 function MediaUploadField({
   id,
   itemKey,
@@ -217,21 +381,10 @@ function MediaUploadField({
   const [urlDraft, setUrlDraft] = useState("");
   const [tab, setTab] = useState<MediaTab>(value ? "preview" : "upload");
   const [dragOver, setDragOver] = useState(false);
-
-  // crop state (images only)
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropFileName, setCropFileName] = useState("image.webp");
-  const [crop, setCrop] = useState<Crop>();
-  const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null);
-  const [cropAspect, setCropAspect] = useState<number | undefined>(undefined);
-  const cropImgRef = useRef<HTMLImageElement>(null);
-
-  // preview aspect ratio
-  const [previewAspect, setPreviewAspect] = useState<AspectRatioOption>(
-    ASPECT_OPTIONS[1], // Banner by default
-  );
-
   const inputRef = useRef<HTMLInputElement>(null);
+
   const maxSizeLabel = isVideo ? "200 MB" : "50 MB";
   const maxSizeBytes = isVideo ? 200 * 1024 * 1024 : 50 * 1024 * 1024;
   const acceptTypes = isVideo
@@ -265,206 +418,79 @@ function MediaUploadField({
 
   const handleFile = (file: File) => {
     if (file.size > maxSizeBytes) {
-      toast.error(`File too large - maximum is ${maxSizeLabel}`);
+      toast.error(`File too large — max ${maxSizeLabel}`);
       return;
     }
     if (isVideo) {
       uploadFile(file);
       return;
     }
-    // For images: open crop modal
     const reader = new FileReader();
     reader.onload = (e) => {
       setCropSrc(e.target?.result as string);
       setCropFileName(file.name);
-      setCrop(undefined);
-      setCompletedCrop(null);
-      setCropAspect(ASPECT_OPTIONS[0].value); // start as Free
     };
     reader.readAsDataURL(file);
   };
 
-  const onCropImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { width, height } = e.currentTarget;
-    if (cropAspect !== undefined) {
-      setCrop(centerAspectCrop(width, height, cropAspect));
-    }
-  };
-
-  const handleCropAndUpload = async () => {
-    if (!cropImgRef.current || !completedCrop) {
-      // No crop drawn - upload the original src as-is via blob
-      if (!cropSrc) return;
-      const res = await fetch(cropSrc);
-      const blob = await res.blob();
-      const file = new File([blob], cropFileName.replace(/\.[^.]+$/, ".webp"), {
-        type: "image/webp",
-      });
-      setCropSrc(null);
-      await uploadFile(file);
-      return;
-    }
-    const file = await cropImageToBlob(
-      cropImgRef.current,
-      completedCrop,
-      cropFileName,
-    );
-    setCropSrc(null);
-    await uploadFile(file);
-  };
-
   return (
-    <div className="space-y-2">
-      {/* Crop modal */}
+    <div className="space-y-3">
       {cropSrc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="bg-background rounded-lg shadow-xl w-full max-w-2xl flex flex-col gap-4 p-5">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-base">Crop Image</h3>
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => setCropSrc(null)}
-              >
-                Cancel
-              </button>
-            </div>
-
-            {/* Aspect ratio lock pills */}
-            <div className="flex flex-wrap gap-2">
-              {ASPECT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.label}
-                  type="button"
-                  onClick={() => {
-                    setCropAspect(opt.value);
-                    if (cropImgRef.current && opt.value !== undefined) {
-                      const { width, height } = cropImgRef.current;
-                      setCrop(centerAspectCrop(width, height, opt.value));
-                    }
-                  }}
-                  className={`px-3 py-1 rounded-full text-xs border transition-colors ${
-                    cropAspect === opt.value
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "border-border hover:bg-muted"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Crop area */}
-            <div className="overflow-auto max-h-[55vh] flex justify-center">
-              <ReactCrop
-                crop={crop}
-                onChange={(c) => setCrop(c)}
-                onComplete={(c) => setCompletedCrop(c)}
-                aspect={cropAspect}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  ref={cropImgRef}
-                  src={cropSrc}
-                  alt="Crop preview"
-                  onLoad={onCropImageLoad}
-                  className="max-w-full"
-                />
-              </ReactCrop>
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                className="px-4 py-2 rounded-md border text-sm hover:bg-muted"
-                onClick={() => setCropSrc(null)}
-              >
-                Cancel
-              </button>
-              <AdminButton
-                type="button"
-                disabled={uploading}
-                onClick={handleCropAndUpload}
-                className="flex items-center gap-2"
-              >
-                {uploading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CropIcon className="h-4 w-4" />
-                )}
-                {uploading ? "Uploading..." : "Crop & Upload"}
-              </AdminButton>
-            </div>
-          </div>
-        </div>
+        <CropModal
+          src={cropSrc}
+          fileName={cropFileName}
+          uploading={uploading}
+          onUpload={async (file) => {
+            setCropSrc(null);
+            await uploadFile(file);
+          }}
+          onCancel={() => setCropSrc(null)}
+        />
       )}
 
       {/* Tab bar */}
-      <div className="flex gap-1 rounded-md border p-1 w-fit">
+      <div className="flex gap-1 rounded-xl bg-gray-100 p-1 w-fit">
         {(["preview", "url", "upload"] as MediaTab[]).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               tab === t
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            {t === "preview" ? "Preview" : t === "url" ? "Use URL" : "Upload File"}
+            {t === "preview" ? "Preview" : t === "url" ? "Use URL" : "Upload"}
           </button>
         ))}
       </div>
 
-      {/* Preview tab */}
       {tab === "preview" && (
-        <div className="space-y-2">
+        <div>
           {value ? (
-            <>
-              {/* Aspect ratio pills for preview */}
-              {!isVideo && (
-                <div className="flex flex-wrap gap-1.5">
-                  {ASPECT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.label}
-                      type="button"
-                      onClick={() => setPreviewAspect(opt)}
-                      className={`px-2.5 py-0.5 rounded-full text-xs border transition-colors ${
-                        previewAspect.label === opt.label
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "border-border hover:bg-muted"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {isVideo ? (
-                <video
-                  src={value}
-                  controls
-                  className="w-full rounded-md border max-h-52"
-                />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={value}
-                  alt="Preview"
-                  className={`w-full rounded-md border object-cover ${previewAspect.css}`}
-                />
-              )}
-            </>
+            isVideo ? (
+              <video
+                src={value}
+                controls
+                className="w-full rounded-xl border max-h-48"
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={value}
+                alt="Preview"
+                className="w-full max-h-48 rounded-xl border object-cover"
+              />
+            )
           ) : (
-            <div className="rounded-md border border-dashed p-6 text-center text-muted-foreground text-sm">
-              No media selected
+            <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center text-gray-400 text-sm">
+              No media uploaded yet
             </div>
           )}
         </div>
       )}
 
-      {/* Use URL tab */}
       {tab === "url" && (
         <div className="flex gap-2">
           <AdminInput
@@ -484,16 +510,17 @@ function MediaUploadField({
               setTab("preview");
             }}
           >
-            <LinkIcon className="h-4 w-4 mr-1" /> Use
+            <LinkIcon className="h-4 w-4 mr-1" /> Set
           </AdminButton>
         </div>
       )}
 
-      {/* Upload File tab */}
       {tab === "upload" && (
         <div
-          className={`rounded-md border-2 border-dashed p-6 text-center transition-colors cursor-pointer ${
-            dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+          className={`rounded-xl border-2 border-dashed p-8 text-center transition-all cursor-pointer ${
+            dragOver
+              ? "border-gray-900 bg-gray-50"
+              : "border-gray-200 hover:border-gray-400 hover:bg-gray-50/50"
           }`}
           onDragOver={(e) => {
             e.preventDefault();
@@ -520,19 +547,19 @@ function MediaUploadField({
             }}
           />
           {uploading ? (
-            <div className="flex items-center justify-center gap-2 text-muted-foreground">
+            <div className="flex items-center justify-center gap-2 text-gray-500">
               <Loader2 className="h-5 w-5 animate-spin" />
-              <span className="text-sm">Uploading...</span>
+              <span className="text-sm font-medium">Uploading...</span>
             </div>
           ) : (
-            <div className="space-y-1">
-              <UploadCloud className="h-8 w-8 mx-auto text-muted-foreground" />
-              <p className="text-sm font-medium">
+            <div className="space-y-2">
+              <UploadCloud className="h-10 w-10 mx-auto text-gray-300" />
+              <p className="text-sm font-medium text-gray-600">
                 Drag & drop or{" "}
-                <span className="text-primary underline">browse</span>
+                <span className="text-gray-900 underline">browse files</span>
               </p>
-              <p className="text-xs text-muted-foreground">
-                {formatHint} up to {maxSizeLabel}
+              <p className="text-xs text-gray-400">
+                {formatHint} — up to {maxSizeLabel}
               </p>
             </div>
           )}
@@ -542,7 +569,7 @@ function MediaUploadField({
   );
 }
 
-// -- ColorField ----------------------------------------------------------------
+// ── ColorField ───────────────────────────────────────────────────────────────
 
 function ColorField({
   id,
@@ -555,25 +582,27 @@ function ColorField({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <input
-        type="color"
-        value={value || "#000000"}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-9 w-12 cursor-pointer rounded border border-neutral-200 p-0.5 bg-white"
-        aria-label="Pick colour"
-      />
+      <div className="relative">
+        <input
+          type="color"
+          value={value || "#000000"}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-14 cursor-pointer rounded-xl border-2 border-gray-200 p-1 bg-white"
+          aria-label="Pick colour"
+        />
+      </div>
       <AdminInput
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="flex-1 font-mono"
+        className="flex-1 font-mono text-sm"
         placeholder="#000000"
       />
     </div>
   );
 }
 
-// -- ActiveToggle --------------------------------------------------------------
+// ── ActiveToggle ─────────────────────────────────────────────────────────────
 
 function ActiveToggle({
   id,
@@ -593,24 +622,26 @@ function ActiveToggle({
         role="switch"
         aria-checked={isOn}
         onClick={() => onChange(isOn ? "false" : "true")}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950 ${
-          isOn ? "bg-neutral-900" : "bg-neutral-300"
+        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 ${
+          isOn ? "bg-green-500" : "bg-gray-300"
         }`}
       >
         <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
             isOn ? "translate-x-6" : "translate-x-1"
           }`}
         />
       </button>
-      <span className="text-sm text-neutral-600 select-none">
+      <span
+        className={`text-sm font-medium select-none ${isOn ? "text-green-700" : "text-gray-500"}`}
+      >
         {isOn ? "Active" : "Inactive"}
       </span>
     </div>
   );
 }
 
-// -- AddItemForm (inline per-section) -----------------------------------------
+// ── AddItemForm ──────────────────────────────────────────────────────────────
 
 function AddItemForm({
   group,
@@ -641,44 +672,56 @@ function AddItemForm({
       return;
     }
     toast.success("Item created");
-    onCreated({ id: res.data!.id, key: k, value: value.trim(), label: l, group });
+    onCreated({
+      id: res.data!.id,
+      key: k,
+      value: value.trim(),
+      label: l,
+      group,
+    });
   };
 
   return (
-    <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 space-y-3">
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-        New Content Item
+    <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-5 space-y-4">
+      <p className="text-sm font-semibold text-gray-700">
+        Add New Content Item
       </p>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Key (unique ID)</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">
+            Key (unique ID)
+          </label>
           <input
             type="text"
             value={key}
             onChange={(e) => setKey(e.target.value)}
             placeholder="e.g. hero_subtitle"
-            className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white font-mono"
+            className="w-full text-sm rounded-xl border border-gray-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white font-mono"
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Label (shown in admin)</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">
+            Label (display name)
+          </label>
           <input
             type="text"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="e.g. Hero Subtitle"
-            className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white"
+            className="w-full text-sm rounded-xl border border-gray-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
           />
         </div>
       </div>
       <div>
-        <label className="block text-xs text-gray-500 mb-1">Value</label>
+        <label className="block text-xs font-medium text-gray-500 mb-1.5">
+          Value
+        </label>
         <input
           type="text"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="Initial value (can be edited after)"
-          className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white"
+          placeholder="Initial value"
+          className="w-full text-sm rounded-xl border border-gray-200 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
         />
       </div>
       <div className="flex gap-2 pt-1">
@@ -686,31 +729,276 @@ function AddItemForm({
           type="button"
           onClick={handleCreate}
           disabled={saving || !key.trim() || !label.trim()}
-          className="px-4 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-40 transition-colors flex items-center gap-1.5"
+          className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 disabled:opacity-40 transition-colors flex items-center gap-2"
         >
-          {saving ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
-          {saving ? "Creating…" : "Create"}
+          {saving ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Plus size={14} />
+          )}
+          {saving ? "Creating..." : "Create"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-1.5 border border-gray-200 text-sm text-gray-500 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+          className="px-4 py-2 border border-gray-200 text-sm text-gray-500 rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2"
         >
-          <X size={13} /> Cancel
+          <X size={14} /> Cancel
         </button>
       </div>
     </div>
   );
 }
 
-// -- AdminSiteContentForm ------------------------------------------------------
+// ── ContentField (single item renderer) ──────────────────────────────────────
+
+function ContentField({
+  item,
+  value,
+  hasChange,
+  onChange,
+  onDelete,
+  deleting,
+}: {
+  item: SiteContentItem;
+  value: string;
+  hasChange: boolean;
+  onChange: (v: string) => void;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  const isActive = item.key.endsWith("_active");
+  const isColor = item.key.endsWith("_color");
+  const isMedia = isMediaKey(item.key);
+  const isLong = !isMedia && (value ?? "").length > 80;
+
+  return (
+    <div
+      className={`rounded-2xl border p-4 sm:p-5 transition-all ${
+        hasChange
+          ? "border-amber-300 bg-amber-50/40 shadow-sm"
+          : "border-gray-100 bg-white hover:border-gray-200"
+      }`}
+    >
+      <div className="flex items-start justify-between mb-3 gap-2">
+        <div className="flex-1 min-w-0">
+          <label
+            htmlFor={item.key}
+            className="block text-sm font-semibold text-gray-800"
+          >
+            {item.label}
+          </label>
+          <span className="text-[11px] text-gray-400 font-mono">
+            {item.key}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {hasChange && (
+            <span className="text-[11px] font-semibold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
+              unsaved
+            </span>
+          )}
+          <button
+            type="button"
+            title={`Delete "${item.label}"`}
+            onClick={onDelete}
+            disabled={deleting}
+            className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+          >
+            {deleting ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Trash2 size={14} />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {isActive ? (
+        <ActiveToggle
+          id={item.key}
+          value={value ?? "false"}
+          onChange={onChange}
+        />
+      ) : isColor ? (
+        <ColorField
+          id={item.key}
+          value={value ?? "#000000"}
+          onChange={onChange}
+        />
+      ) : isMedia ? (
+        <MediaUploadField
+          id={item.key}
+          itemKey={item.key}
+          value={value ?? ""}
+          onChange={onChange}
+        />
+      ) : isLong ? (
+        <textarea
+          id={item.key}
+          className="flex w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 min-h-[80px] resize-y"
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      ) : (
+        <AdminInput
+          id={item.key}
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── GroupSection (renders all items in a group) ──────────────────────────────
+
+function GroupSection({
+  group,
+  items,
+  values,
+  savedValues,
+  savingGroup,
+  deletingId,
+  addingGroup,
+  onChange,
+  onSaveGroup,
+  onDelete,
+  onAddItem,
+  onSetAddingGroup,
+}: {
+  group: string;
+  items: SiteContentItem[];
+  values: Record<string, string>;
+  savedValues: Record<string, string>;
+  savingGroup: string | null;
+  deletingId: string | null;
+  addingGroup: string | null;
+  onChange: (id: string, v: string) => void;
+  onSaveGroup: (group: string, items: SiteContentItem[]) => void;
+  onDelete: (item: SiteContentItem) => void;
+  onAddItem: (item: SiteContentItem) => void;
+  onSetAddingGroup: (group: string | null) => void;
+}) {
+  const meta = getGroupMeta(group);
+  const sectionChanges = items.filter(
+    (item) => values[item.id] !== savedValues[item.id],
+  ).length;
+
+  // Separate media items for grid layout
+  const mediaItems = items.filter((item) => isMediaKey(item.key));
+  const nonMediaItems = items.filter((item) => !isMediaKey(item.key));
+
+  return (
+    <div className="space-y-4">
+      {/* Group header */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-gray-100 text-gray-600">
+            {meta.icon}
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900 text-sm">
+              {meta.label}
+            </h3>
+            <span className="text-xs text-gray-400">
+              {items.length} item{items.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          disabled={sectionChanges === 0 || savingGroup === group}
+          onClick={() => onSaveGroup(group, items)}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+            sectionChanges > 0
+              ? "bg-gray-900 text-white hover:bg-gray-800"
+              : "bg-gray-100 text-gray-400 cursor-default"
+          }`}
+        >
+          {savingGroup === group ? (
+            <span className="flex items-center gap-1.5">
+              <Loader2 size={12} className="animate-spin" />
+              Saving...
+            </span>
+          ) : sectionChanges > 0 ? (
+            <span className="flex items-center gap-1.5">
+              <Save size={12} />
+              Save ({sectionChanges})
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <Check size={12} />
+              Saved
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Media items in a responsive grid */}
+      {mediaItems.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {mediaItems.map((item) => (
+            <ContentField
+              key={item.id}
+              item={item}
+              value={values[item.id]}
+              hasChange={values[item.id] !== savedValues[item.id]}
+              onChange={(v) => onChange(item.id, v)}
+              onDelete={() => onDelete(item)}
+              deleting={deletingId === item.id}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Non-media items */}
+      <div className="space-y-3">
+        {nonMediaItems.map((item) => (
+          <ContentField
+            key={item.id}
+            item={item}
+            value={values[item.id]}
+            hasChange={values[item.id] !== savedValues[item.id]}
+            onChange={(v) => onChange(item.id, v)}
+            onDelete={() => onDelete(item)}
+            deleting={deletingId === item.id}
+          />
+        ))}
+      </div>
+
+      {/* Add item */}
+      {addingGroup === group ? (
+        <AddItemForm
+          group={group}
+          onCreated={onAddItem}
+          onCancel={() => onSetAddingGroup(null)}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => onSetAddingGroup(group)}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-gray-200 text-sm text-gray-400 hover:text-gray-600 hover:border-gray-300 hover:bg-gray-50/50 transition-all"
+        >
+          <Plus size={14} /> Add item
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Main Component ───────────────────────────────────────────────────────────
 
 type AdminSiteContentFormProps = {
   items: SiteContentItem[];
 };
 
-export function AdminSiteContentForm({ items: initialItems }: AdminSiteContentFormProps) {
+export function AdminSiteContentForm({
+  items: initialItems,
+}: AdminSiteContentFormProps) {
   const [allItems, setAllItems] = useState<SiteContentItem[]>(initialItems);
+  const [activeTab, setActiveTab] = useState(TAB_CONFIG[0].id);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const buildInitial = (list: SiteContentItem[]) =>
     list.reduce(
@@ -721,30 +1009,16 @@ export function AdminSiteContentForm({ items: initialItems }: AdminSiteContentFo
       {} as Record<string, string>,
     );
 
-  const [values, setValues] = useState<Record<string, string>>(buildInitial(initialItems));
-  const [savedValues, setSavedValues] = useState<Record<string, string>>(buildInitial(initialItems));
+  const [values, setValues] = useState<Record<string, string>>(
+    buildInitial(initialItems),
+  );
+  const [savedValues, setSavedValues] = useState<Record<string, string>>(
+    buildInitial(initialItems),
+  );
   const [savingGroup, setSavingGroup] = useState<string | null>(null);
   const [savingAll, setSavingAll] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  // Accordion: all groups open by default
-  const allGroups = [...new Set(initialItems.map((i) => i.group))];
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(allGroups));
-
-  // Per-group "add new item" forms
   const [addingGroup, setAddingGroup] = useState<string | null>(null);
-
-  const toggleGroup = (group: string) => {
-    setOpenGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(group)) {
-        next.delete(group);
-      } else {
-        next.add(group);
-      }
-      return next;
-    });
-  };
 
   const grouped = allItems.reduce(
     (acc, item) => {
@@ -766,11 +1040,13 @@ export function AdminSiteContentForm({ items: initialItems }: AdminSiteContentFo
     });
   };
 
-  const handleSaveGroup = async (group: string, groupItems: SiteContentItem[]) => {
+  const handleSaveGroup = async (
+    group: string,
+    groupItems: SiteContentItem[],
+  ) => {
     const updates = groupItems
       .filter((item) => values[item.id] !== savedValues[item.id])
       .map((item) => ({ id: item.id, value: values[item.id] }));
-
     if (updates.length === 0) {
       toast.info("No changes in this section.");
       return;
@@ -790,7 +1066,6 @@ export function AdminSiteContentForm({ items: initialItems }: AdminSiteContentFo
     const updates = allItems
       .filter((item) => values[item.id] !== savedValues[item.id])
       .map((item) => ({ id: item.id, value: values[item.id] }));
-
     if (updates.length === 0) {
       toast.info("No changes to save.");
       return;
@@ -807,7 +1082,12 @@ export function AdminSiteContentForm({ items: initialItems }: AdminSiteContentFo
   };
 
   const handleDelete = async (item: SiteContentItem) => {
-    if (!confirm(`Delete "${item.label}"?\n\nKey: ${item.key}\nThis cannot be undone.`)) return;
+    if (
+      !confirm(
+        `Delete "${item.label}"?\n\nKey: ${item.key}\nThis cannot be undone.`,
+      )
+    )
+      return;
     setDeletingId(item.id);
     const res = await deleteSiteContentById(item.id);
     setDeletingId(null);
@@ -834,257 +1114,277 @@ export function AdminSiteContentForm({ items: initialItems }: AdminSiteContentFo
     setValues((prev) => ({ ...prev, [newItem.id]: newItem.value }));
     setSavedValues((prev) => ({ ...prev, [newItem.id]: newItem.value }));
     setAddingGroup(null);
-    // ensure section is open
-    setOpenGroups((prev) => new Set([...prev, newItem.group]));
   };
 
   const totalChanges = allItems.filter(
     (item) => values[item.id] !== savedValues[item.id],
   ).length;
 
+  // Get current active tab config
+  const currentTab =
+    TAB_CONFIG.find((t) => t.id === activeTab) ?? TAB_CONFIG[0];
+
+  // Groups for the active tab, filtered to only those with items
+  const activeGroups = currentTab.groups.filter((g) => grouped[g]?.length);
+
+  // Collect "other" groups not assigned to any tab
+  const allTabGroups = TAB_CONFIG.flatMap((t) => t.groups);
+  const otherGroups = Object.keys(grouped).filter(
+    (g) => !allTabGroups.includes(g),
+  );
+
+  // Search mode
+  const isSearching = searchQuery.trim().length > 0;
+  const searchResults = isSearching
+    ? allItems.filter(
+        (item) =>
+          item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (values[item.id] ?? "")
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()),
+      )
+    : [];
+
+  // Tab change counts per tab
+  const tabChangeCounts = TAB_CONFIG.reduce(
+    (acc, tab) => {
+      let count = 0;
+      for (const group of tab.groups) {
+        if (grouped[group]) {
+          count += grouped[group].filter(
+            (item) => values[item.id] !== savedValues[item.id],
+          ).length;
+        }
+      }
+      acc[tab.id] = count;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
   return (
-    <div className="space-y-4 pb-10">
-      {/* Sticky top bar */}
-      <div className="sticky top-0 z-10 -mx-6 px-6 py-3 bg-white/95 backdrop-blur border-b border-gray-100 flex items-center justify-between">
-        <p className="text-sm text-gray-400">
-          {totalChanges > 0
-            ? `${totalChanges} unsaved change${totalChanges === 1 ? "" : "s"}`
-            : "All changes saved"}
-        </p>
-        <AdminButton
-          type="button"
-          onClick={handleSaveAll}
-          disabled={savingAll || totalChanges === 0}
-        >
-          {savingAll ? (
-            <span className="flex items-center gap-2">
-              <Loader2 size={14} className="animate-spin" />
-              Saving…
-            </span>
-          ) : (
-            `Save All${totalChanges > 0 ? ` (${totalChanges})` : ""}`
-          )}
-        </AdminButton>
+    <div className="pb-10">
+      {/* ── Top bar: search + save all ── */}
+      <div className="sticky top-0 z-20 -mx-1 px-1 py-3 bg-gray-50/95 backdrop-blur-sm">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Search bar */}
+          <div className="relative flex-1 max-w-md">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search content..."
+              className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 placeholder:text-gray-400"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Save all + changes counter */}
+          <div className="flex items-center gap-3">
+            {totalChanges > 0 && (
+              <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full whitespace-nowrap">
+                {totalChanges} unsaved change{totalChanges !== 1 ? "s" : ""}
+              </span>
+            )}
+            <AdminButton
+              type="button"
+              onClick={handleSaveAll}
+              disabled={savingAll || totalChanges === 0}
+              className="whitespace-nowrap"
+            >
+              {savingAll ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 size={14} className="animate-spin" />
+                  Saving...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Save size={14} />
+                  Save All
+                </span>
+              )}
+            </AdminButton>
+          </div>
+        </div>
       </div>
 
-      {/* Section accordion cards � hero & home-page first */}
-      {Object.entries(grouped)
-        .sort(([a], [b]) => {
-          const ORDER = [
-            "hero",
-            "video-section",
-            "home-page",
-            "feature-cards",
-            "about-images",
-            "about-page",
-            "about-features",
-            "social-links",
-            "newsletter",
-            "shipping",
-            "delivery-estimates",
-            "announcement-marquee",
-            "product-marquee",
-            "partner-logos-marquee",
-          ];
-          const ai = ORDER.indexOf(a);
-          const bi = ORDER.indexOf(b);
-          if (ai === -1 && bi === -1) return a.localeCompare(b);
-          if (ai === -1) return 1;
-          if (bi === -1) return -1;
-          return ai - bi;
-        })
-        .map(([group, groupItems]) => {
-        const config = getGroupConfig(group);
-        const isOpen = openGroups.has(group);
-        const sectionChanges = groupItems.filter(
-          (item) => values[item.id] !== savedValues[item.id],
-        ).length;
-
-        return (
-          <div
-            key={group}
-            className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
-          >
-            {/* Accordion header � click to open/close */}
-            <button
-              type="button"
-              onClick={() => toggleGroup(group)}
-              className="w-full flex items-center justify-between px-5 py-4 bg-gray-50/80 hover:bg-gray-50 transition-colors text-left"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-1.5 rounded-lg bg-white border border-gray-200 text-gray-500">
-                  {config.icon}
-                </div>
-                <div>
-                  <span className="font-semibold text-gray-900 text-sm">
-                    {config.label}
-                  </span>
-                  <span className="ml-2 text-xs text-gray-400">
-                    {groupItems.length} item{groupItems.length !== 1 ? "s" : ""}
-                  </span>
-                  {sectionChanges > 0 && (
-                    <span className="ml-2 text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                      {sectionChanges} unsaved
+      {/* ── Tab navigation ── */}
+      {!isSearching && (
+        <div className="mt-4 mb-6">
+          {/* Desktop tabs */}
+          <div className="hidden md:flex gap-1 rounded-2xl bg-gray-100 p-1.5">
+            {TAB_CONFIG.map((tab) => {
+              const isActive = activeTab === tab.id;
+              const changes = tabChangeCounts[tab.id] ?? 0;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                    isActive
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700 hover:bg-white/50"
+                  }`}
+                >
+                  <span className="hidden lg:inline">{tab.icon}</span>
+                  <span>{tab.label}</span>
+                  {changes > 0 && (
+                    <span className="ml-1 text-[10px] bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                      {changes}
                     </span>
                   )}
-                </div>
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                {config.description && isOpen && (
-                  <p className="hidden sm:block text-xs text-gray-400 max-w-xs text-right">
-                    {config.description}
-                  </p>
-                )}
-                {isOpen ? (
-                  <ChevronDown size={16} className="text-gray-400" />
-                ) : (
-                  <ChevronRight size={16} className="text-gray-400" />
-                )}
-              </div>
-            </button>
+                </button>
+              );
+            })}
+          </div>
 
-            {/* Accordion body */}
-            {isOpen && (
-              <div className="border-t border-gray-100">
-                <div className="p-5 space-y-5">
-                  {groupItems.map((item) => {
-                    const isActive = item.key.endsWith("_active");
-                    const isColor = item.key.endsWith("_color");
-                    const isMedia = isMediaKey(item.key);
-                    const isLong =
-                      !isMedia && (values[item.id] ?? "").length > 80;
-                    const hasChange =
-                      values[item.id] !== savedValues[item.id];
-
-                    return (
-                      <div
-                        key={item.id}
-                        className={`rounded-lg border p-4 transition-colors ${
-                          hasChange
-                            ? "border-amber-200 bg-amber-50/30"
-                            : "border-gray-100 bg-white"
-                        }`}
-                      >
-                        {/* Item header */}
-                        <div className="flex items-start justify-between mb-2 gap-2">
-                          <div className="flex-1 min-w-0">
-                            <label
-                              htmlFor={item.key}
-                              className="block text-sm font-medium text-gray-800 cursor-pointer"
-                            >
-                              {item.label}
-                            </label>
-                            <span className="text-xs text-gray-400 font-mono">
-                              {item.key}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {hasChange && (
-                              <span className="text-xs text-amber-600 font-semibold">
-                                unsaved
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              title={`Delete "${item.label}"`}
-                              onClick={() => handleDelete(item)}
-                              disabled={deletingId === item.id}
-                              className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
-                            >
-                              {deletingId === item.id ? (
-                                <Loader2 size={14} className="animate-spin" />
-                              ) : (
-                                <Trash2 size={14} />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Field */}
-                        {isActive ? (
-                          <ActiveToggle
-                            id={item.key}
-                            value={values[item.id] ?? "false"}
-                            onChange={(v) => handleChange(item.id, v)}
-                          />
-                        ) : isColor ? (
-                          <ColorField
-                            id={item.key}
-                            value={values[item.id] ?? "#000000"}
-                            onChange={(v) => handleChange(item.id, v)}
-                          />
-                        ) : isMedia ? (
-                          <MediaUploadField
-                            id={item.key}
-                            itemKey={item.key}
-                            value={values[item.id] ?? ""}
-                            onChange={(v) => handleChange(item.id, v)}
-                          />
-                        ) : isLong ? (
-                          <textarea
-                            id={item.key}
-                            className="flex w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 min-h-[72px] resize-y"
-                            value={values[item.id] ?? ""}
-                            onChange={(e) => handleChange(item.id, e.target.value)}
-                          />
-                        ) : (
-                          <AdminInput
-                            id={item.key}
-                            value={values[item.id] ?? ""}
-                            onChange={(e) => handleChange(item.id, e.target.value)}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {/* Add item form or button */}
-                  {addingGroup === group ? (
-                    <AddItemForm
-                      group={group}
-                      onCreated={handleItemCreated}
-                      onCancel={() => setAddingGroup(null)}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setAddingGroup(group)}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-gray-300 text-sm text-gray-400 hover:text-gray-600 hover:border-gray-400 hover:bg-gray-50/60 transition-colors"
+          {/* Mobile tabs - horizontal scroll */}
+          <div className="md:hidden flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
+            {TAB_CONFIG.map((tab) => {
+              const isActive = activeTab === tab.id;
+              const changes = tabChangeCounts[tab.id] ?? 0;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all border ${
+                    isActive
+                      ? "bg-gray-900 text-white border-gray-900"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  {tab.icon}
+                  <span>{tab.shortLabel}</span>
+                  {changes > 0 && (
+                    <span
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ${
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-amber-100 text-amber-700"
+                      }`}
                     >
-                      <Plus size={14} /> Add item to this section
-                    </button>
+                      {changes}
+                    </span>
                   )}
-                </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-                {/* Section footer */}
-                <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/50 flex items-center justify-end">
-                  <button
-                    type="button"
-                    disabled={sectionChanges === 0 || savingGroup === group}
-                    onClick={() => handleSaveGroup(group, groupItems)}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      sectionChanges > 0
-                        ? "bg-gray-900 text-white hover:bg-gray-700 cursor-pointer"
-                        : "bg-gray-100 text-gray-400 cursor-default"
-                    }`}
-                  >
-                    {savingGroup === group ? (
-                      <span className="flex items-center gap-1.5">
-                        <Loader2 size={12} className="animate-spin" />
-                        Saving…
-                      </span>
-                    ) : sectionChanges > 0 ? (
-                      `Save Section (${sectionChanges})`
-                    ) : (
-                      "Saved ✓"
-                    )}
-                  </button>
+      {/* ── Tab description ── */}
+      {!isSearching && currentTab.description && (
+        <div className="mb-6 px-4 py-3 rounded-xl bg-blue-50/50 border border-blue-100">
+          <p className="text-sm text-blue-700">{currentTab.description}</p>
+        </div>
+      )}
+
+      {/* ── Search results ── */}
+      {isSearching && (
+        <div className="mt-4 space-y-3">
+          <p className="text-sm text-gray-500 mb-4">
+            {searchResults.length} result
+            {searchResults.length !== 1 ? "s" : ""} for &quot;{searchQuery}
+            &quot;
+          </p>
+          {searchResults.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <Search size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">No items found</p>
+            </div>
+          ) : (
+            searchResults.map((item) => (
+              <ContentField
+                key={item.id}
+                item={item}
+                value={values[item.id]}
+                hasChange={values[item.id] !== savedValues[item.id]}
+                onChange={(v) => handleChange(item.id, v)}
+                onDelete={() => handleDelete(item)}
+                deleting={deletingId === item.id}
+              />
+            ))
+          )}
+        </div>
+      )}
+
+      {/* ── Tab content (group sections) ── */}
+      {!isSearching && (
+        <div className="space-y-8">
+          {activeGroups.map((group) => (
+            <GroupSection
+              key={group}
+              group={group}
+              items={grouped[group]}
+              values={values}
+              savedValues={savedValues}
+              savingGroup={savingGroup}
+              deletingId={deletingId}
+              addingGroup={addingGroup}
+              onChange={handleChange}
+              onSaveGroup={handleSaveGroup}
+              onDelete={handleDelete}
+              onAddItem={handleItemCreated}
+              onSetAddingGroup={setAddingGroup}
+            />
+          ))}
+
+          {/* "Other" groups shown on the last tab */}
+          {activeTab === TAB_CONFIG[TAB_CONFIG.length - 1].id &&
+            otherGroups.length > 0 && (
+              <div className="pt-6 border-t border-gray-200">
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+                  Other Settings
+                </h2>
+                <div className="space-y-8">
+                  {otherGroups.map((group) => (
+                    <GroupSection
+                      key={group}
+                      group={group}
+                      items={grouped[group]}
+                      values={values}
+                      savedValues={savedValues}
+                      savingGroup={savingGroup}
+                      deletingId={deletingId}
+                      addingGroup={addingGroup}
+                      onChange={handleChange}
+                      onSaveGroup={handleSaveGroup}
+                      onDelete={handleDelete}
+                      onAddItem={handleItemCreated}
+                      onSetAddingGroup={setAddingGroup}
+                    />
+                  ))}
                 </div>
               </div>
             )}
-          </div>
-        );
-      })}
+
+          {/* Empty state */}
+          {activeGroups.length === 0 && (
+            <div className="text-center py-16 text-gray-400">
+              <Settings size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">
+                No content items in this section yet.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

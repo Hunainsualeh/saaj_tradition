@@ -1,6 +1,7 @@
-"use server";
+﻿"use server";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
+import { invalidateCacheTag } from "../helpers/cache-helpers";
 
 import { prisma } from "@/lib/prisma";
 import { TeamMemberMutationInput, ServerActionResponse } from "@/types/server";
@@ -25,7 +26,7 @@ export async function deleteTeamMemberById(
 
     const deleted = await prisma.teamMember.delete({ where: { id } });
 
-    updateTag(CACHE_TAG_TEAM);
+    invalidateCacheTag(CACHE_TAG_TEAM);
     revalidatePath(adminRoutes.team);
     revalidatePath(routes.about);
 
@@ -62,7 +63,7 @@ export async function createTeamMember(
       },
     });
 
-    updateTag(CACHE_TAG_TEAM);
+    invalidateCacheTag(CACHE_TAG_TEAM);
     revalidatePath(adminRoutes.team);
     revalidatePath(routes.about);
 
@@ -79,7 +80,7 @@ export async function updateTeamMemberById(
       return { id };
     }
 
-    updateTag(CACHE_TAG_TEAM);
+    invalidateCacheTag(CACHE_TAG_TEAM);
     revalidatePath(adminRoutes.team);
     revalidatePath(routes.about);
 

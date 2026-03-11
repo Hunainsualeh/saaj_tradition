@@ -58,6 +58,7 @@ export function ProductPurchasePanelUI(props: ProductPurchasePanelUIProps) {
 
   return (
     <div className="w-full lg:w-1/2 flex flex-col gap-8 lg:gap-10 lg:sticky lg:top-22 self-start">
+      {/* Product title, price, description */}
       <div className="flex flex-col gap-2">
         <AnimatedHeadingText text={product.name} variant="product-page-title" />
         <div className="flex items-baseline gap-2 pb-2">
@@ -70,56 +71,39 @@ export function ProductPurchasePanelUI(props: ProductPurchasePanelUIProps) {
             </span>
           )}
         </div>
-        <p className="text-neutral-10 text-sm">{product.description}</p>
+        <p className="text-neutral-10 text-sm leading-relaxed">{product.description}</p>
       </div>
 
-      <div className="flex flex-col gap-6">
-        {/* OUT OF STOCK WARNING */}
+      <div className="flex flex-col gap-5">
+        {/* Stock status */}
         {product.stockStatus === "OUT_OF_STOCK" && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start gap-2">
-            <div className="text-red-600 fill-current flex-shrink-0 mt-0.5">
-              <svg className="w-5 h-5" viewBox="0 0 20 20">
-                <path d="M10 .5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19zM9 4h2v11H9V4zm0 12h2v2H9v-2z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h4 className="font-semibold text-sm text-red-900">Out of Stock</h4>
-              <p className="text-xs text-red-800 mt-1">This product is currently unavailable.</p>
-            </div>
-          </div>
+          <p className="text-sm text-neutral-9 border-l-2 border-neutral-4 pl-3">
+            Currently out of stock
+          </p>
         )}
 
-        {/* LOW STOCK WARNING */}
         {product.stockStatus === "LOW_STOCK" && product.showLowStockWarning && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 flex items-start gap-2">
-            <div className="text-yellow-600 fill-current flex-shrink-0 mt-0.5">
-              <svg className="w-5 h-5" viewBox="0 0 20 20">
-                <path d="M10 .5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19zM9 4h2v11H9V4zm0 12h2v2H9v-2z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h4 className="font-semibold text-sm text-yellow-900">Limited Stock</h4>
-              <p className="text-xs text-yellow-800 mt-1">
-                {product.lowStockThreshold
-                  ? `Only ${product.lowStockThreshold} left in stock`
-                  : "Limited quantity available"}
-              </p>
-            </div>
-          </div>
+          <p className="text-sm text-neutral-9 border-l-2 border-neutral-4 pl-3">
+            {product.lowStockThreshold
+              ? `Only ${product.lowStockThreshold} remaining`
+              : "Low stock — order soon"}
+          </p>
         )}
 
+        {/* Size selector */}
         {product.sizes && product.sizes.length > 1 && (
           <div className="flex flex-col gap-3">
-            <label
-              htmlFor="size-select"
-              className="text-sm font-semibold text-neutral-10"
-            >
-              Select Size
-            </label>
-
-            {showSizeError && (
-              <p className="text-red-500 text-sm">Please select a size</p>
-            )}
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="size-select"
+                className="text-sm font-medium text-neutral-10"
+              >
+                Size
+              </label>
+              {showSizeError && (
+                <span className="text-xs text-neutral-8">Please select a size</span>
+              )}
+            </div>
 
             <ToggleGroup
               id="size-select"
@@ -138,7 +122,7 @@ export function ProductPurchasePanelUI(props: ProductPurchasePanelUIProps) {
                     key={size.id}
                     value={size.id}
                     disabled={isOutOfStock}
-                    className={isOutOfStock ? "opacity-40 line-through cursor-not-allowed" : ""}
+                    className={isOutOfStock ? "opacity-35 line-through cursor-not-allowed" : ""}
                   >
                     {size.label?.toUpperCase()}
                   </ToggleGroupItem>
@@ -148,10 +132,10 @@ export function ProductPurchasePanelUI(props: ProductPurchasePanelUIProps) {
           </div>
         )}
 
+        {/* Error */}
         {isError && (
-          <p className="text-red-500 text-sm">
-            An error occurred while adding the product to the cart. Please try
-            again.
+          <p className="text-xs text-neutral-8">
+            Could not add to cart — please try again.
           </p>
         )}
 

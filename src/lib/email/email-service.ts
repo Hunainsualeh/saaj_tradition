@@ -72,6 +72,21 @@ function statusBadgeHtml(status: string): string {
   return `<span style="display:inline-block;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:${c.bg};color:${c.color};">${status}</span>`;
 }
 
+/** Basic email format validation */
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/** Sanitize user-provided text to prevent HTML injection in emails */
+function sanitizeForHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /** Replace all {{variable}} occurrences in a template string */
 function applyVariables(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
@@ -143,6 +158,10 @@ function buildTrackingIdRow(trackingToken?: string): string {
 
 export async function sendOrderConfirmationEmail(input: SendOrderConfirmationInput) {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
+  if (!isValidEmail(input.to)) {
+    console.warn(`[Email] Invalid recipient email for order confirmation: ${input.to}`);
+    return;
+  }
 
   const { subject, html } = await resolveTemplate(
     EmailTemplateType.ORDER_CONFIRMATION,
@@ -174,7 +193,7 @@ export async function sendOrderConfirmationEmail(input: SendOrderConfirmationInp
     : "";
 
   const vars: Record<string, string> = {
-    customerName: input.customerName,
+    customerName: sanitizeForHtml(input.customerName),
     orderNumber: input.orderNumber.toString(),
     orderDate: input.orderDate,
     orderStatus: input.orderStatus,
@@ -204,6 +223,10 @@ export async function sendOrderConfirmationEmail(input: SendOrderConfirmationInp
 
 export async function sendAdminOrderNotificationEmail(input: SendOrderConfirmationInput & { customerPhone?: string; customerEmail: string }) {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
+  if (!isValidEmail(ADMIN_EMAIL)) {
+    console.warn(`[Email] Invalid admin email for notification: ${ADMIN_EMAIL}`);
+    return;
+  }
 
   const { subject, html } = await resolveTemplate(
     EmailTemplateType.ORDER_ADMIN_NOTIFICATION,
@@ -233,9 +256,9 @@ export async function sendAdminOrderNotificationEmail(input: SendOrderConfirmati
     : "";
 
   const vars: Record<string, string> = {
-    customerName: input.customerName || "Customer",
-    customerEmail: input.customerEmail || "—",
-    customerPhone: input.customerPhone || "—",
+    customerName: sanitizeForHtml(input.customerName || "Customer"),
+    customerEmail: sanitizeForHtml(input.customerEmail || "—"),
+    customerPhone: sanitizeForHtml(input.customerPhone || "—"),
     orderNumber: input.orderNumber.toString(),
     orderDate: input.orderDate,
     orderStatusBadge: statusBadgeHtml(input.orderStatus),
@@ -272,6 +295,10 @@ export async function sendOrderStatusUpdateEmail(input: {
   trackingUrl?: string;
 }) {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
+  if (!isValidEmail(input.to)) {
+    console.warn(`[Email] Invalid recipient email for status update: ${input.to}`);
+    return;
+  }
 
   const { subject, html } = await resolveTemplate(
     EmailTemplateType.ORDER_STATUS_UPDATE,
@@ -279,11 +306,11 @@ export async function sendOrderStatusUpdateEmail(input: {
   );
 
   const customMessage = input.customMessage
-    ? `<div style="margin-top:20px;padding:16px;background:#faf8f5;border-left:3px solid #c9a84c;border-radius:4px;"><p style="font-size:14px;color:#444;line-height:1.8;">${input.customMessage}</p></div>`
+    ? `<div style="margin-top:20px;padding:16px;background:#faf8f5;border-left:3px solid #c9a84c;border-radius:4px;"><p style="font-size:14px;color:#444;line-height:1.8;">${sanitizeForHtml(input.customMessage)}</p></div>`
     : "";
 
   const vars: Record<string, string> = {
-    customerName: input.customerName,
+    customerName: sanitizeForHtml(input.customerName),
     orderNumber: input.orderNumber.toString(),
     orderStatus: input.orderStatus,
     orderStatusBadge: statusBadgeHtml(input.orderStatus),

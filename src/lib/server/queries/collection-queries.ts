@@ -6,6 +6,7 @@ import { CollectionItem } from "@/types/client";
 import { Collection } from "@prisma/client";
 import { wrapServerCall } from "@/lib/server/helpers";
 import { CACHE_TAG_COLLECTION } from "@/lib/constants/cache-tags";
+import { redisCache } from "@/lib/redis-cache";
 
 // === FETCHES ===
 const getCollectionsCached = unstable_cache(
@@ -20,7 +21,13 @@ const getCollectionsCached = unstable_cache(
 export async function getCollections(): Promise<
   ServerActionResponse<CollectionItem[]>
 > {
-  return wrapServerCall(() => getCollectionsCached());
+  return wrapServerCall(() =>
+    redisCache(
+      () => getCollectionsCached(),
+      [CACHE_TAG_COLLECTION, "all"],
+      { tags: [CACHE_TAG_COLLECTION], ttl: 600 },
+    ),
+  );
 }
 
 export async function getCollectionById(

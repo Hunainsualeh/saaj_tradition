@@ -1,6 +1,7 @@
-"use server";
+﻿"use server";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
+import { invalidateCacheTag } from "../helpers/cache-helpers";
 import { cookies } from "next/headers";
 
 import { prisma } from "@/lib/prisma";
@@ -15,6 +16,7 @@ import { isDemoMode } from "@/lib/server/helpers/demo-mode";
 import { validateCouponCode } from "@/lib/server/queries";
 import { COOKIE_COUPON_CODE } from "@/lib/constants/cookie-variables";
 import { CACHE_TAG_CART, CACHE_TAG_COUPON } from "@/lib/constants/cache-tags";
+import { rateLimitCoupon } from "@/lib/rate-limit";
 
 export async function deleteCouponById(
   id: string,
@@ -24,7 +26,7 @@ export async function deleteCouponById(
       return { id };
     }
     const deleted = await prisma.coupon.delete({ where: { id } });
-    updateTag(CACHE_TAG_COUPON);
+    invalidateCacheTag(CACHE_TAG_COUPON);
     revalidatePath(adminRoutes.coupons);
     return { id: deleted.id };
   });
@@ -46,7 +48,7 @@ export async function createCoupon(
         expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
       },
     });
-    updateTag(CACHE_TAG_COUPON);
+    invalidateCacheTag(CACHE_TAG_COUPON);
     revalidatePath(adminRoutes.coupons);
     return { id: created.id };
   });
@@ -70,7 +72,7 @@ export async function updateCouponById(
         expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
       },
     });
-    updateTag(CACHE_TAG_COUPON);
+    invalidateCacheTag(CACHE_TAG_COUPON);
     revalidatePath(adminRoutes.coupons);
     return { id };
   });
@@ -96,6 +98,12 @@ export async function applyCouponCode(
   code: string,
 ): Promise<ServerActionResponse<CouponValidationResult>> {
   return wrapServerCall(async () => {
+    // Rate limit: 10 coupon attempts per minute per code
+    const rl = await rateLimitCoupon(code);
+    if (!rl.allowed) {
+      return { valid: false, discountPercent: 0, code: "", message: "Too many attempts. Please try again later." };
+    }
+
     const result = await validateCouponCode(code);
 
     if (!result.success) {
@@ -115,7 +123,7 @@ export async function applyCouponCode(
       path: "/",
     });
 
-    updateTag(CACHE_TAG_CART);
+    invalidateCacheTag(CACHE_TAG_CART);
 
     return result.data;
   });
@@ -127,6 +135,6 @@ export async function removeCouponCode(): Promise<
   return wrapServerCall(async () => {
     const cookieStore = await cookies();
     cookieStore.delete(COOKIE_COUPON_CODE);
-    updateTag(CACHE_TAG_CART);
+    invalidateCacheTag(CACHE_TAG_CART);
   });
 }

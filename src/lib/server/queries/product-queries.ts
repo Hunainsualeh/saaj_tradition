@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { CACHE_TAG_PRODUCT } from "@/lib/constants/cache-tags";
 import { SIZE_TEMPLATES, SIZE_TYPES } from "@/lib/constants";
 import { SerializedProduct } from "@/types/client";
+import { redisCache } from "@/lib/redis-cache";
 
 /** Convert Prisma Product Decimals to plain numbers for client serialization */
 function serializeProduct<T extends { price: unknown; compareAtPrice?: unknown; categories?: unknown }>(product: T) {
@@ -50,7 +51,11 @@ export async function getThreeLatestProducts(): Promise<
   ServerActionResponse<SerializedProduct[]>
 > {
   return wrapServerCall(async () => {
-    return await getThreeLatestProductsCached();
+    return redisCache(
+      () => getThreeLatestProductsCached(),
+      [CACHE_TAG_PRODUCT, "latest-three"],
+      { tags: [CACHE_TAG_PRODUCT], ttl: 300 },
+    );
   });
 }
 
@@ -73,7 +78,11 @@ export async function getFeaturedProducts(): Promise<
   ServerActionResponse<SerializedProduct[]>
 > {
   return wrapServerCall(async () => {
-    return await getFeaturedProductsCached();
+    return redisCache(
+      () => getFeaturedProductsCached(),
+      [CACHE_TAG_PRODUCT, "featured"],
+      { tags: [CACHE_TAG_PRODUCT], ttl: 300 },
+    );
   });
 }
 
@@ -142,52 +151,63 @@ export async function getThreeRandomProducts(
 }
 const getAllProductsWithTotalSoldCached = unstable_cache(
   async (): Promise<ProductGetAllCounts[]> => {
-    const products = await prisma.product.findMany({
-      include: {
-        categories: {
-          select: { name: true },
-          take: 1,
+    // Efficiently get total sold per product using a grouped aggregate,
+    // instead of loading all cart items into memory.
+    const [products, soldAgg] = await Promise.all([
+      prisma.product.findMany({
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          price: true,
+          compareAtPrice: true,
+          isActive: true,
+          isFeatured: true,
+          createdAt: true,
+          updatedAt: true,
+          images: true,
+          slug: true,
+          sizeType: true,
+          categories: { select: { name: true }, take: 1 },
         },
-        cartItems: {
-          include: {
-            cart: {
-              include: {
-                order: {
-                  select: {
-                    status: true,
-                  },
-                },
+        orderBy: { createdAt: "desc" },
+      }),
+      // aggregate sold quantity per product for non-cancelled/refunded orders
+      prisma.cartItem.groupBy({
+        by: ["productId"],
+        where: {
+          cart: {
+            order: {
+              status: {
+                notIn: [OrderStatus.CANCELLED, OrderStatus.REFUNDED],
               },
             },
           },
         },
-      },
-    });
+        _sum: { quantity: true },
+      }),
+    ]);
 
-    return products.map((product) => {
-      // Sum up total sold from cart items where cart has an order that's not cancelled/refunded
-      const totalSold = product.cartItems.reduce((sum, item) => {
-        const order = item.cart.order;
-        if (
-          order &&
-          order.status !== OrderStatus.CANCELLED &&
-          order.status !== OrderStatus.REFUNDED
-        ) {
-          return sum + item.quantity;
-        }
-        return sum;
-      }, 0);
+    const soldMap = new Map<string, number>(
+      soldAgg.map((s) => [s.productId, s._sum.quantity ?? 0]),
+    );
 
-      // Destructure to exclude cartItems (contains Decimal fields) from client payload
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { cartItems: _cartItems, categories, ...productWithoutCartItems } = product;
-
-      return {
-        ...serializeProduct(productWithoutCartItems),
-        categoryName: categories[0]?.name ?? "Uncategorized",
-        totalSold,
-      };
-    });
+    return products.map((product) => ({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: Number(product.price),
+      compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null,
+      isActive: product.isActive,
+      isFeatured: product.isFeatured,
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt,
+      images: product.images,
+      slug: product.slug,
+      sizeType: product.sizeType,
+      categoryName: product.categories[0]?.name ?? "Uncategorized",
+      totalSold: soldMap.get(product.id) ?? 0,
+    }));
   },
   [CACHE_TAG_PRODUCT, "total-sold"],
   { tags: [CACHE_TAG_PRODUCT] },
@@ -197,9 +217,11 @@ export async function getAllProductsWithTotalSold(): Promise<
   ServerActionResponse<ProductGetAllCounts[]>
 > {
   return wrapServerCall(async () => {
-    const products = await getAllProductsWithTotalSoldCached();
-
-    return products;
+    return redisCache(
+      () => getAllProductsWithTotalSoldCached(),
+      [CACHE_TAG_PRODUCT, "total-sold"],
+      { tags: [CACHE_TAG_PRODUCT], ttl: 120 },
+    );
   });
 }
 
@@ -279,7 +301,7 @@ export async function getProductById(
     });
 
     if (!product) return null;
-    const serialized = serializeProduct(product);
+    const serialized = serializeProduct(product) as SerializedProduct & { collections: { id: string; name: string }[] };
     return {
       ...serialized,
       existingSizeLabels: product.sizes.map((s) => s.label),
@@ -312,7 +334,7 @@ const getProductBySlugCached = unstable_cache(
     });
 
     return {
-      ...serializeProduct(product),
+      ...serializeProduct(product) as SerializedProduct,
       categories: product.categories,
       sizes: product.sizes.map((s) => ({
         ...s,
@@ -328,7 +350,13 @@ const getProductBySlugCached = unstable_cache(
 export async function getProductBySlug(
   slug: string,
 ): Promise<ServerActionResponse<ProductWithSizes | null>> {
-  return wrapServerCall(async () => getProductBySlugCached(slug));
+  return wrapServerCall(async () =>
+    redisCache(
+      () => getProductBySlugCached(slug),
+      [CACHE_TAG_PRODUCT, "by-slug", slug],
+      { tags: [CACHE_TAG_PRODUCT], ttl: 300 },
+    ),
+  );
 }
 
 export async function getDashboardProductStats(): Promise<
@@ -389,7 +417,9 @@ export async function getAdminProductById(
 
     if (!product) return null;
     return {
-      ...serializeProduct(product),
+      ...serializeProduct(product) as SerializedProduct,
+      sizes: product.sizes,
+      collections: product.collections,
       categoryIds: product.categories.map((c) => c.id),
     };
   });

@@ -5,6 +5,7 @@ import { ServerActionResponse } from "@/types/server";
 import { Category } from "@prisma/client";
 import { wrapServerCall } from "@/lib/server/helpers";
 import { CACHE_TAG_CATEGORY } from "@/lib/constants/cache-tags";
+import { redisCache } from "@/lib/redis-cache";
 
 // === FETCHES ===
 const getAllCategoriesCached = unstable_cache(
@@ -19,7 +20,13 @@ const getAllCategoriesCached = unstable_cache(
 export async function getAllCategories(): Promise<
   ServerActionResponse<Category[]>
 > {
-  return wrapServerCall(() => getAllCategoriesCached());
+  return wrapServerCall(() =>
+    redisCache(
+      () => getAllCategoriesCached(),
+      [CACHE_TAG_CATEGORY, "all"],
+      { tags: [CACHE_TAG_CATEGORY], ttl: 600 },
+    ),
+  );
 }
 
 export async function getCategoryById(

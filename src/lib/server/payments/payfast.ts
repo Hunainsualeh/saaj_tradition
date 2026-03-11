@@ -73,14 +73,15 @@ function formatOrderDate(): string {
   return new Date().toISOString().replace("T", " ").slice(0, 19);
 }
 
-// Per the API guide the token endpoint only needs merchant_id, secured_key,
-// grant_type and customer_ip — amount / basket_id are NOT part of the token call.
 async function requestPayFastToken(input: {
   customerIp: string;
+  amount: string;
+  basketId: string;
 }): Promise<string> {
   const tokenUrl = getRequiredEnv("PAYFAST_TOKEN_URL");
   const merchantId = getRequiredEnv("PAYFAST_MERCHANT_ID");
   const secureKey = getRequiredEnv("PAYFAST_SECURE_KEY");
+  const currencyCode = process.env.PAYFAST_CURRENCY_CODE ?? "PKR";
 
   // Guide: Content-Type must be application/x-www-form-urlencoded
   const body = new URLSearchParams({
@@ -88,6 +89,9 @@ async function requestPayFastToken(input: {
     secured_key: secureKey,
     grant_type: "client_credentials",
     customer_ip: input.customerIp,
+    txnamt: input.amount,
+    basket_id: input.basketId,
+    currency_code: currencyCode,
   });
 
   // DEBUG logging
@@ -110,23 +114,33 @@ async function requestPayFastToken(input: {
       const { fetch: undiciFetch, Agent } = require("undici") as typeof import("undici");
       const agent = new Agent({ connect: { rejectUnauthorized: false } });
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       const res = await undiciFetch(tokenUrl, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
         dispatcher: agent,
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       rawText = await res.text();
       statusCode = res.status;
     } else {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       const res = await fetch(tokenUrl, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
         cache: "no-store",
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       rawText = await res.text();
       statusCode = res.status;
     }
@@ -188,10 +202,14 @@ export async function buildPayFastPaymentPayload(input: {
 }): Promise<PayFastInitPayload> {
   const actionUrl = getRequiredEnv("NEXT_PUBLIC_PAYFAST_POST_URL");
   const merchantId = getRequiredEnv("PAYFAST_MERCHANT_ID");
+  const currencyCode = process.env.PAYFAST_CURRENCY_CODE ?? "PKR";
   const amount = normalizeAmount(input.amount);
-  const basketId = input.orderId;
+  // Append a timestamp so each payment attempt has a unique basket_id.
+  // PayFast blocks retries that reuse the same basket_id while a previous
+  // transaction is still "in-flight" — this prevents that lock.
+  const basketId = `${input.orderId}_${Date.now()}`;
   const customerIp = input.customerIp ?? "127.0.0.1";
-  const token = await requestPayFastToken({ customerIp });
+  const token = await requestPayFastToken({ customerIp, amount, basketId });
 
   const callbackUrl =
     process.env.PAYFAST_RETURN_URL ?? `${getStoreUrl()}/api/payment/payfast/return`;
@@ -202,6 +220,7 @@ export async function buildPayFastPaymentPayload(input: {
     merchant_id: merchantId,
     token: token,
     txnamt: amount,
+    currency_code: currencyCode,
     basket_id: basketId,
     order_id: String(input.orderNumber),
     txndesc: `Order #${input.orderNumber}`,
@@ -209,6 +228,7 @@ export async function buildPayFastPaymentPayload(input: {
     success_url: callbackUrl,
     failure_url: callbackUrl,
     cancel_url: callbackUrl,
+    notify_url: process.env.PAYFAST_NOTIFY_URL ?? `${getStoreUrl()}/api/payment/payfast/notify`,
     customer_ip: customerIp,
     ...extraFields,
   };
@@ -236,15 +256,31 @@ function readValue(
 
 export function extractPayFastOrderId(data: Record<string, string>): string | null {
   // Guide sends lowercase field names; keep uppercase as fallback for legacy UAT responses
-  return readValue(data, ["basket_id", "BASKET_ID", "basketId", "order_id", "ORDER_ID", "orderId"]);
+  const raw = readValue(data, ["basket_id", "BASKET_ID", "basketId", "order_id", "ORDER_ID", "orderId"]);
+  if (!raw) return null;
+
+  // Strip the timestamp suffix we append per-attempt (format: orderId_1234567890)
+  // orderId is a cuid/UUID — no underscores — so splitting on the last "_" is safe.
+  const underscoreIdx = raw.lastIndexOf("_");
+  if (underscoreIdx > 0) {
+    const suffix = raw.slice(underscoreIdx + 1);
+    if (/^\d+$/.test(suffix)) {
+      return raw.slice(0, underscoreIdx);
+    }
+  }
+
+  return raw;
 }
 
 export function isPayFastSuccess(data: Record<string, string>): boolean {
   // Per PayFast API guide error codes table:
-  //   "00"  = Processed OK  → success
+  //   "000" / "00" = Processed OK  → success
   //   "79"  = Alternate Success response → success
   //   "001" = Pending, "002" = Timeout, all others = failure
+  //
+  // PayFast UAT/production return URL sends the result as "err_code".
   const code = readValue(data, [
+    "err_code",    // actual field name in PayFast return URL callback
     "code",        // primary field per guide transaction response
     "status_code", // alternate guide field
     "RESPONSE_CODE",
@@ -267,4 +303,61 @@ export function isPayFastSuccess(data: Record<string, string>): boolean {
   }
 
   return false;
+}
+
+export async function validatePayFastITN(
+  payload: Record<string, string>,
+  reqIp?: string
+): Promise<boolean> {
+  const isProduction = process.env.NODE_ENV === "production";
+  const validationUrl = isProduction
+    ? "https://www.gopayfast.com/eng/query/validate"
+    : "https://sandbox.gopayfast.com/eng/query/validate";
+
+  try {
+    const body = new URLSearchParams();
+    for (const [key, value] of Object.entries(payload)) {
+      body.append(key, value);
+    }
+
+    let responseText = "";
+
+    if (!isProduction) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { fetch: undiciFetch, Agent } = require("undici") as typeof import("undici");
+      const agent = new Agent({ connect: { rejectUnauthorized: false } });
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const res = await undiciFetch(validationUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+        dispatcher: agent,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      responseText = await res.text();
+    } else {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const res = await fetch(validationUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      responseText = await res.text();
+    }
+
+    return responseText.trim() === "VALID";
+  } catch (error) {
+    console.error("[PayFast ITN Validation] Failed to validate ITN:", error);
+    return false;
+  }
 }

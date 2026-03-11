@@ -1,6 +1,7 @@
-"use server";
+﻿"use server";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
+import { invalidateCacheTag } from "../helpers/cache-helpers";
 
 import { prisma } from "@/lib/prisma";
 import { AuthorMutationInput, ServerActionResponse } from "@/types/server";
@@ -25,7 +26,7 @@ export async function deleteAuthorById(
 
     const deleted = await prisma.author.delete({ where: { id } });
 
-    updateTag(CACHE_TAG_AUTHOR);
+    invalidateCacheTag(CACHE_TAG_AUTHOR);
     revalidatePath(adminRoutes.authors);
     revalidatePath(adminRoutes.blogsCreate);
 
@@ -57,7 +58,7 @@ export async function createAuthor(
       },
     });
 
-    updateTag(CACHE_TAG_AUTHOR);
+    invalidateCacheTag(CACHE_TAG_AUTHOR);
     revalidatePath(adminRoutes.authors);
     revalidatePath(adminRoutes.blogsCreate);
 
@@ -74,7 +75,7 @@ export async function updateAuthorById(
       return { id };
     }
 
-    updateTag(CACHE_TAG_AUTHOR);
+    invalidateCacheTag(CACHE_TAG_AUTHOR);
     revalidatePath(adminRoutes.authors);
     revalidatePath(adminRoutes.blogs);
     revalidatePath(adminRoutes.blogsCreate);

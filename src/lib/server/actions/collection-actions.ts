@@ -1,6 +1,7 @@
-"use server";
+﻿"use server";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
+import { invalidateCacheTag } from "../helpers/cache-helpers";
 
 import { prisma } from "@/lib/prisma";
 import { CollectionMutationInput, ServerActionResponse } from "@/types/server";
@@ -28,7 +29,7 @@ export async function deleteCollectionById(
 
     revalidatePath(adminRoutes.collections);
     revalidatePath(routes.home);
-    updateTag(CACHE_TAG_COLLECTION);
+    invalidateCacheTag(CACHE_TAG_COLLECTION);
 
     return { id: deleted.id };
   });
@@ -68,7 +69,7 @@ export async function createCollection(
 
     revalidatePath(adminRoutes.collections);
     revalidatePath(routes.home);
-    updateTag(CACHE_TAG_COLLECTION);
+    invalidateCacheTag(CACHE_TAG_COLLECTION);
 
     return { id: created.id };
   });
@@ -85,7 +86,7 @@ export async function updateCollectionById(
 
     revalidatePath(adminRoutes.collections);
     revalidatePath(routes.home);
-    updateTag(CACHE_TAG_COLLECTION);
+    invalidateCacheTag(CACHE_TAG_COLLECTION);
 
     if (data.image) {
       const imageFile = data.image;

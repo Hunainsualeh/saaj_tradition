@@ -1,6 +1,8 @@
 "use server";
 
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { rateLimitNewsletter } from "@/lib/rate-limit";
 
 export async function subscribeToNewsletter(
   _prevState: { success: boolean; message: string } | null,
@@ -10,6 +12,14 @@ export async function subscribeToNewsletter(
 
   if (!email || !email.includes("@")) {
     return { success: false, message: "Please enter a valid email address." };
+  }
+
+  // Rate limit: 3 newsletter subscriptions per hour per IP
+  const hdrs = await headers();
+  const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "127.0.0.1";
+  const rl = await rateLimitNewsletter(ip);
+  if (!rl.allowed) {
+    return { success: false, message: "Too many attempts. Please try again later." };
   }
 
   try {

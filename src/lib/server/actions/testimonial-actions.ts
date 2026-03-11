@@ -1,6 +1,7 @@
-"use server";
+﻿"use server";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
+import { invalidateCacheTag } from "../helpers/cache-helpers";
 
 import { prisma } from "@/lib/prisma";
 import { TestimonialMutationInput, ServerActionResponse } from "@/types/server";
@@ -24,7 +25,7 @@ export async function deleteTestimonialById(
     const deleted = await prisma.testimonial.delete({ where: { id } });
     revalidatePath(adminRoutes.testimonials);
     revalidatePath(routes.home);
-    updateTag(CACHE_TAG_TESTIMONIAL);
+    invalidateCacheTag(CACHE_TAG_TESTIMONIAL);
     return { id: deleted.id };
   });
 }
@@ -62,7 +63,7 @@ export async function createTestimonial(
     });
     revalidatePath(adminRoutes.testimonials);
     revalidatePath(routes.home);
-    updateTag(CACHE_TAG_TESTIMONIAL);
+    invalidateCacheTag(CACHE_TAG_TESTIMONIAL);
     return { id: created.id };
   });
 }
@@ -100,7 +101,7 @@ export async function updateTestimonialById(
 
     revalidatePath(adminRoutes.testimonials);
     revalidatePath(routes.home);
-    updateTag(CACHE_TAG_TESTIMONIAL);
+    invalidateCacheTag(CACHE_TAG_TESTIMONIAL);
     return { id };
   });
 }

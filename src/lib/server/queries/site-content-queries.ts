@@ -6,6 +6,7 @@ import { SiteContentItem } from "@/types/client";
 import { SiteContent } from "@prisma/client";
 import { wrapServerCall } from "@/lib/server/helpers";
 import { CACHE_TAG_SITE_CONTENT } from "@/lib/constants/cache-tags";
+import { redisCache } from "@/lib/redis-cache";
 
 const getAllSiteContentCached = unstable_cache(
   async () =>
@@ -20,7 +21,13 @@ const getAllSiteContentCached = unstable_cache(
 export async function getAllSiteContent(): Promise<
   ServerActionResponse<SiteContentItem[]>
 > {
-  return wrapServerCall(() => getAllSiteContentCached());
+  return wrapServerCall(() =>
+    redisCache(
+      () => getAllSiteContentCached(),
+      [CACHE_TAG_SITE_CONTENT, "all"],
+      { tags: [CACHE_TAG_SITE_CONTENT], ttl: 600 },
+    ),
+  );
 }
 
 export async function getSiteContentByKey(
@@ -61,5 +68,11 @@ const getSiteContentMapCached = unstable_cache(
 export async function getSiteContentMap(): Promise<
   ServerActionResponse<Record<string, string>>
 > {
-  return wrapServerCall(async () => getSiteContentMapCached());
+  return wrapServerCall(async () =>
+    redisCache(
+      () => getSiteContentMapCached(),
+      [CACHE_TAG_SITE_CONTENT, "map"],
+      { tags: [CACHE_TAG_SITE_CONTENT], ttl: 600 },
+    ),
+  );
 }

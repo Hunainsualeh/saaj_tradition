@@ -93,6 +93,30 @@ export function CheckoutSuccessUI({ order }: CheckoutSuccessUIProps) {
           />
         </div>
 
+        {/* ── Tracking Info ── */}
+        {order.trackingToken && (
+          <div className="mb-8 rounded-lg border border-neutral-04 bg-white/70 backdrop-blur-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-neutral-04">
+              <h2 className="text-xs font-bold tracking-[0.15em] uppercase text-neutral-09">
+                Order Tracking
+              </h2>
+            </div>
+            <div className="px-4 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1">
+                <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-neutral-08 mb-1">Tracking ID</p>
+                <p className="text-sm font-mono font-semibold text-neutral-11 break-all">{order.trackingToken}</p>
+              </div>
+              <div className="flex-1 sm:border-l sm:border-neutral-04 sm:pl-4">
+                <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-neutral-08 mb-1">Order Code</p>
+                <p className="text-sm font-mono font-semibold text-neutral-11">#{order.orderNumber}</p>
+              </div>
+              <p className="text-xs text-neutral-07 sm:max-w-[220px]">
+                Use your Tracking ID on the <span className="font-semibold">Track Order</span> page to follow your shipment.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ── Order Items ── */}
         <section className="mb-6 rounded-lg border border-neutral-04 overflow-hidden bg-white/70 backdrop-blur-sm">
           <div className="px-4 py-3 border-b border-neutral-04">

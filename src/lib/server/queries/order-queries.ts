@@ -11,6 +11,7 @@ import {
 } from "@/types/client";
 import { wrapServerCall } from "../helpers";
 import { CACHE_TAG_CART } from "@/lib/constants/cache-tags";
+import { redisCache } from "@/lib/redis-cache";
 
 export async function getCurrentOrderById(
   orderId: string,
@@ -188,6 +189,12 @@ export async function getAdminOrderById(
       totalPrice: Number(order.totalPrice),
       shippingAmount: order.shippingAmount ? Number(order.shippingAmount) : null,
       discountAmount: order.discountAmount ? Number(order.discountAmount) : null,
+      // Convert Decimal unitPrice on orderItems so they are plain numbers
+      // before being passed to client components.
+      orderItems: order.orderItems.map((item) => ({
+        ...item,
+        unitPrice: Number(item.unitPrice),
+      })),
       cart: {
         ...order.cart,
         items: rawItems.map((item) => ({
@@ -201,11 +208,73 @@ export async function getAdminOrderById(
 
 const getOrderedOrdersCached = unstable_cache(
   async () => {
+    // Fetch orders with only the fields the admin table needs.
+    // Use orderItems snapshot (stored on order) — avoid loading all cart items.
     const orders = await prisma.order.findMany({
-      include: {
+      select: {
+        id: true,
+        orderNumber: true,
+        cartId: true,
+        createdAt: true,
+        updatedAt: true,
+        delieveryName: true,
+        deliveryEmail: true,
+        deliveryPhone: true,
+        deliveryStreetAddress: true,
+        deliveryCity: true,
+        deliveryPostcode: true,
+        deliveryState: true,
+        deliveryCountry: true,
+        billingName: true,
+        billingStreetAddress: true,
+        billingCity: true,
+        billingPostcode: true,
+        billingState: true,
+        billingCountry: true,
+        paymentSessionId: true,
+        totalPrice: true,
+        shippingAmount: true,
+        couponCode: true,
+        discountPercent: true,
+        discountAmount: true,
+        orderNote: true,
+        trackingToken: true,
+        paymentMethod: true,
+        paymentStatus: true,
+        status: true,
+        // Use orderItems snapshot (preferred) for item count & title search
+        orderItems: {
+          select: {
+            id: true,
+            title: true,
+            quantity: true,
+          },
+        },
         cart: {
-          include: {
-            items: true,
+          select: {
+            id: true,
+            userId: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+            reservedAt: true,
+            checkoutAt: true,
+            abandonedAt: true,
+            // Only fetch cart items if orderItems snapshot is absent (legacy orders)
+            items: {
+              select: {
+                id: true,
+                cartId: true,
+                productId: true,
+                sizeId: true,
+                quantity: true,
+                unitPrice: true,
+                title: true,
+                image: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            },
           },
         },
       },
@@ -219,10 +288,25 @@ const getOrderedOrdersCached = unstable_cache(
       discountAmount: order.discountAmount ? Number(order.discountAmount) : null,
       cart: {
         ...order.cart,
-        items: order.cart.items.map((item) => ({
-          ...item,
-          unitPrice: Number(item.unitPrice),
-        })),
+        // Merge orderItems titles into cart.items for search, using snapshot when available
+        items:
+          order.orderItems.length > 0
+            ? order.orderItems.map((oi) => ({
+                id: oi.id,
+                cartId: order.cartId,
+                productId: "",
+                sizeId: "",
+                quantity: oi.quantity,
+                unitPrice: 0,
+                title: oi.title,
+                image: "",
+                createdAt: order.createdAt,
+                updatedAt: order.updatedAt,
+              }))
+            : order.cart.items.map((item) => ({
+                ...item,
+                unitPrice: Number(item.unitPrice),
+              })),
       },
     }));
   },
@@ -233,7 +317,13 @@ const getOrderedOrdersCached = unstable_cache(
 export async function getOrderedOrders(): Promise<
   ServerActionResponse<OrderWithCart[]>
 > {
-  return wrapServerCall(() => getOrderedOrdersCached());
+  return wrapServerCall(() =>
+    redisCache(
+      () => getOrderedOrdersCached(),
+      [CACHE_TAG_CART, "ordered-orders"],
+      { tags: [CACHE_TAG_CART], ttl: 60 },
+    ),
+  );
 }
 
 export async function getDashboardStats(): Promise<

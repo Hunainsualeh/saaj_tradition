@@ -5,6 +5,7 @@ import { AuthorWithPostCount } from "@/types/client";
 import { Author } from "@prisma/client";
 import { wrapServerCall } from "@/lib/server/helpers";
 import { CACHE_TAG_AUTHOR } from "@/lib/constants/cache-tags";
+import { redisCache } from "@/lib/redis-cache";
 
 // === FETCHES ===
 const getAuthorsCached = unstable_cache(
@@ -19,7 +20,13 @@ const getAuthorsCached = unstable_cache(
 export async function getAuthors(): Promise<
   ServerActionResponse<AuthorWithPostCount[]>
 > {
-  return wrapServerCall(() => getAuthorsCached());
+  return wrapServerCall(() =>
+    redisCache(
+      () => getAuthorsCached(),
+      [CACHE_TAG_AUTHOR, "all"],
+      { tags: [CACHE_TAG_AUTHOR], ttl: 600 },
+    ),
+  );
 }
 
 export async function getAuthorById(

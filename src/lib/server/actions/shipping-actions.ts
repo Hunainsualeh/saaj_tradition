@@ -1,6 +1,7 @@
-"use server";
+﻿"use server";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
+import { invalidateCacheTag } from "../helpers/cache-helpers";
 import { Decimal } from "@prisma/client/runtime/library";
 
 import { prisma } from "@/lib/prisma";
@@ -53,7 +54,7 @@ export async function updateGlobalShippingRate(
     revalidatePath(adminRoutes.shipping);
     revalidatePath("/cart");
     revalidatePath("/checkout");
-    updateTag(CACHE_TAG_CART);
+    invalidateCacheTag(CACHE_TAG_CART);
   });
 }
 
@@ -107,7 +108,7 @@ export async function bulkUpdateProductShippingCharges(
     revalidatePath(adminRoutes.shipping);
     revalidatePath("/cart");
     revalidatePath("/checkout");
-    updateTag(CACHE_TAG_CART);
+    invalidateCacheTag(CACHE_TAG_CART);
   });
 }
 

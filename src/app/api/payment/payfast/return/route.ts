@@ -3,22 +3,27 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { CartStatus, OrderStatus, PaymentMethod, PaymentStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { adminRoutes } from "@/lib/routing/routes";
-import { CACHE_TAG_CART, CACHE_TAG_PRODUCT } from "@/lib/constants";
-import { isDemoMode } from "@/lib/server/helpers";
+import { COOKIE_CART_ID } from "@/lib/constants";
 import {
   extractPayFastOrderId,
   isPayFastSuccess,
 } from "@/lib/server/payments/payfast";
+import {
+  markOrderPaymentFailed,
+  markOrderPaymentSucceeded,
+} from "@/lib/server/payments/payfast-db";
 
 function redirectToCheckoutResult(
   req: NextRequest,
   input: { orderId?: string | null; success: boolean },
 ) {
   if (input.success && input.orderId) {
-    return NextResponse.redirect(
+    const res = NextResponse.redirect(
       new URL(`/checkout/success?orderId=${input.orderId}`, req.nextUrl.origin),
     );
+    // Clear the cart cookie so the cart empties after a successful payment
+    res.cookies.delete(COOKIE_CART_ID);
+    return res;
   }
 
   const url = new URL("/checkout", req.nextUrl.origin);
@@ -51,116 +56,18 @@ async function readRequestPayload(req: NextRequest): Promise<Record<string, stri
   );
 }
 
-async function markOrderPaymentFailed(orderId: string): Promise<void> {
-  const existingOrder = await prisma.order.findUnique({ where: { id: orderId } });
 
-  if (!existingOrder) return;
-  if (existingOrder.paymentStatus === PaymentStatus.PAID) return;
-
-  await prisma.order.update({
-    where: { id: orderId },
-    data: {
-      paymentStatus: PaymentStatus.FAILED,
-      paymentMethod: PaymentMethod.PAYFAST,
-      updatedAt: new Date(),
-    },
-  });
-}
-
-async function markOrderPaymentSucceeded(
-  orderId: string,
-): Promise<{ transitioned: boolean }> {
-  const result = await prisma.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({
-      where: { id: orderId },
-      include: {
-        cart: {
-          include: {
-            items: true,
-          },
-        },
-      },
-    });
-
-    if (!order) {
-      return { transitioned: false, couponCode: null as string | null };
-    }
-
-    if (order.paymentStatus === PaymentStatus.PAID) {
-      return { transitioned: false, couponCode: null as string | null };
-    }
-
-    if (!isDemoMode()) {
-      await Promise.all(
-        order.cart.items.map((item) =>
-          tx.size.update({
-            where: { id: item.sizeId },
-            data: {
-              stockReserved: { decrement: item.quantity },
-              stockTotal: { decrement: item.quantity },
-            },
-          }),
-        ),
-      );
-    }
-
-    await Promise.all([
-      tx.order.update({
-        where: { id: orderId },
-        data: {
-          status: OrderStatus.PAID,
-          paymentStatus: PaymentStatus.PAID,
-          paymentMethod: PaymentMethod.PAYFAST,
-          updatedAt: new Date(),
-        },
-      }),
-      tx.cart.update({
-        where: { id: order.cartId },
-        data: {
-          status: CartStatus.ORDERED,
-          checkoutAt: new Date(),
-        },
-      }),
-    ]);
-
-    return { transitioned: true, couponCode: order.couponCode };
-  });
-
-  if (!result.transitioned) {
-    return { transitioned: false };
-  }
-
-  if (result.couponCode) {
-    try {
-      await prisma.coupon.update({
-        where: { code: result.couponCode },
-        data: { currentUses: { increment: 1 } },
-      });
-    } catch (error) {
-      console.error("Failed to increment coupon usage for PayFast order:", error);
-    }
-  }
-
-  revalidateTag(CACHE_TAG_CART, "max");
-  revalidateTag(CACHE_TAG_PRODUCT, "max");
-  revalidatePath(adminRoutes.orders);
-  revalidatePath(adminRoutes.products);
-
-  try {
-    const { sendOrderConfirmationEmails } = await import(
-      "@/lib/server/actions/email-actions"
-    );
-    await sendOrderConfirmationEmails(orderId);
-  } catch (error) {
-    console.error("[PayFast] Failed to send order confirmation emails:", error);
-  }
-
-  return { transitioned: true };
-}
 
 async function handleReturn(req: NextRequest) {
   const payload = await readRequestPayload(req);
   const rawOrderRef = extractPayFastOrderId(payload);
+
+  console.log("[PayFast Return] Received callback", {
+    method: req.method,
+    rawOrderRef,
+    errCode: payload.err_code ?? payload.code ?? payload.status_code ?? "unknown",
+    errMsg: payload.err_msg ?? payload.message ?? "",
+  });
 
   let orderId: string | null = null;
   if (rawOrderRef) {
@@ -181,15 +88,42 @@ async function handleReturn(req: NextRequest) {
   }
 
   if (!orderId) {
+    console.warn("[PayFast Return] Could not resolve order ID", { rawOrderRef });
     return redirectToCheckoutResult(req, { success: false });
   }
 
   const success = isPayFastSuccess(payload);
 
   if (success) {
+    // Verify the payment amount matches the order total
+    const amountGross = parseFloat(payload.amount_gross ?? "0");
+    if (amountGross > 0) {
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: { totalPrice: true, orderNumber: true },
+      });
+      if (order) {
+        const orderTotal = Number(order.totalPrice);
+        const diff = Math.abs(amountGross - orderTotal);
+        if (diff > 1) {
+          console.error("[PayFast Return] Amount mismatch — BLOCKING payment!", {
+            orderId,
+            orderNumber: order.orderNumber,
+            expectedAmount: orderTotal,
+            receivedAmount: amountGross,
+            difference: diff,
+          });
+          await markOrderPaymentFailed(orderId);
+          return redirectToCheckoutResult(req, { orderId, success: false });
+        }
+      }
+    }
+
     await markOrderPaymentSucceeded(orderId);
+    console.log("[PayFast Return] Payment succeeded", { orderId });
   } else {
     await markOrderPaymentFailed(orderId);
+    console.log("[PayFast Return] Payment failed/cancelled", { orderId });
   }
 
   return redirectToCheckoutResult(req, { orderId, success });

@@ -7,6 +7,10 @@
     {
       "path": "/api/payment/cleanup-expired-carts",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/queue/process-emails",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

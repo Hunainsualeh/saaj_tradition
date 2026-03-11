@@ -37,10 +37,17 @@ export default async function CheckoutPage({
     redirect("/cart");
   }
 
+  // === REDIRECT IF ALREADY PAID ===
+  // Handles the edge case where the order was paid but the cart cookie wasn't
+  // cleared (e.g. a previous bug), so the user lands back on checkout.
+  const order = orderResult.data;
+  if (order.paymentStatus === "PAID") {
+    redirect(`/checkout/success?orderId=${order.id}`);
+  }
+
   // === PREPARE DATA ===
   const { items, summary } = cartResult.data;
-  const order = orderResult.data;
-  const { id: orderId } = order;;
+  const { id: orderId } = order;
 
   // === RECONCILE SHIPPING ===
   // getCart() already computes the latest shipping from DB.

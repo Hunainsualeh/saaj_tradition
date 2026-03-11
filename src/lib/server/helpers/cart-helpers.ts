@@ -16,14 +16,12 @@ export const getCartCountCached = unstable_cache(
       return { quantity: 0, status: cart?.status ?? null };
     }
 
-    const items = await prisma.cartItem.findMany({
+    const result = await prisma.cartItem.aggregate({
       where: { cartId },
-      select: { quantity: true },
+      _sum: { quantity: true },
     });
 
-    const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-
-    return { quantity: totalQuantity, status: cart.status };
+    return { quantity: result._sum.quantity ?? 0, status: cart.status };
   },
   [CACHE_TAG_CART, "item-count"],
   {

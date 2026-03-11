@@ -23,19 +23,19 @@ export function OrderSummaryStepUI(props: OrderSummaryStepUIProps) {
       <span className="text-neutral-10 text-sm">
         By clicking the &quot;Submit payment&quot; button, you confirm that you
         have read, understand and accept our{" "}
-        <Link href="#" className="font-bold underline">
+        <Link href="/terms-of-use" className="font-bold underline">
           Terms of Use
         </Link>
         ,{" "}
-        <Link href="#" className="font-bold underline">
+        <Link href="/terms-of-sale" className="font-bold underline">
           Terms of Sale
         </Link>
         ,{" "}
-        <Link href="#" className="font-bold underline">
+        <Link href="/privacy-policy" className="font-bold underline">
           Privacy Policy
         </Link>{" "}
         and{" "}
-        <Link href="#" className="font-bold underline">
+        <Link href="/return-policy" className="font-bold underline">
           Returns Policy
         </Link>
         .
@@ -47,7 +47,9 @@ export function OrderSummaryStepUI(props: OrderSummaryStepUIProps) {
         text={buttonText}
         className="mt-8 w-full"
         isLoading={isSubmitting}
+        disabled={isSubmitting}
       />
     </motion.div>
   );
 }
+

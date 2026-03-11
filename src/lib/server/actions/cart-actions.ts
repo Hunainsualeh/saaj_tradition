@@ -1,7 +1,6 @@
-"use server";
+﻿"use server";
 
 import { cookies } from "next/headers";
-import { updateTag } from "next/cache";
 import { nanoid } from "nanoid";
 
 import { prisma } from "@/lib/prisma";
@@ -16,11 +15,64 @@ import { CartQuantityReturn, FullCart } from "@/types/client";
 import { ServerActionResponse } from "@/types/server";
 import { wrapServerCall } from "../helpers/generic-helpers";
 import { CartStatus, OrderStatus, PaymentMethod, Prisma } from "@prisma/client";
-import { getCartCountCached, refreshCartCookie } from "../helpers";
+import { getCartCountCached, refreshCartCookie, invalidateCacheTag } from "../helpers";
 import { CACHE_TAG_CART, CACHE_TAG_PRODUCT } from "@/lib/constants";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
 import { getCart } from "@/lib/server/queries/cart-queries";
 import { computeCartShipping } from "@/lib/server/actions/shipping-actions";
+import { rateLimitCheckout } from "@/lib/rate-limit";
+
+/**
+ * Releases stock linked to carts that have been in CHECKOUT for >30 minutes
+ * but never reached the ORDERED (paid) state.
+ */
+async function cleanupAbandonedCarts() {
+  if (isDemoMode()) return;
+
+  const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
+
+  const abandonedCarts = await prisma.cart.findMany({
+    where: {
+      status: { not: CartStatus.ORDERED },
+      reservedAt: { lt: thirtyMinsAgo },
+    },
+    include: { items: true },
+  });
+
+  if (abandonedCarts.length === 0) return;
+
+  console.log(`[Scheduled Cleanup] Found ${abandonedCarts.length} abandoned cart(s). Releasing stock.`);
+
+  // Process each cart in its own transaction to avoid timeout with many carts
+  for (const cart of abandonedCarts) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        if (cart.items.length > 0) {
+          await Promise.all(
+            cart.items.map((item) =>
+              tx.$executeRawUnsafe(
+                `UPDATE "Size" SET "stockReserved" = GREATEST(0, "stockReserved" - $1) WHERE "id" = $2`,
+                item.quantity,
+                item.sizeId,
+              ),
+            ),
+          );
+        }
+
+        await tx.cart.update({
+          where: { id: cart.id },
+          data: {
+            reservedAt: null,
+            status: CartStatus.ACTIVE,
+            abandonedAt: new Date(),
+          },
+        });
+      });
+    } catch (error) {
+      console.error(`[Scheduled Cleanup] Failed to release cart ${cart.id}:`, error);
+    }
+  }
+}
 
 // === QUERIES ===
 export async function getCartAction(): Promise<
@@ -222,7 +274,7 @@ export async function addToCart({
 
     refreshCartCookie(cookieStore, cartId);
 
-    updateTag(CACHE_TAG_CART);
+    invalidateCacheTag(CACHE_TAG_CART);
 
     return { quantity: cartQuantity };
   });
@@ -280,7 +332,7 @@ export async function updateCartItemQuantity({
       return newCartTotal;
     }, { timeout: 15000, maxWait: 5000 });
 
-    updateTag(CACHE_TAG_CART);
+    invalidateCacheTag(CACHE_TAG_CART);
 
     refreshCartCookie(cookieStore, existingCartId);
 
@@ -317,7 +369,7 @@ export async function removeCartItem({
       return items.reduce((sum, item) => sum + item.quantity, 0);
     }, { timeout: 15000, maxWait: 5000 });
 
-    updateTag(CACHE_TAG_CART);
+    invalidateCacheTag(CACHE_TAG_CART);
 
     refreshCartCookie(cookieStore, existingCartId);
 
@@ -331,9 +383,21 @@ export async function initiateCheckout(
   return wrapServerCall(async () => {
     const cookieStore = await cookies();
     const cartId = cookieStore.get(COOKIE_CART_ID)?.value;
-    const couponCode = cookieStore.get(COOKIE_COUPON_CODE)?.value;
 
     if (!cartId) throw new Error("Cart not found");
+
+    // Rate limit: 5 checkout attempts per minute per cart
+    const rl = await rateLimitCheckout(cartId);
+    if (!rl.allowed) {
+      throw new Error("Too many checkout attempts. Please wait a moment and try again.");
+    }
+
+    try {
+      await cleanupAbandonedCarts();
+    } catch (e) {
+      console.error("[Cleanup Error] Failed to cleanup abandoned carts", e);
+    }
+    const couponCode = cookieStore.get(COOKIE_COUPON_CODE)?.value;
 
     // === STEP 0: VALIDATE COUPON IF PRESENT ===
     let validCoupon: {
@@ -373,8 +437,25 @@ export async function initiateCheckout(
     // === STEP 1: CHECK IF ORDER ALREADY EXISTS (outside transaction) ===
     const existingOrder = await prisma.order.findUnique({
       where: { cartId },
-      select: { id: true, paymentSessionId: true, totalPrice: true },
+      select: { id: true, paymentSessionId: true, paymentStatus: true, totalPrice: true, updatedAt: true },
     });
+
+    // If the previous payment attempt explicitly failed, or has been sitting
+    // PENDING for >30 minutes (meaning PayFast's return URL was never called —
+    // common in local dev), clear the stale session so we get a fresh token.
+    if (
+      existingOrder?.paymentSessionId &&
+      (existingOrder.paymentStatus === "FAILED" ||
+        (existingOrder.paymentStatus === "PENDING" &&
+          existingOrder.updatedAt < new Date(Date.now() - 30 * 60 * 1000)))
+    ) {
+      await prisma.order.update({
+        where: { id: existingOrder.id },
+        data: { paymentSessionId: null },
+      });
+      // Treat it as if there's no paymentSessionId so the flow rebuilds below
+      existingOrder.paymentSessionId = null;
+    }
 
     if (existingOrder?.paymentSessionId) {
       // Check if total has changed (e.g. shipping rate was updated after order creation)
@@ -405,7 +486,7 @@ export async function initiateCheckout(
               : {}),
           },
         });
-        updateTag(CACHE_TAG_CART);
+        invalidateCacheTag(CACHE_TAG_CART);
       }
       return;
     }
@@ -444,26 +525,16 @@ export async function initiateCheckout(
         // === ATOMIC STOCK RESERVATION ===
         // Only reserve if not already reserved
         if (!cart.reservedAt && !isDemoMode()) {
-          // Pre-validate stock availability
           for (const item of cart.items) {
-            const available = item.size.stockTotal - item.size.stockReserved;
-            if (available < item.quantity) {
+            const updatedRows = await tx.$executeRawUnsafe(
+              `UPDATE "Size" SET "stockReserved" = "stockReserved" + $1 WHERE "id" = $2 AND ("stockTotal" - "stockReserved") >= $1`,
+              item.quantity,
+              item.sizeId
+            );
+            if (updatedRows === 0) {
               throw new Error(`Not enough stock for ${item.title}`);
             }
           }
-
-          await Promise.all(
-            cart.items.map((item) =>
-              tx.size.update({
-                where: { id: item.sizeId },
-                data: {
-                  stockReserved: {
-                    increment: item.quantity,
-                  },
-                },
-              }),
-            ),
-          );
         }
 
         // Calculate total price
@@ -573,8 +644,8 @@ export async function initiateCheckout(
       },
     });
 
-    updateTag(CACHE_TAG_CART);
-    updateTag(CACHE_TAG_PRODUCT);
+    invalidateCacheTag(CACHE_TAG_CART);
+    invalidateCacheTag(CACHE_TAG_PRODUCT);
   });
 }
 
@@ -582,5 +653,5 @@ export async function initiateCheckout(
 export async function clearCart(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_CART_ID);
-  updateTag(CACHE_TAG_CART);
+  invalidateCacheTag(CACHE_TAG_CART);
 }

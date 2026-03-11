@@ -1,15 +1,60 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { createHmac, timingSafeEqual } from "crypto";
 
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "../helpers/password";
 import { ServerActionResponse } from "@/types/server";
 import { wrapServerCall } from "../helpers/generic-helpers";
 import { AdminRoleEnum } from "@prisma/client";
+import { rateLimitLogin } from "@/lib/rate-limit";
+import { createSession, deleteSession } from "@/lib/redis-session";
 
 const ADMIN_COOKIE_NAME = "admin_session";
+
+// Derive a signing secret from env; falls back to a combination of available keys.
+function getSessionSecret(): string {
+  return (
+    process.env.ADMIN_SESSION_SECRET ??
+    process.env.PAYFAST_SECURE_KEY ??
+    "saaj-default-session-secret-change-me"
+  );
+}
+
+/** Sign a base64 payload with HMAC-SHA256 → "payload.signature" */
+function signSession(payload: string): string {
+  const sig = createHmac("sha256", getSessionSecret())
+    .update(payload)
+    .digest("hex");
+  return `${payload}.${sig}`;
+}
+
+/** Verify and extract payload from a signed cookie value */
+function verifySession(token: string): string | null {
+  const dotIndex = token.lastIndexOf(".");
+  if (dotIndex === -1) return null;
+
+  const payload = token.slice(0, dotIndex);
+  const sig = token.slice(dotIndex + 1);
+
+  const expected = createHmac("sha256", getSessionSecret())
+    .update(payload)
+    .digest("hex");
+
+  // Timing-safe comparison to prevent timing attacks
+  try {
+    const sigBuf = Buffer.from(sig, "hex");
+    const expectedBuf = Buffer.from(expected, "hex");
+    if (sigBuf.length !== expectedBuf.length) return null;
+    if (!timingSafeEqual(sigBuf, expectedBuf)) return null;
+  } catch {
+    return null;
+  }
+
+  return payload;
+}
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 // =====================================
@@ -29,6 +74,14 @@ export async function adminLogin(
     return { error: "Email and password are required" };
   }
 
+  // Rate limit: 10 login attempts per 15 minutes per IP
+  const hdrs = await headers();
+  const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "127.0.0.1";
+  const rl = await rateLimitLogin(ip);
+  if (!rl.allowed) {
+    return { error: "Too many login attempts. Please try again later." };
+  }
+
   const admin = await prisma.adminUser.findUnique({
     where: { email: email.toLowerCase().trim() },
   });
@@ -42,12 +95,16 @@ export async function adminLogin(
     return { error: "Invalid email or password" };
   }
 
-  // Store admin ID + role in cookie (JSON encoded, base64)
+  // Store admin ID + role in cookie (JSON encoded, base64, HMAC-signed)
   const sessionData = JSON.stringify({
     id: admin.id,
     role: admin.role,
   });
-  const token = Buffer.from(sessionData).toString("base64");
+  const payload = Buffer.from(sessionData).toString("base64");
+  const token = signSession(payload);
+
+  // Store session in Redis for server-side tracking / invalidation
+  await createSession(admin.id, { id: admin.id, role: admin.role }, COOKIE_MAX_AGE);
 
   const cookieStore = await cookies();
   cookieStore.set(ADMIN_COOKIE_NAME, token, {
@@ -61,9 +118,24 @@ export async function adminLogin(
   redirect(redirectTo || "/admin");
 }
 
-/** Logout — clear session cookie */
+/** Logout — clear session cookie and Redis session */
 export async function adminLogout(): Promise<void> {
   const cookieStore = await cookies();
+  const token = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
+
+  // Delete Redis session if we can extract admin ID
+  if (token) {
+    try {
+      const verified = verifySession(token);
+      if (verified) {
+        const decoded = JSON.parse(Buffer.from(verified, "base64").toString("utf-8"));
+        if (decoded.id) await deleteSession(decoded.id);
+      }
+    } catch {
+      // Non-critical — cookie will be cleared anyway
+    }
+  }
+
   cookieStore.delete(ADMIN_COOKIE_NAME);
   redirect("/admin/login");
 }
@@ -75,7 +147,20 @@ export async function getCurrentAdmin() {
   if (!token) return null;
 
   try {
-    const decoded = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
+    // Verify HMAC signature and extract payload
+    // Also accept legacy unsigned base64 cookies for seamless migration
+    let payload: string;
+    const verified = verifySession(token);
+    if (verified) {
+      payload = verified;
+    } else {
+      // Legacy fallback: try treating as raw base64 (will be re-signed on next login)
+      payload = token;
+    }
+
+    const decoded = JSON.parse(Buffer.from(payload, "base64").toString("utf-8"));
+    if (!decoded.id || !decoded.role) return null;
+
     const admin = await prisma.adminUser.findUnique({
       where: { id: decoded.id },
       select: { id: true, email: true, name: true, role: true, isActive: true },

@@ -5,6 +5,7 @@ import { TeamMemberItem } from "@/types/client";
 import { TeamMember } from "@prisma/client";
 import { wrapServerCall } from "@/lib/server/helpers";
 import { CACHE_TAG_TEAM } from "@/lib/constants/cache-tags";
+import { redisCache } from "@/lib/redis-cache";
 
 const getTeamMembersCached = unstable_cache(
   async () =>
@@ -19,7 +20,13 @@ const getTeamMembersCached = unstable_cache(
 export async function getTeamMembers(): Promise<
   ServerActionResponse<TeamMemberItem[]>
 > {
-  return wrapServerCall(() => getTeamMembersCached());
+  return wrapServerCall(() =>
+    redisCache(
+      () => getTeamMembersCached(),
+      [CACHE_TAG_TEAM, "all"],
+      { tags: [CACHE_TAG_TEAM], ttl: 600 },
+    ),
+  );
 }
 
 export async function getTeamMemberById(

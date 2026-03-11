@@ -1,6 +1,7 @@
-"use server";
+﻿"use server";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
+import { invalidateCacheTag } from "../helpers/cache-helpers";
 
 import { Decimal } from "@prisma/client/runtime/library";
 
@@ -77,7 +78,7 @@ export async function createProduct(
     });
 
     revalidatePath(adminRoutes.products);
-    updateTag(CACHE_TAG_PRODUCT);
+    invalidateCacheTag(CACHE_TAG_PRODUCT);
 
     return { id: created.id };
   });
@@ -149,7 +150,7 @@ export async function updateProductById(
     });
 
     revalidatePath(adminRoutes.products);
-    updateTag(CACHE_TAG_PRODUCT);
+    invalidateCacheTag(CACHE_TAG_PRODUCT);
 
     return { id: created.id };
   });
@@ -166,7 +167,7 @@ export async function deleteProductById(
     const deleted = await prisma.product.delete({ where: { id } });
 
     revalidatePath(adminRoutes.products);
-    updateTag(CACHE_TAG_PRODUCT);
+    invalidateCacheTag(CACHE_TAG_PRODUCT);
 
     return { id: deleted.id };
   });
@@ -186,7 +187,7 @@ export async function deleteProductsByIds(
     });
 
     revalidatePath(adminRoutes.products);
-    updateTag(CACHE_TAG_PRODUCT);
+    invalidateCacheTag(CACHE_TAG_PRODUCT);
 
     return { count: result.count };
   });
@@ -210,7 +211,7 @@ export async function toggleProductFeatured(
     });
 
     revalidatePath(adminRoutes.products);
-    updateTag(CACHE_TAG_PRODUCT);
+    invalidateCacheTag(CACHE_TAG_PRODUCT);
 
     return { id: updated.id, isFeatured: updated.isFeatured };
   });

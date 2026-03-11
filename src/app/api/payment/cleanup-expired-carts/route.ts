@@ -60,14 +60,11 @@ export async function GET(req: NextRequest) {
         if (cart.items.length > 0) {
           await Promise.all(
             cart.items.map((item) =>
-              tx.size.update({
-                where: { id: item.sizeId },
-                data: {
-                  stockReserved: {
-                    decrement: item.quantity,
-                  },
-                },
-              }),
+              tx.$executeRawUnsafe(
+                `UPDATE "Size" SET "stockReserved" = GREATEST(0, "stockReserved" - $1) WHERE "id" = $2`,
+                item.quantity,
+                item.sizeId,
+              ),
             ),
           );
         }

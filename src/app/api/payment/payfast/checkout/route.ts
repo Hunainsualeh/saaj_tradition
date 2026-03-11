@@ -4,6 +4,7 @@ import { PaymentMethod, PaymentStatus, OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { COOKIE_CART_ID } from "@/lib/constants";
 import { buildPayFastPaymentPayload } from "@/lib/server/payments/payfast";
+import { rateLimitPayment } from "@/lib/rate-limit";
 
 function redirectToCheckout(req: NextRequest, params?: Record<string, string>) {
   const url = new URL("/checkout", req.nextUrl.origin);
@@ -66,6 +67,15 @@ export async function GET(req: NextRequest) {
     return redirectToCheckout(req, { payment: "failed" });
   }
 
+  // Rate limit: 3 payment attempts per 5 minutes per order
+  const rl = await rateLimitPayment(orderId);
+  if (!rl.allowed) {
+    return new NextResponse("Too many payment attempts. Please wait and try again.", {
+      status: 429,
+      headers: { "Retry-After": String(rl.retryAfter) },
+    });
+  }
+
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     select: {
@@ -90,7 +100,14 @@ export async function GET(req: NextRequest) {
     order.status === OrderStatus.DELIVERED ||
     order.status === OrderStatus.CANCELLED ||
     order.status === OrderStatus.REFUNDED;
-  if (alreadyPaid || isTerminalStatus) {
+
+  // If already paid, send straight to the success page — no failure needed.
+  if (alreadyPaid) {
+    return NextResponse.redirect(
+      new URL(`/checkout/success?orderId=${orderId}`, req.nextUrl.origin),
+    );
+  }
+  if (isTerminalStatus) {
     return redirectToCheckout(req, { payment: "failed", orderId });
   }
 

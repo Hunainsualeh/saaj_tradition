@@ -34,6 +34,31 @@ export async function getCurrentOrder(): Promise<
       where: { cartId },
     });
 
+    // If the order was already paid (e.g. stale cookie after a successful
+    // payment), treat it as "no current order" so the user is sent to /cart
+    // and can start a fresh purchase without needing any manual intervention.
+    if (
+      order?.paymentStatus === PaymentStatus.PAID ||
+      order?.status === OrderStatus.SHIPPED ||
+      order?.status === OrderStatus.DELIVERED ||
+      order?.status === OrderStatus.CANCELLED ||
+      order?.status === OrderStatus.REFUNDED
+    ) {
+      return null;
+    }
+
+    // If the order has been sitting in PENDING payment status (i.e. the PayFast
+    // return/notify URL was never called — common in local dev when the gateway
+    // cannot reach localhost) for longer than 2 hours, treat it as abandoned so
+    // the user can go back to cart and try a fresh checkout.
+    if (order && order.paymentStatus === PaymentStatus.PENDING) {
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      if (order.updatedAt < twoHoursAgo) {
+        console.info(`[getCurrentOrder] Order ${order.id} has been PENDING for >2 h — treating as abandoned`);
+        return null;
+      }
+    }
+
     return order;
   });
 }
@@ -113,28 +138,64 @@ export async function markOrderAsPaid(
   orderId: string,
 ): Promise<ServerActionResponse<void>> {
   return wrapServerCall(async () => {
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      select: { cartId: true, status: true },
-    });
-
-    if (!order) throw new Error("Order not found");
-
-    await Promise.all([
-      prisma.order.update({
+    await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
         where: { id: orderId },
-        data: {
-          status: OrderStatus.PROCESSING,
-          paymentStatus: PaymentStatus.PAID,
-          paymentMethod: PaymentMethod.COD,
-          updatedAt: new Date(),
+        include: {
+          cart: {
+            include: {
+              items: { select: { sizeId: true, quantity: true } },
+            },
+          },
         },
-      }),
-      prisma.cart.update({
-        where: { id: order.cartId },
-        data: { status: CartStatus.ORDERED },
-      }),
-    ]);
+      });
+
+      if (!order) throw new Error("Order not found");
+
+      // Idempotency: skip if already paid
+      if (order.paymentStatus === PaymentStatus.PAID) return;
+
+      // Decrement stock for COD orders (not done during checkout, only reserved)
+      if (order.cart.items.length > 0) {
+        await Promise.all(
+          order.cart.items.map((item) =>
+            tx.$executeRawUnsafe(
+              `UPDATE "Size" SET "stockReserved" = GREATEST(0, "stockReserved" - $1), "stockTotal" = GREATEST(0, "stockTotal" - $1) WHERE "id" = $2`,
+              item.quantity,
+              item.sizeId,
+            ),
+          ),
+        );
+      }
+
+      await Promise.all([
+        tx.order.update({
+          where: { id: orderId },
+          data: {
+            status: OrderStatus.PROCESSING,
+            paymentStatus: PaymentStatus.PAID,
+            paymentMethod: PaymentMethod.COD,
+            updatedAt: new Date(),
+          },
+        }),
+        tx.cart.update({
+          where: { id: order.cartId },
+          data: { status: CartStatus.ORDERED },
+        }),
+      ]);
+
+      // Increment coupon usage inside transaction
+      if (order.couponCode) {
+        try {
+          await tx.coupon.update({
+            where: { code: order.couponCode },
+            data: { currentUses: { increment: 1 } },
+          });
+        } catch (error) {
+          console.error("Failed to increment coupon usage for COD order:", error);
+        }
+      }
+    });
 
     revalidatePath(adminRoutes.orders);
 

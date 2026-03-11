@@ -9,6 +9,15 @@ import {
 import { EmailTemplateType } from "@prisma/client";
 import { wrapServerCall } from "../helpers";
 import { ServerActionResponse } from "@/types/server";
+import { getCurrentAdmin } from "./admin-auth-actions";
+import { enqueueEmail, type EmailJob } from "@/lib/redis-queue";
+
+/** Verify the caller is an authenticated admin; throws if not */
+async function requireAdmin() {
+  const admin = await getCurrentAdmin();
+  if (!admin) throw new Error("Unauthorized: admin session required");
+  return admin;
+}
 
 /** Get the admin notification email from SiteContent, falling back to EMAIL_USER env var */
 async function getAdminNotificationEmail(): Promise<string> {
@@ -208,6 +217,7 @@ export async function createEmailTemplate(data: {
   htmlContent: string;
 }): Promise<ServerActionResponse<{ id: string }>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     const template = await prisma.emailTemplate.create({ data });
     return { id: template.id };
   });
@@ -224,6 +234,7 @@ export async function updateEmailTemplate(
   },
 ): Promise<ServerActionResponse<{ id: string }>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     const template = await prisma.emailTemplate.update({
       where: { id },
       data: { ...data, updatedAt: new Date() },
@@ -237,6 +248,7 @@ export async function deleteEmailTemplate(
   id: string,
 ): Promise<ServerActionResponse<void>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     await prisma.emailTemplate.delete({ where: { id } });
   });
 }
@@ -292,6 +304,7 @@ export async function sendBroadcastNewsletter(input: {
   ctaUrl?: string;
 }): Promise<ServerActionResponse<{ sent: number; failed: number; total: number }>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     const { broadcastNewsletter } = await import("@/lib/email/email-service");
     return broadcastNewsletter(input);
   });
@@ -306,6 +319,7 @@ export async function sendProductUpdateBroadcast(input: {
   productUrl: string;
 }): Promise<ServerActionResponse<{ sent: number; total: number }>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     const { broadcastProductUpdate } = await import("@/lib/email/email-service");
     return broadcastProductUpdate(input);
   });
@@ -319,6 +333,7 @@ export async function sendCollectionUpdateBroadcast(input: {
   collectionUrl: string;
 }): Promise<ServerActionResponse<{ sent: number; total: number }>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     const { broadcastCollectionUpdate } = await import("@/lib/email/email-service");
     return broadcastCollectionUpdate(input);
   });
@@ -331,6 +346,7 @@ export async function sendCustomEmailToOrderCustomer(
   htmlContent: string,
 ): Promise<ServerActionResponse<void>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       select: { deliveryEmail: true, delieveryName: true },

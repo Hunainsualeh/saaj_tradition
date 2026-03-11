@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -42,24 +42,44 @@ import {
   AdminAlertDialogAction,
 } from "@/components/admin";
 
-const navItems = [
-  { href: adminRoutes.home, text: "Dashboard", icon: LayoutDashboard },
-  { href: adminRoutes.products, text: "Products", icon: Package },
-  { href: adminRoutes.categories, text: "Categories", icon: Tag },
-  { href: adminRoutes.orders, text: "Orders", icon: ShoppingCart },
-  { href: adminRoutes.customers, text: "Customers", icon: Users },
-  { href: adminRoutes.blogs, text: "Blog", icon: FileText },
-  { href: adminRoutes.authors, text: "Authors", icon: Users2 },
-  { href: adminRoutes.collections, text: "Collections", icon: Layers },
-  { href: adminRoutes.team, text: "Team", icon: Users2 },
-  { href: adminRoutes.testimonials, text: "Testimonials", icon: MessageSquare },
-  { href: adminRoutes.coupons, text: "Coupons", icon: Ticket },
-  { href: adminRoutes.shipping, text: "Shipping", icon: Truck },
-  { href: adminRoutes.marquee, text: "Marquee", icon: Megaphone },
-  { href: adminRoutes.siteContent, text: "Content", icon: PenSquare },
-  { href: adminRoutes.emails, text: "Emails", icon: Mail },
-  { href: adminRoutes.admins, text: "Admins", icon: ShieldCheck },
-  { href: adminRoutes.settings, text: "Settings", icon: Settings },
+const navGroups = [
+  {
+    label: "Commerce",
+    items: [
+      { href: adminRoutes.home, text: "Dashboard", icon: LayoutDashboard },
+      { href: adminRoutes.orders, text: "Orders", icon: ShoppingCart },
+      { href: adminRoutes.products, text: "Products", icon: Package },
+      { href: adminRoutes.categories, text: "Categories", icon: Tag },
+      { href: adminRoutes.collections, text: "Collections", icon: Layers },
+      { href: adminRoutes.coupons, text: "Coupons", icon: Ticket },
+      { href: adminRoutes.shipping, text: "Shipping", icon: Truck },
+    ]
+  },
+  {
+    label: "Content",
+    items: [
+      { href: adminRoutes. marquee, text: "Marquee", icon: Megaphone },
+      { href: adminRoutes.blogs, text: "Blog", icon: FileText },
+      { href: adminRoutes.siteContent, text: "Site Content", icon: PenSquare },
+      { href: adminRoutes.testimonials, text: "Testimonials", icon: MessageSquare },
+    ]
+  },
+  {
+    label: "Users",
+    items: [
+      { href: adminRoutes.customers, text: "Customers", icon: Users },
+      { href: adminRoutes.authors, text: "Authors", icon: Users2 },
+      { href: adminRoutes.team, text: "Team", icon: Users2 },
+    ]
+  },
+  {
+    label: "System",
+    items: [
+      { href: adminRoutes.emails, text: "Emails", icon: Mail },
+      { href: adminRoutes.admins, text: "Admins", icon: ShieldCheck },
+      { href: adminRoutes.settings, text: "Settings", icon: Settings },
+    ]
+  }
 ];
 
 export function AdminNavbar() {
@@ -83,7 +103,7 @@ export function AdminNavbar() {
 
   return (
     <>
-      {/* â”€â”€ DESKTOP SIDEBAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* --- DESKTOP SIDEBAR --- */}
       <aside
         className={`hidden md:flex flex-col h-screen sticky top-0 bg-white border-r border-gray-100 transition-[width] duration-300 ease-in-out overflow-hidden shrink-0 ${
           collapsed ? "w-[64px]" : "w-[220px]"
@@ -125,22 +145,26 @@ export function AdminNavbar() {
         )}
 
         {/* Nav */}
-        <nav className={`flex-1 overflow-y-auto py-3 space-y-0.5 ${collapsed ? "px-2" : "px-3"}`}>
-          {!collapsed && (
-            <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-              Menu
-            </p>
-          )}
-          {navItems.map((item) => (
-            <AdminNavbarItem
-              key={item.href}
-              isActive={isActive(item.href)}
-              href={item.href}
-              text={item.text}
-              icon={item.icon}
-              collapsed={collapsed}
-              onNavigating={(href) => setNavigatingTo(href)}
-            />
+        <nav className={`flex-1 overflow-y-auto py-3 space-y-4 ${collapsed ? "px-2" : "px-3"}`}>
+          {navGroups.map((group, idx) => (
+            <div key={idx} className="space-y-0.5">
+              {!collapsed && (
+                <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                  {group.label}
+                </p>
+              )}
+              {group.items.map((item) => (
+                <AdminNavbarItem
+                  key={item.href}
+                  isActive={isActive(item.href)}
+                  href={item.href}
+                  text={item.text}
+                  icon={item.icon}
+                  collapsed={collapsed}
+                  onNavigating={(href) => setNavigatingTo(href)}
+                />
+              ))}
+            </div>
           ))}
         </nav>
 
@@ -160,7 +184,7 @@ export function AdminNavbar() {
         </div>
       </aside>
 
-      {/* â”€â”€ MOBILE TOPBAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* --- MOBILE TOPBAR --- */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-white/90 backdrop-blur-md border-b border-gray-100 flex items-center px-4 gap-3">
         <button
           onClick={() => setMobileOpen(true)}
@@ -181,7 +205,7 @@ export function AdminNavbar() {
         </div>
       </div>
 
-      {/* â”€â”€ MOBILE OVERLAY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* --- MOBILE OVERLAY --- */}
       <div
         onClick={() => setMobileOpen(false)}
         className={`fixed inset-0 bg-black/40 z-50 md:hidden transition-opacity duration-300 ${
@@ -189,7 +213,7 @@ export function AdminNavbar() {
         }`}
       />
 
-      {/* â”€â”€ MOBILE DRAWER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* --- MOBILE DRAWER --- */}
       <div
         className={`fixed top-0 left-0 h-full w-72 bg-white z-50 flex flex-col md:hidden transition-transform duration-300 ease-in-out ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
@@ -219,35 +243,41 @@ export function AdminNavbar() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-          <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Menu</p>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={(e) => {
-                  if (!isActive(item.href)) {
-                    e.preventDefault();
-                    setMobileOpen(false);
-                    startMobileTransition(() => router.push(item.href));
-                  } else {
-                    setMobileOpen(false);
-                  }
-                }}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  isActive(item.href)
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-                }`}
-              >
-                <Icon size={15} className="shrink-0" />
-                <span className="flex-1">{item.text}</span>
-                {isActive(item.href) && <span className="h-1.5 w-1.5 rounded-full bg-white/50 shrink-0" />}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+          {navGroups.map((group, idx) => (
+            <div key={idx} className="space-y-0.5">
+              <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                {group.label}
+              </p>
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={(e) => {
+                      if (!isActive(item.href)) {
+                        e.preventDefault();
+                        setMobileOpen(false);
+                        startMobileTransition(() => router.push(item.href));
+                      } else {
+                        setMobileOpen(false);
+                      }
+                    }}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      isActive(item.href)
+                        ? "bg-gray-900 text-white"
+                        : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Icon size={15} className="shrink-0" />
+                    <span className="flex-1">{item.text}</span>
+                    {isActive(item.href) && <span className="h-1.5 w-1.5 rounded-full bg-white/50 shrink-0" />}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Logout */}

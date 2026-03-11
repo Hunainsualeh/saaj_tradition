@@ -1,6 +1,7 @@
-"use server";
+﻿"use server";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
+import { invalidateCacheTag } from "../helpers/cache-helpers";
 
 import { prisma } from "@/lib/prisma";
 import { CategoryMutationInput, ServerActionResponse } from "@/types/server";
@@ -54,7 +55,7 @@ export async function createCategory(
 
     revalidatePath(adminRoutes.categories);
     revalidatePath(routes.shop);
-    updateTag(CACHE_TAG_CATEGORY);
+    invalidateCacheTag(CACHE_TAG_CATEGORY);
 
     return { id: created.id };
   });
@@ -92,7 +93,7 @@ export async function updateCategoryById(
 
     revalidatePath(adminRoutes.categories);
     revalidatePath(routes.shop);
-    updateTag(CACHE_TAG_CATEGORY);
+    invalidateCacheTag(CACHE_TAG_CATEGORY);
 
     return { id: updated.id };
   });
@@ -122,7 +123,7 @@ export async function deleteCategoryById(
 
     revalidatePath(adminRoutes.categories);
     revalidatePath(routes.shop);
-    updateTag(CACHE_TAG_CATEGORY);
+    invalidateCacheTag(CACHE_TAG_CATEGORY);
 
     return { id: deleted.id };
   });

@@ -1,7 +1,8 @@
-"use server";
+﻿"use server";
 
 import { BlogCategory } from "@prisma/client";
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
+import { invalidateCacheTag } from "../helpers/cache-helpers";
 
 import { prisma } from "@/lib/prisma";
 import { BlogMutationInput, ServerActionResponse } from "@/types/server";
@@ -47,7 +48,7 @@ export async function createBlog(
       },
     });
 
-    updateTag(CACHE_TAG_BLOG);
+    invalidateCacheTag(CACHE_TAG_BLOG);
     revalidatePath(adminRoutes.blogs);
     revalidatePath(routes.blog);
     revalidatePath(routes.home);
@@ -65,7 +66,7 @@ export async function updateBlogById(
       return { id };
     }
 
-    updateTag(CACHE_TAG_BLOG);
+    invalidateCacheTag(CACHE_TAG_BLOG);
     revalidatePath(adminRoutes.blogs);
     revalidatePath(routes.blog);
     revalidatePath(routes.home);
@@ -126,7 +127,7 @@ export async function deleteBlogById(
     }
 
     const deleted = await prisma.blogPost.delete({ where: { id } });
-    updateTag(CACHE_TAG_BLOG);
+    invalidateCacheTag(CACHE_TAG_BLOG);
     revalidatePath(adminRoutes.blogs);
     revalidatePath(routes.blog);
     revalidatePath(routes.home);

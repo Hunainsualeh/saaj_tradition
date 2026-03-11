@@ -1,6 +1,7 @@
-"use server";
+﻿"use server";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
+import { invalidateCacheTag } from "../helpers/cache-helpers";
 
 import { prisma } from "@/lib/prisma";
 import { SiteContentMutationInput, ServerActionResponse } from "@/types/server";
@@ -30,7 +31,7 @@ export async function upsertSiteContent(
     revalidatePath(adminRoutes.siteContent);
     revalidatePath(routes.home);
     revalidatePath(routes.about);
-    updateTag(CACHE_TAG_SITE_CONTENT);
+    invalidateCacheTag(CACHE_TAG_SITE_CONTENT);
 
     return { id: result.id };
   });
@@ -53,7 +54,7 @@ export async function updateSiteContentById(
     revalidatePath(adminRoutes.siteContent);
     revalidatePath(routes.home);
     revalidatePath(routes.about);
-    updateTag(CACHE_TAG_SITE_CONTENT);
+    invalidateCacheTag(CACHE_TAG_SITE_CONTENT);
 
     return { id };
   });
@@ -79,7 +80,7 @@ export async function bulkUpdateSiteContent(
     revalidatePath(adminRoutes.siteContent);
     revalidatePath(routes.home);
     revalidatePath(routes.about);
-    updateTag(CACHE_TAG_SITE_CONTENT);
+    invalidateCacheTag(CACHE_TAG_SITE_CONTENT);
 
     return { count: items.length };
   });
@@ -98,7 +99,7 @@ export async function deleteSiteContentById(
     revalidatePath(adminRoutes.siteContent);
     revalidatePath(routes.home);
     revalidatePath(routes.about);
-    updateTag(CACHE_TAG_SITE_CONTENT);
+    invalidateCacheTag(CACHE_TAG_SITE_CONTENT);
 
     return { id };
   });
