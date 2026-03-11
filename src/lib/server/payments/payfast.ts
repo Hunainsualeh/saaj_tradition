@@ -307,7 +307,6 @@ export function isPayFastSuccess(data: Record<string, string>): boolean {
 
 export async function validatePayFastITN(
   payload: Record<string, string>,
-  reqIp?: string
 ): Promise<boolean> {
   const isProduction = process.env.NODE_ENV === "production";
   const validationUrl = isProduction

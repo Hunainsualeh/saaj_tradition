@@ -19,15 +19,7 @@ export async function POST(req: NextRequest) {
     paymentStatus: payload.payment_status ?? payload.pf_payment_id ?? "unknown",
   });
 
-  const customerIp =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "127.0.0.1";
-
-  // Normalise IPv6 loopback -> IPv4
-  const normalizedIp = customerIp === "::1" ? "127.0.0.1" : customerIp;
-
-  const isValid = await validatePayFastITN(payload, normalizedIp);
+  const isValid = await validatePayFastITN(payload);
   if (!isValid) {
     console.warn("[PayFast ITN] Validation failed for payload:", payload);
     return new NextResponse("Invalid ITN Signature", { status: 400 });

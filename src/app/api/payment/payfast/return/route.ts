@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath, revalidateTag } from "next/cache";
-import { CartStatus, OrderStatus, PaymentMethod, PaymentStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { COOKIE_CART_ID } from "@/lib/constants";

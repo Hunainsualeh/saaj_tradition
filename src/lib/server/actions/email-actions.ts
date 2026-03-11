@@ -10,7 +10,7 @@ import { EmailTemplateType } from "@prisma/client";
 import { wrapServerCall } from "../helpers";
 import { ServerActionResponse } from "@/types/server";
 import { getCurrentAdmin } from "./admin-auth-actions";
-import { enqueueEmail, type EmailJob } from "@/lib/redis-queue";
+
 
 /** Verify the caller is an authenticated admin; throws if not */
 async function requireAdmin() {
