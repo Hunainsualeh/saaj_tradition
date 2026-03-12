@@ -129,40 +129,40 @@ const SITE_CONTENT_DEFAULTS: SiteContentDefault[] = [
   // === Feature Cards ===
   {
     key: "feature_card_1_title",
-    value: "Deliver with Quality",
+    value: "Mastered Craft",
     label: "Feature Card 1 Title",
     group: "feature-cards",
   },
   {
     key: "feature_card_1_description",
     value:
-      "Each product is crafted with attention to detail and quality materials, ensuring durability and comfort.",
+      "Uncompromising quality sourced from the heart of tradition. Built to last; designed to be felt.",
     label: "Feature Card 1 Description",
     group: "feature-cards",
   },
   {
     key: "feature_card_2_title",
-    value: "Designed to Impress",
+    value: "Uncompromising Excellence",
     label: "Feature Card 2 Title",
     group: "feature-cards",
   },
   {
     key: "feature_card_2_description",
     value:
-      "Our products feature sleek designs and modern aesthetics, making them a stylish addition to any wardrobe.",
+      "Every piece in the Saaj collection is a hallmark of grace and durability. We ensure that every garment reflects a standard of quality that feels as timeless as the traditions it represents.",
     label: "Feature Card 2 Description",
     group: "feature-cards",
   },
   {
     key: "feature_card_3_title",
-    value: "Curated for You",
+    value: "Designed to Impress",
     label: "Feature Card 3 Title",
     group: "feature-cards",
   },
   {
     key: "feature_card_3_description",
     value:
-      "We carefully select each item to meet high standards of style, comfort, and functionality.",
+      "Our products feature sleek designs and modern aesthetics, making them a stylish addition to any wardrobe.",
     label: "Feature Card 3 Description",
     group: "feature-cards",
   },
@@ -400,6 +400,19 @@ const SITE_CONTENT_DEFAULTS: SiteContentDefault[] = [
     value: "LVMH\nKERING\nRICHEMONT\nCAPRI\nTAPESTRY\nPRADA GROUP",
     label: "Partner Names (one per line)",
     group: "partner-logos-marquee",
+  },
+  // === WhatsApp Chat Button ===
+  {
+    key: "whatsapp_chat_enabled",
+    value: "false",
+    label: "Enable WhatsApp Chat Button (true / false)",
+    group: "whatsapp-chat",
+  },
+  {
+    key: "whatsapp_chat_number",
+    value: "",
+    label: "WhatsApp Phone Number (e.g. 923001234567 — country code, no + or spaces)",
+    group: "whatsapp-chat",
   },
 ];
 

@@ -37,8 +37,8 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     number: "01",
-    title: "Deliver with Quality",
+    title: "Mastered Craft",
     description:
-      "Every product is crafted with attention to detail and premium materials to ensure lasting satisfaction.",
+      "Uncompromising quality sourced from the heart of tradition. Built to last; designed to be felt.",
   },
 };

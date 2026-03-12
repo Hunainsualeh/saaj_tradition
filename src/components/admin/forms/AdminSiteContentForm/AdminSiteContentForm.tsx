@@ -33,6 +33,7 @@ import {
   Save,
   Check,
   Search,
+  MessageCircle,
 } from "lucide-react";
 
 import { AdminButton, AdminInput } from "@/components/admin";
@@ -113,6 +114,15 @@ const TAB_CONFIG: TabConfig[] = [
       "partner-logos-marquee",
     ],
   },
+  {
+    id: "whatsapp",
+    label: "WhatsApp Chat",
+    shortLabel: "WhatsApp",
+    icon: <MessageCircle size={18} />,
+    description:
+      "Toggle the floating WhatsApp chat button and set the phone number.",
+    groups: ["whatsapp-chat"],
+  },
 ];
 
 const GROUP_META: Record<string, { label: string; icon: React.ReactNode }> = {
@@ -150,6 +160,10 @@ const GROUP_META: Record<string, { label: string; icon: React.ReactNode }> = {
   "partner-logos-marquee": {
     label: "Partner Logos",
     icon: <Handshake size={16} />,
+  },
+  "whatsapp-chat": {
+    label: "WhatsApp Chat Button",
+    icon: <MessageCircle size={16} />,
   },
 };
 
@@ -767,7 +781,7 @@ function ContentField({
   onDelete: () => void;
   deleting: boolean;
 }) {
-  const isActive = item.key.endsWith("_active");
+  const isActive = item.key.endsWith("_active") || item.key.endsWith("_enabled");
   const isColor = item.key.endsWith("_color");
   const isMedia = isMediaKey(item.key);
   const isLong = !isMedia && (value ?? "").length > 80;

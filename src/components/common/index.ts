@@ -29,3 +29,4 @@ export * from "./TrackOrderForm";
 export * from "./ProductImageMarquee";
 export * from "./PartnerLogosMarquee";
 export * from "./ViewAllProductsButton";
+export * from "./WhatsAppChatButton/WhatsAppChatButton";

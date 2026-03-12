@@ -8,6 +8,7 @@ import { AddToCartDialog } from "@/components/common/AddToCartDialog/AddToCartDi
 import { CartSidebar } from "@/components/common/CartSidebar/CartSidebar";
 import { getCollections, getSiteContentMap } from "@/lib/server/queries";
 import { STORE_EMAIL, STORE_INSTAGRAM, STORE_FACEBOOK } from "@/lib/constants/store-information";
+import { WhatsAppChatButton } from "@/components/common/WhatsAppChatButton/WhatsAppChatButton";
 
 export const metadata: Metadata = {
   title: {
@@ -41,6 +42,9 @@ export default async function CustomerLayout({
   const footerTwitter = cm.social_twitter || undefined;
   const footerTiktok = cm.social_tiktok || undefined;
 
+  const whatsappChatEnabled = cm.whatsapp_chat_enabled === "true";
+  const whatsappChatNumber = cm.whatsapp_chat_number || "";
+
   return (
     <CartCountProvider fetchCartItemCount={getCartItemCount}>
       <CartSidebarProvider fetchCart={getCartAction}>
@@ -59,6 +63,9 @@ export default async function CustomerLayout({
           </div>
           <AddToCartDialog />
           <CartSidebar />
+          {whatsappChatEnabled && whatsappChatNumber && (
+            <WhatsAppChatButton phoneNumber={whatsappChatNumber} />
+          )}
         </CartDialogProvider>
       </CartSidebarProvider>
     </CartCountProvider>

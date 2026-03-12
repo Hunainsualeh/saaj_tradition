@@ -150,18 +150,18 @@ export default async function HomePage() {
           >
             <FeatureCard
               number="01"
-              title={c.feature_card_1_title || "Deliver with Quality"}
-              description={c.feature_card_1_description || "Each product is crafted with attention to detail and quality materials, ensuring durability and comfort."}
+              title={c.feature_card_1_title || "Mastered Craft"}
+              description={c.feature_card_1_description || "Uncompromising quality sourced from the heart of tradition. Built to last; designed to be felt."}
             />
             <FeatureCard
               number="02"
-              title={c.feature_card_2_title || "Designed to Impress"}
-              description={c.feature_card_2_description || "Our products feature sleek designs and modern aesthetics, making them a stylish addition to any wardrobe."}
+              title={c.feature_card_2_title || "Uncompromising Excellence"}
+              description={c.feature_card_2_description || "Every piece in the Saaj collection is a hallmark of grace and durability. We ensure that every garment reflects a standard of quality that feels as timeless as the traditions it represents."}
             />
             <FeatureCard
               number="03"
-              title={c.feature_card_3_title || "Curated for You"}
-              description={c.feature_card_3_description || "We carefully select each item to meet high standards of style, comfort, and functionality."}
+              title={c.feature_card_3_title || "Designed to Impress"}
+              description={c.feature_card_3_description || "Our products feature sleek designs and modern aesthetics, making them a stylish addition to any wardrobe."}
             />
           </AnimateStagger>
         </BaseSection>
