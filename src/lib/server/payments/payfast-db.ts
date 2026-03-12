@@ -6,24 +6,43 @@ import { adminRoutes } from "@/lib/routing/routes";
 import { CACHE_TAG_CART, CACHE_TAG_PRODUCT } from "@/lib/constants";
 import { isDemoMode } from "@/lib/server/helpers";
 import { invalidateTags } from "@/lib/redis-cache";
+import { logPaymentEvent } from "@/lib/server/payments/payment-logger";
 
 export async function markOrderPaymentFailed(orderId: string): Promise<void> {
-  const existingOrder = await prisma.order.findUnique({ where: { id: orderId } });
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Row-level lock to prevent race with concurrent success callback
+      const rows = await tx.$queryRawUnsafe<{ id: string; paymentStatus: string }[]>(
+        `SELECT "id", "paymentStatus" FROM "Order" WHERE "id" = $1 FOR UPDATE`,
+        orderId,
+      );
 
-  if (!existingOrder) return;
-  if (existingOrder.paymentStatus === PaymentStatus.PAID) return;
+      const existingOrder = rows[0];
+      if (!existingOrder) return;
+      if (existingOrder.paymentStatus === PaymentStatus.PAID) return;
 
-  await prisma.order.update({
-    where: { id: orderId },
-    data: {
-      paymentStatus: PaymentStatus.FAILED,
-      paymentMethod: PaymentMethod.PAYFAST,
-      // Clear the session marker so the next initiateCheckout call can
-      // build a completely fresh PayFast token + basket_id.
-      paymentSessionId: null,
-      updatedAt: new Date(),
-    },
-  });
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: PaymentStatus.FAILED,
+          paymentMethod: PaymentMethod.PAYFAST,
+          // Clear the session marker so the next initiateCheckout call can
+          // build a completely fresh PayFast token + basket_id.
+          paymentSessionId: null,
+          updatedAt: new Date(),
+        },
+      });
+    });
+
+    logPaymentEvent({
+      orderId,
+      event: "MARKED_FAILED",
+      source: "system",
+      message: "Order payment status set to FAILED",
+    });
+  } catch (error) {
+    console.error("[PayFast] markOrderPaymentFailed error:", error);
+  }
 }
 
 export async function markOrderPaymentSucceeded(
@@ -31,6 +50,15 @@ export async function markOrderPaymentSucceeded(
 ): Promise<{ transitioned: boolean }> {
   const result = await prisma.$transaction(
     async (tx) => {
+    // Row-level lock prevents double-processing when return URL + ITN
+    // arrive simultaneously (concurrent requests both read PENDING, both
+    // try to mark as PAID). FOR UPDATE blocks the second caller until the
+    // first commits, then the idempotency check catches it.
+    await tx.$executeRawUnsafe(
+      `SELECT "id" FROM "Order" WHERE "id" = $1 FOR UPDATE`,
+      orderId,
+    );
+
     const order = await tx.order.findUnique({
       where: { id: orderId },
       include: {
@@ -103,6 +131,13 @@ export async function markOrderPaymentSucceeded(
   if (!result.transitioned) {
     return { transitioned: false };
   }
+
+  logPaymentEvent({
+    orderId,
+    event: "MARKED_PAID",
+    source: "system",
+    message: "Order payment status set to PAID, stock decremented, cart marked ORDERED",
+  });
 
   revalidateTag(CACHE_TAG_CART, "max");
   revalidateTag(CACHE_TAG_PRODUCT, "max");

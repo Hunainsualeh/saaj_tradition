@@ -24,6 +24,7 @@ export const adminRoutes = {
   productsCreate: "/admin/products/create",
 
   orders: "/admin/orders",
+  payments: "/admin/payments",
 
   blogs: "/admin/blogs",
   blogsCreate: "/admin/blogs/create",

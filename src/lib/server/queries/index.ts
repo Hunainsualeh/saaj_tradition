@@ -4,6 +4,7 @@ export * from "./cart-queries";
 export * from "./category-queries";
 export * from "./product-queries";
 export * from "./order-queries";
+export * from "./payment-queries";
 export * from "./collection-queries";
 export * from "./team-queries";
 export * from "./site-content-queries";

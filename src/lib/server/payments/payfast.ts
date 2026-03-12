@@ -360,3 +360,127 @@ export async function validatePayFastITN(
     return false;
   }
 }
+
+/**
+ * Query PayFast "Get Transaction Status" API by basket_id.
+ * Per the PayFast API guide: GET /transaction/basket_id/<basket_id>
+ *
+ * Returns the callback-style payload so callers can use `isPayFastSuccess()`
+ * on the result. Returns `null` if the API is unreachable or misconfigured.
+ */
+export async function getPayFastTransactionStatus(
+  basketId: string,
+  orderDate: string,
+): Promise<Record<string, string> | null> {
+  const baseUrl = process.env.PAYFAST_BASE_URL;
+  if (!baseUrl) {
+    // If no base URL configured, reconciliation cannot run — skip silently.
+    return null;
+  }
+
+  try {
+    const tokenUrl = getRequiredEnv("PAYFAST_TOKEN_URL");
+    const merchantId = getRequiredEnv("PAYFAST_MERCHANT_ID");
+    const secureKey = getRequiredEnv("PAYFAST_SECURE_KEY");
+
+    // 1. Get a fresh access token
+    const tokenBody = new URLSearchParams({
+      merchant_id: merchantId,
+      secured_key: secureKey,
+      grant_type: "client_credentials",
+      customer_ip: "127.0.0.1",
+    });
+
+    const isProduction = process.env.NODE_ENV === "production";
+    let tokenText: string;
+
+    if (!isProduction) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { fetch: undiciFetch, Agent } = require("undici") as typeof import("undici");
+      const agent = new Agent({ connect: { rejectUnauthorized: false } });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const res = await undiciFetch(tokenUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: tokenBody.toString(),
+        dispatcher: agent,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      tokenText = await res.text();
+    } else {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch(tokenUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: tokenBody.toString(),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      tokenText = await res.text();
+    }
+
+    let accessToken: string | null = null;
+    try {
+      const parsed = JSON.parse(tokenText) as PayFastTokenResponse;
+      accessToken = parsed.token ?? parsed.ACCESS_TOKEN ?? null;
+    } catch {
+      const fallback = new URLSearchParams(tokenText);
+      accessToken = fallback.get("token") ?? fallback.get("ACCESS_TOKEN") ?? null;
+    }
+
+    if (!accessToken) {
+      console.error("[PayFast Reconcile] Could not obtain access token");
+      return null;
+    }
+
+    // 2. Query transaction status by basket_id
+    const statusUrl = `${baseUrl}/transaction/basket_id/${encodeURIComponent(basketId)}?order_date=${encodeURIComponent(orderDate)}&customer_ip=127.0.0.1`;
+
+    let statusText: string;
+    if (!isProduction) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { fetch: undiciFetch, Agent } = require("undici") as typeof import("undici");
+      const agent = new Agent({ connect: { rejectUnauthorized: false } });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const res = await undiciFetch(statusUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        dispatcher: agent,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      statusText = await res.text();
+    } else {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch(statusUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      statusText = await res.text();
+    }
+
+    const parsed = JSON.parse(statusText) as Record<string, unknown>;
+    // Convert all values to strings so callers can use isPayFastSuccess()
+    return Object.fromEntries(
+      Object.entries(parsed).map(([k, v]) => [k, String(v ?? "")]),
+    );
+  } catch (error) {
+    console.error("[PayFast Reconcile] Failed to fetch transaction status:", error);
+    return null;
+  }
+}

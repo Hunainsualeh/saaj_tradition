@@ -20,5 +20,6 @@ export const defaultVisibleOrderColumnIds = new Set([
   "delieveryName",
   "itemsCount",
   "totalPrice",
+  "paymentStatus",
   "createdAt",
 ]);

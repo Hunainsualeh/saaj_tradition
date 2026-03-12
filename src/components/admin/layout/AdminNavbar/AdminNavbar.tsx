@@ -26,6 +26,7 @@ import {
   Truck,
   Megaphone,
   Mail,
+  CreditCard,
 } from "lucide-react";
 
 import { adminRoutes } from "@/lib";
@@ -48,6 +49,7 @@ const navGroups = [
     items: [
       { href: adminRoutes.home, text: "Dashboard", icon: LayoutDashboard },
       { href: adminRoutes.orders, text: "Orders", icon: ShoppingCart },
+      { href: adminRoutes.payments, text: "Payments", icon: CreditCard },
       { href: adminRoutes.products, text: "Products", icon: Package },
       { href: adminRoutes.categories, text: "Categories", icon: Tag },
       { href: adminRoutes.collections, text: "Collections", icon: Layers },

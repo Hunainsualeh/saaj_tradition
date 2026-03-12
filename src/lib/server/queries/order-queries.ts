@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 
-import { Order, OrderStatus } from "@prisma/client";
+import { Order, OrderStatus, PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ServerActionResponse } from "@/types/server";
 import {
@@ -152,6 +152,17 @@ export async function getAdminOrderById(
             image: true,
             sizeLabel: true,
           },
+        },
+        paymentEvents: {
+          select: {
+            id: true,
+            event: true,
+            source: true,
+            message: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 50,
         },
         // Legacy fallback for orders created before OrderItem was added
         cart: {
@@ -337,29 +348,49 @@ export async function getDashboardStats(): Promise<
       OrderStatus.DELIVERED,
     ];
 
-    const [totalOrdersCount, pendingCount, revenueData, statusGroups, recentRaw] =
-      await Promise.all([
-        prisma.order.count(),
-        prisma.order.count({ where: { status: OrderStatus.PENDING } }),
-        prisma.order.aggregate({
-          where: { status: { in: REVENUE_STATUSES } },
-          _sum: { totalPrice: true },
-        }),
-        prisma.order.groupBy({ by: ["status"], _count: { _all: true } }),
-        prisma.order.findMany({
-          take: 6,
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            orderNumber: true,
-            delieveryName: true,
-            deliveryEmail: true,
-            totalPrice: true,
-            status: true,
-            createdAt: true,
-          },
-        }),
-      ]);
+    const [
+      totalOrdersCount,
+      pendingCount,
+      revenueData,
+      statusGroups,
+      paymentStatusGroups,
+      paymentMethodGroups,
+      failedPaymentsCount,
+      pendingPaymentsCount,
+      recentRaw,
+    ] = await Promise.all([
+      prisma.order.count(),
+      prisma.order.count({ where: { status: OrderStatus.PENDING } }),
+      prisma.order.aggregate({
+        where: { status: { in: REVENUE_STATUSES } },
+        _sum: { totalPrice: true },
+      }),
+      prisma.order.groupBy({ by: ["status"], _count: { _all: true } }),
+      prisma.order.groupBy({ by: ["paymentStatus"], _count: { _all: true } }),
+      prisma.order.groupBy({ by: ["paymentMethod"], _count: { _all: true } }),
+      prisma.order.count({ where: { paymentStatus: PaymentStatus.FAILED } }),
+      prisma.order.count({
+        where: {
+          paymentStatus: PaymentStatus.PENDING,
+          paymentSessionId: { not: null },
+        },
+      }),
+      prisma.order.findMany({
+        take: 6,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          orderNumber: true,
+          delieveryName: true,
+          deliveryEmail: true,
+          totalPrice: true,
+          status: true,
+          paymentStatus: true,
+          paymentMethod: true,
+          createdAt: true,
+        },
+      }),
+    ]);
 
     const totalRevenue = Number(revenueData._sum.totalPrice ?? 0);
     const paidCount =
@@ -374,6 +405,16 @@ export async function getDashboardStats(): Promise<
       statusBreakdown[g.status] = g._count._all;
     });
 
+    const paymentStatusBreakdown: Record<string, number> = {};
+    paymentStatusGroups.forEach((g) => {
+      paymentStatusBreakdown[g.paymentStatus] = g._count._all;
+    });
+
+    const paymentMethodBreakdown: Record<string, number> = {};
+    paymentMethodGroups.forEach((g) => {
+      paymentMethodBreakdown[g.paymentMethod] = g._count._all;
+    });
+
     const recentOrders: DashboardRecentOrder[] = recentRaw.map((o) => ({
       ...o,
       totalPrice: Number(o.totalPrice),
@@ -385,6 +426,10 @@ export async function getDashboardStats(): Promise<
       pendingOrders: pendingCount,
       averageOrderValue,
       statusBreakdown,
+      paymentStatusBreakdown,
+      paymentMethodBreakdown,
+      failedPayments: failedPaymentsCount,
+      pendingPayments: pendingPaymentsCount,
       recentOrders,
     };
   });

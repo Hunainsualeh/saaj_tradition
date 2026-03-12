@@ -123,6 +123,7 @@ model Order {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   orderItems OrderItem[]
+  paymentEvents PaymentEvent[]
 
   delieveryName         String?
   deliveryEmail         String?
@@ -207,6 +208,25 @@ model OrderItem {
 
   @@index([orderId])
   @@index([productId])
+}
+
+// Full audit trail of every payment-related event for an order.
+// Logs checkout initiation, return callbacks, ITN webhooks, reconciliation
+// results, failures, and admin overrides — visible on the admin order detail page.
+model PaymentEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  event     String   // e.g. "CHECKOUT_INITIATED", "RETURN_SUCCESS", "ITN_RECEIVED", "RECONCILED", "FAILED", "AMOUNT_MISMATCH"
+  source    String   // e.g. "checkout", "return", "itn", "reconcile", "admin"
+  payload   String?  // JSON string of raw callback data (for debugging)
+  message   String?  // Human-readable description
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([createdAt])
+  @@index([event])
 }
 
 model BlogPost {

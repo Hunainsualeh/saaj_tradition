@@ -598,6 +598,39 @@ export function AdminOrderView(props: AdminOrderViewProps) {
           )}
         </div>
       )}
+
+      {/* Payment Activity Log */}
+      {order.paymentEvents && order.paymentEvents.length > 0 && (
+        <div className="rounded-xl border border-neutral-200 bg-white p-5 mt-6">
+          <h3 className="text-sm font-semibold text-neutral-800 mb-3">Payment Activity Log</h3>
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {order.paymentEvents.map((evt) => (
+              <div
+                key={evt.id}
+                className="flex items-start gap-3 text-xs border-b border-neutral-100 pb-2 last:border-none"
+              >
+                <span className={`shrink-0 mt-0.5 inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                  evt.event.includes("SUCCESS") || evt.event === "MARKED_PAID"
+                    ? "bg-green-100 text-green-800"
+                    : evt.event.includes("FAILED") || evt.event.includes("ERROR") || evt.event.includes("MISMATCH")
+                    ? "bg-red-100 text-red-800"
+                    : evt.event.includes("INITIATED") || evt.event === "ITN_RECEIVED"
+                    ? "bg-blue-100 text-blue-800"
+                    : "bg-gray-100 text-gray-700"
+                }`}>
+                  {evt.event}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-neutral-700 truncate">{evt.message ?? "—"}</p>
+                  <p className="text-neutral-500 text-[10px] mt-0.5">
+                    {new Date(evt.createdAt).toLocaleString("en-PK")} · via {evt.source}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

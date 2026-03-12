@@ -20,6 +20,8 @@ import {
   FileText,
   Users,
   ArrowRight,
+  CreditCard,
+  AlertOctagon,
 } from "lucide-react";
 import { OrderDashboardStats, ProductDashboardStats } from "@/types/client";
 import { adminRoutes } from "@/lib";
@@ -39,6 +41,13 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> =
   DELIVERED:  { bg: "bg-emerald-100", text: "text-emerald-700",dot: "#10b981" },
   CANCELLED:  { bg: "bg-red-100",     text: "text-red-700",    dot: "#ef4444" },
   REFUNDED:   { bg: "bg-gray-100",    text: "text-gray-600",   dot: "#9ca3af" },
+};
+
+const PAYMENT_STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
+  PENDING:  { bg: "bg-amber-100",   text: "text-amber-700",  dot: "#f59e0b" },
+  PAID:     { bg: "bg-emerald-100", text: "text-emerald-700", dot: "#10b981" },
+  FAILED:   { bg: "bg-red-100",     text: "text-red-700",    dot: "#ef4444" },
+  REFUNDED: { bg: "bg-gray-100",    text: "text-gray-600",   dot: "#9ca3af" },
 };
 
 // ─── Donut chart helper ────────────────────────────────────────────────────
@@ -209,6 +218,16 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function PaymentBadge({ status }: { status: string }) {
+  const cfg = PAYMENT_STATUS_COLORS[status] ?? { bg: "bg-gray-100", text: "text-gray-600", dot: "#9ca3af" };
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.bg} ${cfg.text}`}>
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.dot }} />
+      {status}
+    </span>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function AdminDashboardStats({ orderStats, productStats }: Props) {
   const [search, setSearch] = useState("");
@@ -304,6 +323,46 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
           icon={BarChart3}
           iconBg="bg-violet-50"
           iconColor="text-violet-600"
+          href={adminRoutes.orders}
+        />
+      </div>
+
+      {/* ── Payment KPI Cards ────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard
+          label="Pending Payments"
+          value={orderStats.pendingPayments}
+          icon={CreditCard}
+          iconBg="bg-amber-50"
+          iconColor="text-amber-600"
+          href={adminRoutes.orders}
+          alert={orderStats.pendingPayments > 0}
+          alertText={`${orderStats.pendingPayments} awaiting payment confirmation`}
+        />
+        <KpiCard
+          label="Failed Payments"
+          value={orderStats.failedPayments}
+          icon={AlertOctagon}
+          iconBg="bg-red-50"
+          iconColor="text-red-600"
+          href={adminRoutes.orders}
+          alert={orderStats.failedPayments > 0}
+          alertText={`${orderStats.failedPayments} payments failed`}
+        />
+        <KpiCard
+          label="PayFast Orders"
+          value={orderStats.paymentMethodBreakdown["PAYFAST"] ?? 0}
+          icon={CreditCard}
+          iconBg="bg-blue-50"
+          iconColor="text-blue-600"
+          href={adminRoutes.orders}
+        />
+        <KpiCard
+          label="COD Orders"
+          value={orderStats.paymentMethodBreakdown["COD"] ?? 0}
+          icon={ShoppingBag}
+          iconBg="bg-gray-50"
+          iconColor="text-gray-600"
           href={adminRoutes.orders}
         />
       </div>
@@ -408,6 +467,7 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
                   <th className="text-left text-xs font-semibold text-neutral-08 pb-2 px-1">Customer</th>
                   <th className="text-left text-xs font-semibold text-neutral-08 pb-2 px-1 hidden sm:table-cell">Date</th>
                   <th className="text-right text-xs font-semibold text-neutral-08 pb-2 px-1">Total</th>
+                  <th className="text-right text-xs font-semibold text-neutral-08 pb-2 px-1 hidden md:table-cell">Payment</th>
                   <th className="text-right text-xs font-semibold text-neutral-08 pb-2 px-1">Status</th>
                 </tr>
               </thead>
@@ -436,6 +496,9 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
                     </td>
                     <td className="py-2.5 px-1 text-right font-semibold text-neutral-11 whitespace-nowrap">
                       Rs.{order.totalPrice.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="py-2.5 px-1 text-right hidden md:table-cell">
+                      <PaymentBadge status={order.paymentStatus} />
                     </td>
                     <td className="py-2.5 px-1 text-right">
                       <StatusBadge status={order.status} />

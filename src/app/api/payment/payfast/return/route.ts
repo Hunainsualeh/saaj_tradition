@@ -10,6 +10,7 @@ import {
   markOrderPaymentFailed,
   markOrderPaymentSucceeded,
 } from "@/lib/server/payments/payfast-db";
+import { logPaymentEvent } from "@/lib/server/payments/payment-logger";
 
 function redirectToCheckoutResult(
   req: NextRequest,
@@ -57,7 +58,20 @@ async function readRequestPayload(req: NextRequest): Promise<Record<string, stri
 
 
 async function handleReturn(req: NextRequest) {
-  const payload = await readRequestPayload(req);
+  let payload: Record<string, string>;
+  try {
+    payload = await readRequestPayload(req);
+  } catch (error) {
+    console.error("[PayFast Return] Malformed request payload:", error);
+    return redirectToCheckoutResult(req, { success: false });
+  }
+
+  // Reject obviously empty or garbage payloads
+  if (Object.keys(payload).length === 0) {
+    console.warn("[PayFast Return] Empty payload received");
+    return redirectToCheckoutResult(req, { success: false });
+  }
+
   const rawOrderRef = extractPayFastOrderId(payload);
 
   console.log("[PayFast Return] Received callback", {
@@ -92,36 +106,70 @@ async function handleReturn(req: NextRequest) {
 
   const success = isPayFastSuccess(payload);
 
-  if (success) {
-    // Verify the payment amount matches the order total
-    const amountGross = parseFloat(payload.amount_gross ?? "0");
-    if (amountGross > 0) {
-      const order = await prisma.order.findUnique({
-        where: { id: orderId },
-        select: { totalPrice: true, orderNumber: true },
-      });
-      if (order) {
-        const orderTotal = Number(order.totalPrice);
-        const diff = Math.abs(amountGross - orderTotal);
-        if (diff > 1) {
-          console.error("[PayFast Return] Amount mismatch — BLOCKING payment!", {
-            orderId,
-            orderNumber: order.orderNumber,
-            expectedAmount: orderTotal,
-            receivedAmount: amountGross,
-            difference: diff,
-          });
-          await markOrderPaymentFailed(orderId);
-          return redirectToCheckoutResult(req, { orderId, success: false });
+  try {
+    if (success) {
+      // Verify the payment amount matches the order total
+      const amountGross = parseFloat(payload.amount_gross ?? "0");
+      if (amountGross > 0) {
+        const order = await prisma.order.findUnique({
+          where: { id: orderId },
+          select: { totalPrice: true, orderNumber: true },
+        });
+        if (order) {
+          const orderTotal = Number(order.totalPrice);
+          const diff = Math.abs(amountGross - orderTotal);
+          if (diff > 1) {
+            console.error("[PayFast Return] Amount mismatch — BLOCKING payment!", {
+              orderId,
+              orderNumber: order.orderNumber,
+              expectedAmount: orderTotal,
+              receivedAmount: amountGross,
+              difference: diff,
+            });
+            logPaymentEvent({
+              orderId,
+              event: "RETURN_AMOUNT_MISMATCH",
+              source: "return",
+              payload: { expectedAmount: orderTotal, receivedAmount: amountGross, diff },
+              message: `Amount mismatch: expected ${orderTotal}, got ${amountGross} (diff ${diff})`,
+            });
+            await markOrderPaymentFailed(orderId);
+            return redirectToCheckoutResult(req, { orderId, success: false });
+          }
         }
       }
-    }
 
-    await markOrderPaymentSucceeded(orderId);
-    console.log("[PayFast Return] Payment succeeded", { orderId });
-  } else {
-    await markOrderPaymentFailed(orderId);
-    console.log("[PayFast Return] Payment failed/cancelled", { orderId });
+      await markOrderPaymentSucceeded(orderId);
+      logPaymentEvent({
+        orderId,
+        event: "RETURN_SUCCESS",
+        source: "return",
+        payload: { err_code: payload.err_code, amount_gross: payload.amount_gross },
+        message: "Payment succeeded via return URL",
+      });
+      console.log("[PayFast Return] Payment succeeded", { orderId });
+    } else {
+      await markOrderPaymentFailed(orderId);
+      logPaymentEvent({
+        orderId,
+        event: "RETURN_FAILED",
+        source: "return",
+        payload: { err_code: payload.err_code, err_msg: payload.err_msg, status_msg: payload.status_msg },
+        message: `Payment failed via return URL (code: ${payload.err_code ?? "unknown"})`,
+      });
+      console.log("[PayFast Return] Payment failed/cancelled", { orderId });
+    }
+  } catch (error) {
+    // DB or network error during status update — log it but still redirect
+    // so the user isn't stuck on an error page. The ITN webhook or the
+    // reconciliation cron will pick up the status change later.
+    console.error("[PayFast Return] Error processing payment result:", error);
+    logPaymentEvent({
+      orderId,
+      event: "RETURN_ERROR",
+      source: "return",
+      message: `Error processing return callback: ${error instanceof Error ? error.message : String(error)}`,
+    });
   }
 
   return redirectToCheckoutResult(req, { orderId, success });

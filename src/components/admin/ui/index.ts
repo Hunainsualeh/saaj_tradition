@@ -18,3 +18,4 @@ export * from "./AdminEmailDashboard";
 export * from "./AdminEmailTemplateForm";
 export * from "./AdminBroadcastForm";
 export * from "./AdminSubscribersTable";
+export * from "./AdminPaymentsPage";

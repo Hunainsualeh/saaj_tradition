@@ -22,6 +22,14 @@ type AdminOrderCartItem = {
   };
 };
 
+export type PaymentEventItem = {
+  id: string;
+  event: string;
+  source: string;
+  message: string | null;
+  createdAt: Date;
+};
+
 // === ORDER WITH CART ===
 export type OrderWithCart = {
   id: string;
@@ -110,6 +118,7 @@ export type GetAdminOrder = {
   cart: {
     items: AdminOrderCartItem[];
   };
+  paymentEvents: PaymentEventItem[];
 };
 
 export type DashboardRecentOrder = {
@@ -119,6 +128,8 @@ export type DashboardRecentOrder = {
   deliveryEmail: string | null;
   totalPrice: number;
   status: string;
+  paymentStatus: string;
+  paymentMethod: string;
   createdAt: Date;
 };
 
@@ -128,5 +139,47 @@ export type OrderDashboardStats = {
   pendingOrders: number;
   averageOrderValue: number;
   statusBreakdown: Record<string, number>;
+  paymentStatusBreakdown: Record<string, number>;
+  paymentMethodBreakdown: Record<string, number>;
+  failedPayments: number;
+  pendingPayments: number;
   recentOrders: DashboardRecentOrder[];
+};
+
+// === ADMIN PAYMENTS PAGE ===
+
+export type PaymentRecord = {
+  id: string;
+  orderNumber: number;
+  createdAt: Date;
+  updatedAt: Date;
+  totalPrice: number;
+  shippingAmount: number | null;
+  discountAmount: number | null;
+  couponCode: string | null;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  status: OrderStatus;
+  delieveryName: string | null;
+  deliveryEmail: string | null;
+  deliveryPhone: string | null;
+  deliveryCity: string | null;
+  itemsCount: number;
+};
+
+export type PaymentSummary = {
+  totalRevenue: number;
+  totalTransactions: number;
+  successfulPayments: number;
+  failedPayments: number;
+  pendingPayments: number;
+  refundedPayments: number;
+  codRevenue: number;
+  onlineRevenue: number;
+  codOrders: number;
+  onlineOrders: number;
+  avgOrderValue: number;
+  // Monthly data for current month
+  monthlyRevenue: number;
+  monthlyOrders: number;
 };

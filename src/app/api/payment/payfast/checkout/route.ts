@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { COOKIE_CART_ID } from "@/lib/constants";
 import { buildPayFastPaymentPayload } from "@/lib/server/payments/payfast";
 import { rateLimitPayment } from "@/lib/rate-limit";
+import { logPaymentEvent } from "@/lib/server/payments/payment-logger";
 
 function redirectToCheckout(req: NextRequest, params?: Record<string, string>) {
   const url = new URL("/checkout", req.nextUrl.origin);
@@ -84,7 +85,9 @@ export async function GET(req: NextRequest) {
       orderNumber: true,
       status: true,
       paymentStatus: true,
+      paymentSessionId: true,
       totalPrice: true,
+      updatedAt: true,
     },
   });
 
@@ -109,6 +112,36 @@ export async function GET(req: NextRequest) {
   }
   if (isTerminalStatus) {
     return redirectToCheckout(req, { payment: "failed", orderId });
+  }
+
+  // Guard against multiple tabs/double-clicks: if the order was sent to PayFast
+  // within the last 30 seconds and is still PENDING, redirect to a "payment in
+  // progress" state rather than generating a new token (which would create a
+  // duplicate transaction).
+  if (
+    order.paymentStatus === PaymentStatus.PENDING &&
+    order.status === OrderStatus.PENDING
+  ) {
+    const updatedAt =
+      typeof order.updatedAt === "string" ? new Date(order.updatedAt) : order.updatedAt;
+    const secondsSinceUpdate = (Date.now() - updatedAt.getTime()) / 1000;
+    // Only if there's a paymentSessionId (meaning it was already sent to PayFast)
+    if (order.paymentSessionId && secondsSinceUpdate < 30) {
+      console.log("[PayFast checkout] Duplicate request within 30s — skipping", {
+        orderId: order.id,
+        secondsSinceUpdate: Math.round(secondsSinceUpdate),
+      });
+      logPaymentEvent({
+        orderId: order.id,
+        event: "DUPLICATE_BLOCKED",
+        source: "checkout",
+        message: `Duplicate checkout attempt blocked (${Math.round(secondsSinceUpdate)}s since last)`,
+      });
+      return new NextResponse(
+        "Payment is already being processed. Please wait...",
+        { status: 409 },
+      );
+    }
   }
 
   try {
@@ -142,6 +175,13 @@ export async function GET(req: NextRequest) {
         paymentSessionId: `payfast_${order.id}`,
         updatedAt: new Date(),
       },
+    });
+
+    logPaymentEvent({
+      orderId: order.id,
+      event: "CHECKOUT_INITIATED",
+      source: "checkout",
+      message: `PayFast checkout initiated for order #${order.orderNumber}, amount ${Number(order.totalPrice)}`,
     });
 
     return new NextResponse(renderAutoSubmitHtml(payload.actionUrl, payload.fields), {

@@ -15,6 +15,13 @@ const STATUS_STYLES: Record<string, string> = {
   REFUNDED:   "bg-gray-100 text-gray-700",
 };
 
+const PAYMENT_STATUS_STYLES: Record<string, string> = {
+  PENDING:  "bg-yellow-100 text-yellow-800",
+  PAID:     "bg-green-100 text-green-800",
+  FAILED:   "bg-red-100 text-red-800",
+  REFUNDED: "bg-gray-100 text-gray-700",
+};
+
 import {
   AdminBaseTable,
   AdminButton,
@@ -168,9 +175,25 @@ export function AdminOrdersTable(props: AdminOrdersTableProps) {
         data={filteredOrders}
         onRowClick={(row) => router.push(`${adminRoutes.orders}/${row.id}`)}
         columns={[
-          ...orderColumns.filter((column) =>
-            columnsVisible.has(column.accessorKey),
-          ),
+          ...orderColumns
+            .filter((column) => columnsVisible.has(column.accessorKey))
+            .map((column) => {
+              // Render paymentStatus as a color-coded badge
+              if (column.accessorKey === "paymentStatus") {
+                return {
+                  ...column,
+                  cell: (cell: { row: { original: { paymentStatus: string } } }) => {
+                    const ps = cell.row.original.paymentStatus;
+                    return (
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap ${PAYMENT_STATUS_STYLES[ps] ?? "bg-neutral-100 text-neutral-700"}`}>
+                        {ps}
+                      </span>
+                    );
+                  },
+                };
+              }
+              return column;
+            }),
           {
             id: "actions",
             enableHiding: false,

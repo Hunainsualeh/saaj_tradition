@@ -80,6 +80,7 @@ NEXT_PUBLIC_PAYFAST_POST_URL=
 # Optional
 # PAYFAST_RETURN_URL=
 # PAYFAST_POST_EXTRA_FIELDS={"VERSION":"1.1"}
+# PAYFAST_BASE_URL=              # PayFast API base URL — enables payment reconciliation cron
 ```
 
 ---
