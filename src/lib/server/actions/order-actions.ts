@@ -13,6 +13,7 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { prisma } from "@/lib/prisma";
 import { ServerActionResponse } from "@/types/server";
 import { wrapServerCall } from "../helpers";
+import { requireAdmin } from "../helpers/require-admin";
 import { DeliveryDetailsData } from "@/components";
 import { cookies } from "next/headers";
 import { COOKIE_CART_ID } from "@/lib/constants";
@@ -269,6 +270,7 @@ export async function updateOrderStatus(
   options?: { sendEmail?: boolean; customMessage?: string },
 ): Promise<ServerActionResponse<{ id: string; status: string }>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     const validStatuses = Object.values(OrderStatus);
     if (!validStatuses.includes(status as OrderStatus)) {
       throw new Error(`Invalid order status: ${status}`);
@@ -302,6 +304,7 @@ export async function updatePaymentStatus(
   paymentStatus: string,
 ): Promise<ServerActionResponse<{ id: string; paymentStatus: string }>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     const validStatuses = Object.values(PaymentStatus);
     if (!validStatuses.includes(paymentStatus as PaymentStatus)) {
       throw new Error(`Invalid payment status: ${paymentStatus}`);
@@ -327,6 +330,7 @@ export async function recalculateOrderTotal(
   orderId: string,
 ): Promise<ServerActionResponse<number>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       select: {

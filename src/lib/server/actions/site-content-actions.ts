@@ -9,6 +9,7 @@ import { CACHE_TAG_SITE_CONTENT } from "@/lib/constants/cache-tags";
 import { adminRoutes, routes } from "@/lib/routing";
 import { wrapServerCall } from "../helpers/generic-helpers";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
+import { requireAdmin } from "@/lib/server/helpers/require-admin";
 
 // === MUTATIONS ===
 export async function upsertSiteContent(
@@ -18,6 +19,7 @@ export async function upsertSiteContent(
   group: string = "general",
 ): Promise<ServerActionResponse<SiteContentMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id: `demo-${key}` };
     }
@@ -42,6 +44,7 @@ export async function updateSiteContentById(
   value: string,
 ): Promise<ServerActionResponse<SiteContentMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }
@@ -64,6 +67,7 @@ export async function bulkUpdateSiteContent(
   items: { id: string; value: string }[],
 ): Promise<ServerActionResponse<{ count: number }>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { count: items.length };
     }
@@ -90,6 +94,7 @@ export async function deleteSiteContentById(
   id: string,
 ): Promise<ServerActionResponse<{ id: string }>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }

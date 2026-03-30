@@ -13,6 +13,7 @@ import {
 import { adminRoutes } from "@/lib/routing";
 import { wrapServerCall } from "../helpers/generic-helpers";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
+import { requireAdmin } from "@/lib/server/helpers/require-admin";
 import { validateCouponCode } from "@/lib/server/queries";
 import { COOKIE_COUPON_CODE } from "@/lib/constants/cookie-variables";
 import { CACHE_TAG_CART, CACHE_TAG_COUPON } from "@/lib/constants/cache-tags";
@@ -22,6 +23,7 @@ export async function deleteCouponById(
   id: string,
 ): Promise<ServerActionResponse<CouponMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }
@@ -36,6 +38,7 @@ export async function createCoupon(
   data: AdminCouponFormData,
 ): Promise<ServerActionResponse<CouponMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id: `demo-${data.code}` };
     }
@@ -59,6 +62,7 @@ export async function updateCouponById(
   data: AdminCouponFormData,
 ): Promise<ServerActionResponse<CouponMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }
@@ -82,6 +86,7 @@ export async function incrementCouponUsage(
   code: string,
 ): Promise<ServerActionResponse<{ success: boolean }>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     await prisma.coupon.update({
       where: { code: code.toUpperCase() },
       data: {
@@ -98,6 +103,7 @@ export async function applyCouponCode(
   code: string,
 ): Promise<ServerActionResponse<CouponValidationResult>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     // Rate limit: 10 coupon attempts per minute per code
     const rl = await rateLimitCoupon(code);
     if (!rl.allowed) {
@@ -133,6 +139,7 @@ export async function removeCouponCode(): Promise<
   ServerActionResponse<void>
 > {
   return wrapServerCall(async () => {
+      await requireAdmin();
     const cookieStore = await cookies();
     cookieStore.delete(COOKIE_COUPON_CODE);
     invalidateCacheTag(CACHE_TAG_CART);

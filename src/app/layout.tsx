@@ -14,11 +14,11 @@ export const metadata: Metadata = {
     template: "%s | Saaj Tradition",
   },
   description:
-    "Saaj Tradition — Traditional Bahawalpuri Suits. Explore curated fashion, premium essentials, and designer-inspired collections.",
+    "Saaj Tradition — Traditional Bahawalpuri dresses. Explore curated fashion, premium essentials, and designer-inspired collections.",
   applicationName: "Saaj Tradition",
   keywords: [
-    "traditional suits",
-    "bahawalpuri suits",
+    "traditional dresses",
+    "bahawalpuri dresses",
     "fashion",
     "designer",
     "premium apparel",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Saaj Tradition",
     description:
-      "Traditional Bahawalpuri Suits — curated fashion and premium essentials.",
+      "Traditional Bahawalpuri dresses — curated fashion and premium essentials.",
     type: "website",
     siteName: "Saaj Tradition",
     images: [
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Saaj Tradition",
     description:
-      "Traditional Bahawalpuri Suits — curated fashion and premium essentials.",
+      "Traditional Bahawalpuri dresses — curated fashion and premium essentials.",
     images: ["/assets/logo.png"],
   },
   icons: {

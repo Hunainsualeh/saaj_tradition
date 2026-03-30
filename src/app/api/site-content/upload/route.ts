@@ -1,13 +1,12 @@
 import { v2 as cloudinary } from "cloudinary";
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminFromRequest } from "@/lib/server/helpers/require-admin";
 
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-
-const ADMIN_COOKIE_NAME = "admin_session";
 
 const ALLOWED_IMAGE_TYPES = new Set([
   "image/jpeg",
@@ -23,23 +22,6 @@ const ALLOWED_VIDEO_TYPES = new Set([
   "video/quicktime",
 ]);
 
-function isAdminAuthenticated(req: NextRequest): boolean {
-  const cookieHeader = req.headers.get("cookie") ?? "";
-  const match = cookieHeader.match(
-    new RegExp(`(?:^|;\\s*)${ADMIN_COOKIE_NAME}=([^;]+)`),
-  );
-  const token = match?.[1];
-  if (!token) return false;
-  try {
-    const decoded = JSON.parse(
-      Buffer.from(decodeURIComponent(token), "base64").toString("utf-8"),
-    );
-    return Boolean(decoded.id && decoded.role);
-  } catch {
-    return false;
-  }
-}
-
 /**
  * POST /api/site-content/upload
  * Uploads a single image or video for the site-content section.
@@ -47,7 +29,8 @@ function isAdminAuthenticated(req: NextRequest): boolean {
  * Returns: { url: string }
  */
 export async function POST(req: NextRequest) {
-  if (!isAdminAuthenticated(req)) {
+  const admin = await verifyAdminFromRequest(req.headers.get("cookie") ?? "");
+  if (!admin) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

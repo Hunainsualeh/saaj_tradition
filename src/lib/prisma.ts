@@ -11,4 +11,6 @@ export const prisma =
     log: ["error", "warn"], // optional
   });
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// Singleton: reuse across hot-reloads in development and across
+// invocations in serverless (Vercel) production environments.
+globalForPrisma.prisma = prisma;

@@ -1,27 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { cloudinary } from "@/lib/cloudinary";
-
-const ADMIN_COOKIE_NAME = "admin_session";
+import { verifyAdminFromRequest } from "@/lib/server/helpers/require-admin";
 
 const ALLOWED_RESOURCE_TYPES = new Set(["image", "video"]);
-
-function isAdminAuthenticated(req: NextRequest): boolean {
-  const cookieHeader = req.headers.get("cookie") ?? "";
-  const match = cookieHeader.match(
-    new RegExp(`(?:^|;\\s*)${ADMIN_COOKIE_NAME}=([^;]+)`),
-  );
-  const token = match?.[1];
-  if (!token) return false;
-  try {
-    const decoded = JSON.parse(
-      Buffer.from(decodeURIComponent(token), "base64").toString("utf-8"),
-    );
-    return Boolean(decoded.id && decoded.role);
-  } catch {
-    return false;
-  }
-}
 
 /*
   Returns a Cloudinary signed upload signature so the browser can upload
@@ -32,7 +14,8 @@ function isAdminAuthenticated(req: NextRequest): boolean {
   → { signature, timestamp, apiKey, cloudName, folder }
 */
 export async function GET(req: NextRequest) {
-  if (!isAdminAuthenticated(req)) {
+  const admin = await verifyAdminFromRequest(req.headers.get("cookie") ?? "");
+  if (!admin) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

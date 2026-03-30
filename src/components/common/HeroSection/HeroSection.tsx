@@ -45,7 +45,7 @@ export function HeroSection({
   // DB props → localStorage cache → hardcoded fallback
   const cached = useMemo(() => readCache(), []);
 
-  const heading = headingProp || cached?.heading || "Traditional Bahawalpuri Suits";
+  const heading = headingProp || cached?.heading || "Traditional Bahawalpuri dresses";
   const subheading = subheadingProp || cached?.subheading || "Experience tradition, woven into every thread.";
   const imageUrl = imageUrlProp || cached?.image || "/assets/hero-landing.jpg";
 

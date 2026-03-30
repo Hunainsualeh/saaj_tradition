@@ -14,6 +14,7 @@ import {
   AdminFormEditBlogsData,
 } from "@/components/admin/forms/AdminBlogsForm/schema";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
+import { requireAdmin } from "@/lib/server/helpers/require-admin";
 import { uploadToCloudinary } from "@/lib/server/helpers/cloudinary-upload";
 
 // === MUTATIONS ===
@@ -21,6 +22,7 @@ export async function createBlog(
   data: AdminFormAddBlogsData,
 ): Promise<ServerActionResponse<BlogMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id: `demo-${data.slug}` };
     }
@@ -62,6 +64,7 @@ export async function updateBlogById(
   data: AdminFormEditBlogsData,
 ): Promise<ServerActionResponse<BlogMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }
@@ -122,6 +125,7 @@ export async function deleteBlogById(
   id: string,
 ): Promise<ServerActionResponse<BlogMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }
