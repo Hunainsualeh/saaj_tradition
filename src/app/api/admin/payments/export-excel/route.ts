@@ -1,28 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { getPaymentRecords } from "@/lib/server/queries";
-
-const ADMIN_COOKIE_NAME = "admin_session";
-
-function isAdminAuthenticated(req: NextRequest): boolean {
-  const cookieHeader = req.headers.get("cookie") ?? "";
-  const match = cookieHeader.match(
-    new RegExp(`(?:^|;\\s*)${ADMIN_COOKIE_NAME}=([^;]+)`),
-  );
-  const token = match?.[1];
-  if (!token) return false;
-  try {
-    const decoded = JSON.parse(
-      Buffer.from(decodeURIComponent(token), "base64").toString("utf-8"),
-    );
-    return Boolean(decoded.id && decoded.role);
-  } catch {
-    return false;
-  }
-}
+import { verifyAdminFromRequest } from "@/lib/server/helpers/require-admin";
 
 export async function GET(req: NextRequest) {
-  if (!isAdminAuthenticated(req)) {
+  const admin = await verifyAdminFromRequest(req.headers.get("cookie") ?? "");
+  if (!admin) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

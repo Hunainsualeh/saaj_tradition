@@ -52,7 +52,9 @@ export const redis: Redis | null =
   globalForRedis.redis !== undefined
     ? globalForRedis.redis
     : createRedisClient();
-if (process.env.NODE_ENV !== "production") globalForRedis.redis = redis;
+// Singleton: reuse across hot-reloads in development and across
+// invocations in serverless (Vercel) production environments.
+globalForRedis.redis = redis;
 
 /**
  * Returns true when the Redis connection is alive.

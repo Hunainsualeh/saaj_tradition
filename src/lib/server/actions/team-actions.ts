@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { revalidatePath } from "next/cache";
 import { invalidateCacheTag } from "../helpers/cache-helpers";
@@ -12,6 +12,7 @@ import {
 import { adminRoutes, routes } from "@/lib/routing";
 import { CACHE_TAG_TEAM } from "@/lib/constants/cache-tags";
 import { wrapServerCall } from "../helpers/generic-helpers";
+import { requireAdmin } from "../helpers/require-admin";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
 import { uploadToCloudinary } from "@/lib/server/helpers/cloudinary-upload";
 
@@ -20,6 +21,7 @@ export async function deleteTeamMemberById(
   id: string,
 ): Promise<ServerActionResponse<TeamMemberMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }
@@ -38,6 +40,7 @@ export async function createTeamMember(
   data: AdminFormAddTeamData,
 ): Promise<ServerActionResponse<TeamMemberMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id: `demo-${data.name.toLowerCase().replace(/\s+/g, "-")}` };
     }
@@ -76,6 +79,7 @@ export async function updateTeamMemberById(
   data: AdminFormEditTeamData,
 ): Promise<ServerActionResponse<TeamMemberMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }

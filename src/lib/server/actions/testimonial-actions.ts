@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { revalidatePath } from "next/cache";
 import { invalidateCacheTag } from "../helpers/cache-helpers";
@@ -12,6 +12,7 @@ import {
 } from "@/components/admin/forms/AdminTestimonialsForm/schema";
 import { adminRoutes, routes } from "@/lib/routing";
 import { wrapServerCall } from "../helpers/generic-helpers";
+import { requireAdmin } from "../helpers/require-admin";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
 import { uploadToCloudinary } from "@/lib/server/helpers/cloudinary-upload";
 
@@ -19,6 +20,7 @@ export async function deleteTestimonialById(
   id: string,
 ): Promise<ServerActionResponse<TestimonialMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }
@@ -34,6 +36,7 @@ export async function createTestimonial(
   data: AdminFormAddTestimonialData,
 ): Promise<ServerActionResponse<TestimonialMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id: `demo-${data.name.toLowerCase().replace(/\s+/g, "-")}` };
     }
@@ -73,6 +76,7 @@ export async function updateTestimonialById(
   data: AdminFormEditTestimonialData,
 ): Promise<ServerActionResponse<TestimonialMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }

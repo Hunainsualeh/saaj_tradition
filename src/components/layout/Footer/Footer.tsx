@@ -74,16 +74,16 @@ export function Footer({
   ];
 
   const shopLinks = [
-    { label: "Shop All",     href: routes.shop },
+    { label: "Shop All", href: routes.shop },
     { label: "New Arrivals", href: routes.shopNewArrivals },
-    { label: "Collections",  href: routes.shopCollections },
+    { label: "Collections", href: routes.shopCollections },
   ];
 
   const companyLinks = [
-    { label: "About",        href: routes.about },
-    { label: "Location",     href: routes.location },
-    { label: "Blog",         href: routes.blog },
-    { label: "Track Order",  href: routes.track },
+    { label: "About", href: routes.about },
+    { label: "Location", href: routes.location },
+    { label: "Blog", href: routes.blog },
+    { label: "Track Order", href: routes.track },
   ];
 
   return (
@@ -125,7 +125,7 @@ export function Footer({
 
               {/* Description */}
               <p className="text-[18px] leading-relaxed text-gray-500 mb-6 text-center">
-                Traditional Bahawalpuri Suits
+                Traditional Bahawalpuri dresses
               </p>
 
               {/* Social + contact icons row */}

@@ -13,6 +13,7 @@ import { adminRoutes } from "@/lib/routing";
 import { CACHE_TAG_AUTHOR } from "@/lib/constants/cache-tags";
 import { wrapServerCall } from "../helpers/generic-helpers";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
+import { requireAdmin } from "@/lib/server/helpers/require-admin";
 import { uploadToCloudinary } from "@/lib/server/helpers/cloudinary-upload";
 
 // === MUTATIONS ===
@@ -20,6 +21,7 @@ export async function deleteAuthorById(
   id: string,
 ): Promise<ServerActionResponse<AuthorMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }
@@ -38,6 +40,7 @@ export async function createAuthor(
   data: AdminFormAddAuthorsData,
 ): Promise<ServerActionResponse<AuthorMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id: `demo-${data.name.toLowerCase().replace(/\s+/g, "-")}` };
     }
@@ -71,6 +74,7 @@ export async function updateAuthorById(
   data: AdminFormEditAuthorsData,
 ): Promise<ServerActionResponse<AuthorMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }

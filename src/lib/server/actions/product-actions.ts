@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { revalidatePath } from "next/cache";
 import { invalidateCacheTag } from "../helpers/cache-helpers";
@@ -12,12 +12,14 @@ import { wrapServerCall } from "../helpers/generic-helpers";
 import { CACHE_TAG_PRODUCT, SIZE_TEMPLATES } from "@/lib/constants";
 import { AdminProductsFormNoFileData } from "@/components/admin/forms/AdminProductsForm/schema";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
+import { requireAdmin } from "@/lib/server/helpers/require-admin";
 
 // === MUTATIONS ===
 export async function createProduct(
   data: AdminProductsFormNoFileData,
 ): Promise<ServerActionResponse<ProductMutationInput>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     if (isDemoMode()) {
       return { id: `demo-${data.slug}` };
     }
@@ -89,6 +91,7 @@ export async function updateProductById(
   data: AdminProductsFormNoFileData,
 ): Promise<ServerActionResponse<ProductMutationInput>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }
@@ -160,6 +163,7 @@ export async function deleteProductById(
   id: string,
 ): Promise<ServerActionResponse<ProductMutationInput>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }
@@ -178,6 +182,7 @@ export async function deleteProductsByIds(
   ids: string[],
 ): Promise<ServerActionResponse<{ count: number }>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     if (isDemoMode()) {
       return { count: ids.length };
     }
@@ -198,6 +203,7 @@ export async function toggleProductFeatured(
   id: string,
 ): Promise<ServerActionResponse<{ id: string; isFeatured: boolean }>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     if (isDemoMode()) {
       return { id, isFeatured: false };
     }

@@ -9,6 +9,7 @@ import { ServerActionResponse } from "@/types/server";
 import { adminRoutes } from "@/lib/routing";
 import { wrapServerCall } from "../helpers/generic-helpers";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
+import { requireAdmin } from "@/lib/server/helpers/require-admin";
 import { CACHE_TAG_CART } from "@/lib/constants";
 
 export type ProductShippingItem = {
@@ -24,6 +25,7 @@ export async function getGlobalShippingRate(): Promise<
   ServerActionResponse<number>
 > {
   return wrapServerCall(async () => {
+      await requireAdmin();
     const record = await prisma.siteContent.findUnique({
       where: { key: "shipping_charge" },
     });
@@ -38,6 +40,7 @@ export async function updateGlobalShippingRate(
   amount: number,
 ): Promise<ServerActionResponse<void>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) return;
 
     await prisma.siteContent.upsert({
@@ -63,6 +66,7 @@ export async function getAllProductsForShipping(): Promise<
   ServerActionResponse<ProductShippingItem[]>
 > {
   return wrapServerCall(async () => {
+      await requireAdmin();
     const products = await prisma.product.findMany({
       select: {
         id: true,
@@ -89,6 +93,7 @@ export async function bulkUpdateProductShippingCharges(
   updates: { id: string; shippingCharge: number | null }[],
 ): Promise<ServerActionResponse<void>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) return;
 
     await Promise.all(

@@ -1,18 +1,24 @@
 "use server";
 
 import { headers } from "next/headers";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { rateLimitNewsletter } from "@/lib/rate-limit";
+
+const emailSchema = z.string().trim().toLowerCase().email("Please enter a valid email address.");
 
 export async function subscribeToNewsletter(
   _prevState: { success: boolean; message: string } | null,
   formData: FormData,
 ): Promise<{ success: boolean; message: string }> {
-  const email = (formData.get("email") as string | null)?.trim().toLowerCase() ?? "";
+  const rawEmail = (formData.get("email") as string | null) ?? "";
+  const parsed = emailSchema.safeParse(rawEmail);
 
-  if (!email || !email.includes("@")) {
-    return { success: false, message: "Please enter a valid email address." };
+  if (!parsed.success) {
+    return { success: false, message: parsed.error.issues[0]?.message ?? "Please enter a valid email address." };
   }
+
+  const email = parsed.data;
 
   // Rate limit: 3 newsletter subscriptions per hour per IP
   const hdrs = await headers();

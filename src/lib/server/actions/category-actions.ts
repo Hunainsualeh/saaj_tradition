@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { revalidatePath } from "next/cache";
 import { invalidateCacheTag } from "../helpers/cache-helpers";
@@ -8,6 +8,7 @@ import { CategoryMutationInput, ServerActionResponse } from "@/types/server";
 import { adminRoutes, routes } from "@/lib/routing";
 import { CACHE_TAG_CATEGORY } from "@/lib/constants";
 import { wrapServerCall } from "../helpers/generic-helpers";
+import { requireAdmin } from "../helpers/require-admin";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
 import { uploadToCloudinary } from "@/lib/server/helpers/cloudinary-upload";
 
@@ -24,6 +25,7 @@ export async function createCategory(
   data: CategoryInput,
 ): Promise<ServerActionResponse<CategoryMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id: `demo-${data.slug}` };
     }
@@ -66,6 +68,7 @@ export async function updateCategoryById(
   data: CategoryInput,
 ): Promise<ServerActionResponse<CategoryMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }
@@ -103,6 +106,7 @@ export async function deleteCategoryById(
   id: string,
 ): Promise<ServerActionResponse<CategoryMutationInput>> {
   return wrapServerCall(async () => {
+      await requireAdmin();
     if (isDemoMode()) {
       return { id };
     }

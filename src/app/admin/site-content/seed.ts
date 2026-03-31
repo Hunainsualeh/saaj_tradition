@@ -91,7 +91,7 @@ const SITE_CONTENT_DEFAULTS: SiteContentDefault[] = [
   },
   {
     key: "hero_heading",
-    value: "Traditional Bahawalpuri Suits",
+    value: "Traditional Bahawalpuri dresses",
     label: "Hero Heading",
     group: "hero",
   },
