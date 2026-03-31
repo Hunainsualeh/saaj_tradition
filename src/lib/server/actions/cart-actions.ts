@@ -492,7 +492,7 @@ export async function initiateCheckout(
     }
 
     // === STEP 2: Reserve stock and create order ===
-    const order = await prisma.$transaction(
+    await prisma.$transaction(
       async (tx) => {
         // Fetch cart with items and sizes in one query
         const cart = await tx.cart.findUnique({
