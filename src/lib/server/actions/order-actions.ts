@@ -123,6 +123,10 @@ export async function updateOrderDetails(
 
         orderNote: input.orderNote ?? null,
 
+        // Clear the payment session so the duplicate-request guard in the
+        // PayFast checkout route doesn't block a fresh payment attempt.
+        paymentSessionId: null,
+
         updatedAt: new Date(),
       },
     });
