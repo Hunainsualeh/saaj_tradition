@@ -492,7 +492,7 @@ export async function initiateCheckout(
     }
 
     // === STEP 2: Reserve stock and create order ===
-    const order = await prisma.$transaction(
+    await prisma.$transaction(
       async (tx) => {
         // Fetch cart with items and sizes in one query
         const cart = await tx.cart.findUnique({
@@ -635,14 +635,6 @@ export async function initiateCheckout(
       },
       { timeout: 15000, maxWait: 5000 },
     );
-
-    // Persist a payment session marker used by the hosted PayFast handoff.
-    await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        paymentSessionId: `payfast_${order.id}`,
-      },
-    });
 
     invalidateCacheTag(CACHE_TAG_CART);
     invalidateCacheTag(CACHE_TAG_PRODUCT);
