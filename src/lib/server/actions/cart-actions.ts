@@ -41,7 +41,7 @@ async function cleanupAbandonedCarts() {
 
   if (abandonedCarts.length === 0) return;
 
-  console.log(`[Scheduled Cleanup] Found ${abandonedCarts.length} abandoned cart(s). Releasing stock.`);
+  console.log(`[Cart Cleanup] Found ${abandonedCarts.length} abandoned cart(s). Releasing stock.`);
 
   let releasedAny = false;
 
@@ -81,7 +81,7 @@ async function cleanupAbandonedCarts() {
 
       if (released) releasedAny = true;
     } catch (error) {
-      console.error(`[Scheduled Cleanup] Failed to release cart ${cart.id}:`, error);
+      console.error(`[Cart Cleanup] Failed to release cart ${cart.id}:`, error);
     }
   }
 
@@ -414,8 +414,9 @@ export async function initiateCheckout(
     }
 
     // Fire-and-forget: releasing stock from long-abandoned carts must NOT block
-    // the customer's checkout request. The scheduled `cleanup-expired-carts`
-    // cron is the authoritative cleanup path; this is only a best-effort nudge.
+    // the customer's checkout request. With the scheduled cleanup cron removed,
+    // this in-request pass is the only path that releases reserved stock from
+    // abandoned carts, so it runs opportunistically on each checkout attempt.
     void cleanupAbandonedCarts().catch((e) =>
       console.error("[Cleanup Error] Failed to cleanup abandoned carts", e),
     );

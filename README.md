@@ -22,7 +22,6 @@ It includes a customer-facing storefront and an admin back office for managing p
 - ⚙️ **Admin content management** — product, blog, and author management pages with create/edit routes
 - 📚 **Component library documentation** — Storybook for isolated component development and UI review
 - 🖼️ **Media pipeline** — product image uploads to Vercel Blob via API route
-- 🔧 **Automated maintenance jobs** — scheduled cleanup for unused Blob assets and expired checkout carts
 - ✨ **Responsive, animated UI** — Tailwind + Framer Motion across key storefront sections
 
 ---
@@ -81,7 +80,6 @@ NEXT_PUBLIC_PAYFAST_POST_URL=
 # Optional
 # PAYFAST_RETURN_URL=
 # PAYFAST_POST_EXTRA_FIELDS={"VERSION":"1.1"}
-# PAYFAST_BASE_URL=              # PayFast API base URL — enables payment reconciliation cron
 ```
 
 ---
@@ -92,7 +90,6 @@ The admin area supports product/blog/author content workflows and media uploads.
 
 - Product images are uploaded through `POST /api/products/upload`
 - Files are stored in Vercel Blob with resource-based path prefixes
-- Scheduled Vercel crons remove orphaned assets and clear expired checkout carts
 
 Core files:
 
@@ -101,9 +98,6 @@ src/app/admin/products/page.tsx
 src/app/admin/blogs/page.tsx
 src/app/admin/authors/page.tsx
 src/app/api/products/upload/route.ts
-src/app/api/cleanup-unused-images/route.ts
-src/app/api/payment/cleanup-expired-carts/route.ts
-vercel.json
 ```
 
 Additional environment variables:
@@ -156,9 +150,6 @@ The app is configured for **Vercel** deployment.
 
 - Pushes to `master` can be connected to automatic deployments
 - Configure all runtime environment variables in Vercel Project Settings
-- `vercel.json` includes scheduled maintenance jobs:
-  - `0 2 * * *` → `/api/cleanup-unused-images`
-  - `0 1 * * *` → `/api/payment/cleanup-expired-carts`
 
 ---
 
@@ -166,7 +157,7 @@ The app is configured for **Vercel** deployment.
 
 - Add authentication for admin dashboard rather then using demo flag
 - Add automated tests for server actions, webhook flows, and checkout steps
-- Add observability around PayFast callbacks and background cleanup jobs
+- Add observability around PayFast callbacks
 - Improve product recommendation logic on product detail pages
 
 ---

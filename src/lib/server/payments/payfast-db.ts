@@ -146,16 +146,16 @@ export async function markOrderPaymentSucceeded(
   revalidatePath(adminRoutes.products);
 
   try {
-    const { enqueueEmail } = await import("@/lib/redis-queue");
     const { sendOrderConfirmationEmails } = await import(
       "@/lib/server/actions/email-actions"
     );
-    await enqueueEmail(
-      { orderId, type: "order_confirmation" },
-      async () => { await sendOrderConfirmationEmails(orderId); },
-    );
+    // Send inline, awaited so it completes before a serverless invocation is
+    // frozen. The background email queue + its cron worker were removed, so this
+    // now mirrors the COD path in order-actions, which also sends confirmation
+    // emails directly.
+    await sendOrderConfirmationEmails(orderId);
   } catch (error) {
-    console.error("[PayFast] Failed to queue order confirmation emails:", error);
+    console.error("[PayFast] Failed to send order confirmation emails:", error);
   }
 
   return { transitioned: true };
