@@ -1,4 +1,4 @@
-# Cartelle Mock Store — E-commerce Web App Updated
+# Cartelle Mock Store — E-commerce Web App 
 
 
 A production-style fashion e-commerce application built with **Next.js App Router**.
