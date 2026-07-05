@@ -10,17 +10,20 @@ import { ServerActionResponse } from "@/types/server";
 import { wrapServerCall } from "../helpers/generic-helpers";
 import { AdminRoleEnum } from "@prisma/client";
 import { rateLimitLogin } from "@/lib/rate-limit";
-import { createSession, deleteSession } from "@/lib/redis-session";
+import { createSession, deleteSession, denylistToken } from "@/lib/redis-session";
 
 const ADMIN_COOKIE_NAME = "admin_session";
 
-// Derive a signing secret from env; falls back to a combination of available keys.
+/** Throws if ADMIN_SESSION_SECRET is missing or still set to the insecure default. */
 function getSessionSecret(): string {
-  return (
-    process.env.ADMIN_SESSION_SECRET ??
-    process.env.PAYFAST_SECURE_KEY ??
-    "saaj-default-session-secret-change-me"
-  );
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  if (!secret) {
+    throw new Error("ADMIN_SESSION_SECRET env var is required but not set.");
+  }
+  if (secret === "saaj-default-session-secret-change-me") {
+    throw new Error("ADMIN_SESSION_SECRET must be changed from the default value.");
+  }
+  return secret;
 }
 
 /** Sign a base64 payload with HMAC-SHA256 → "payload.signature" */
@@ -95,10 +98,12 @@ export async function adminLogin(
     return { error: "Invalid email or password" };
   }
 
-  // Store admin ID + role in cookie (JSON encoded, base64, HMAC-signed)
+  // Store admin ID + role + expiry in cookie (JSON encoded, base64, HMAC-signed).
+  // `exp` makes the signed token self-expiring even if the cookie is replayed.
   const sessionData = JSON.stringify({
     id: admin.id,
     role: admin.role,
+    exp: Date.now() + COOKIE_MAX_AGE * 1000,
   });
   const payload = Buffer.from(sessionData).toString("base64");
   const token = signSession(payload);
@@ -123,13 +128,17 @@ export async function adminLogout(): Promise<void> {
   const cookieStore = await cookies();
   const token = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
 
-  // Delete Redis session if we can extract admin ID
+  // Delete Redis session + denylist this cookie so it can't be replayed if copied
   if (token) {
     try {
       const verified = verifySession(token);
       if (verified) {
         const decoded = JSON.parse(Buffer.from(verified, "base64").toString("utf-8"));
         if (decoded.id) await deleteSession(decoded.id);
+        const ttl = decoded.exp
+          ? Math.ceil((decoded.exp - Date.now()) / 1000)
+          : COOKIE_MAX_AGE;
+        await denylistToken(token, ttl);
       }
     } catch {
       // Non-critical — cookie will be cleared anyway
@@ -147,19 +156,14 @@ export async function getCurrentAdmin() {
   if (!token) return null;
 
   try {
-    // Verify HMAC signature and extract payload
-    // Also accept legacy unsigned base64 cookies for seamless migration
-    let payload: string;
-    const verified = verifySession(token);
-    if (verified) {
-      payload = verified;
-    } else {
-      // Legacy fallback: try treating as raw base64 (will be re-signed on next login)
-      payload = token;
-    }
+    const payload = verifySession(token);
+    if (!payload) return null;
 
     const decoded = JSON.parse(Buffer.from(payload, "base64").toString("utf-8"));
     if (!decoded.id || !decoded.role) return null;
+    // Reject expired tokens (legacy tokens without `exp` remain valid, bounded
+    // by the cookie's own maxAge).
+    if (decoded.exp && Date.now() > decoded.exp) return null;
 
     const admin = await prisma.adminUser.findUnique({
       where: { id: decoded.id },
@@ -189,8 +193,8 @@ export async function updateAdminPassword(
     return { success: false, message: "All fields are required" };
   }
 
-  if (newPassword.length < 6) {
-    return { success: false, message: "New password must be at least 6 characters" };
+  if (newPassword.length < 10) {
+    return { success: false, message: "New password must be at least 10 characters" };
   }
 
   if (newPassword !== confirmPassword) {
@@ -238,8 +242,8 @@ export async function createAdminUser(
     return { success: false, message: "All fields are required" };
   }
 
-  if (password.length < 6) {
-    return { success: false, message: "Password must be at least 6 characters" };
+  if (password.length < 10) {
+    return { success: false, message: "Password must be at least 10 characters" };
   }
 
   const currentAdmin = await getCurrentAdmin();

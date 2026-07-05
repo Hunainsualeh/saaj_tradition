@@ -9,8 +9,28 @@ const globalForRedis = globalThis as unknown as {
 
 function createRedisClient(): Redis | null {
   if (!REDIS_URL) {
-    // Redis is optional. Rate limiting and caching fall back to passthrough/DB
-    // when REDIS_URL is not set. Set REDIS_URL in .env to enable Redis features.
+    // Redis is REQUIRED in production: it backs rate limiting (brute-force
+    // protection), the durable email queue, and admin session revocation.
+    // Running production without it silently disables those guarantees, so we
+    // fail fast at boot instead. In dev/test we allow the graceful fallback.
+    //
+    // IMPORTANT: skip this throw during `next build`. Next.js evaluates route
+    // modules while "collecting page data" with NODE_ENV=production but WITHOUT
+    // runtime secrets (REDIS_URL is typically injected at runtime, not build
+    // time — e.g. Docker/CI). Throwing here would break the production build.
+    // The guard still fires at runtime (serverless cold start / `next start`),
+    // which is where we actually want to fail fast.
+    const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+    if (
+      process.env.NODE_ENV === "production" &&
+      process.env.ALLOW_NO_REDIS !== "true" &&
+      !isBuildPhase
+    ) {
+      throw new Error(
+        "REDIS_URL is required in production (rate limiting, email queue, session revocation). " +
+          "Set REDIS_URL, or explicitly opt out with ALLOW_NO_REDIS=true.",
+      );
+    }
     return null;
   }
 

@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { BlogPostWithAuthor, ServerActionResponse } from "@/types/server";
 import { wrapServerCall } from "@/lib/server/helpers";
 import { CACHE_TAG_BLOG } from "@/lib/constants/cache-tags";
-import { redisCache } from "@/lib/redis-cache";
 
 // === FETCHES ===
 const getBlogsCached = unstable_cache(
@@ -18,13 +17,7 @@ const getBlogsCached = unstable_cache(
 );
 
 export async function getBlogs(): Promise<ServerActionResponse<BlogPost[]>> {
-  return wrapServerCall(() =>
-    redisCache(
-      () => getBlogsCached(),
-      [CACHE_TAG_BLOG, "all"],
-      { tags: [CACHE_TAG_BLOG], ttl: 600 },
-    ),
-  );
+  return wrapServerCall(() => getBlogsCached());
 }
 
 export async function getBlogById(

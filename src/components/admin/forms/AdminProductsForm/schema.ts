@@ -1,7 +1,14 @@
-import { SizeTypeEnum } from "@/types/client";
 import { z } from "zod";
 
 export const StockStatusEnum = z.enum(["AVAILABLE", "LOW_STOCK", "OUT_OF_STOCK"]);
+
+// A single size offered for a product. `inStock` drives availability — the
+// store sources ready-made stock, so we track "available / out of stock" per
+// size rather than unit counts.
+export const ProductSizeSchema = z.object({
+  label: z.string().min(1, "Size label is required"),
+  inStock: z.boolean(),
+});
 
 export const AdminProductsFormSchema = (isEditMode: boolean) =>
   z
@@ -18,6 +25,13 @@ export const AdminProductsFormSchema = (isEditMode: boolean) =>
         .number()
         .positive("Compare-at price must be positive")
         .multipleOf(0.01, "Compare-at price must be valid")
+        .optional()
+        .or(z.literal("").transform(() => undefined)),
+
+      shippingCharge: z.coerce
+        .number()
+        .nonnegative("Shipping charge must be 0 or more")
+        .multipleOf(0.01, "Shipping charge must be valid")
         .optional()
         .or(z.literal("").transform(() => undefined)),
 
@@ -48,13 +62,18 @@ export const AdminProductsFormSchema = (isEditMode: boolean) =>
 
       showLowStockWarning: z.boolean().optional().default(false),
 
-      sizeType: SizeTypeEnum.optional().refine((val) => val !== undefined, {
-        message: "Size type is required",
-      }),
-
-      selectedSizes: z
-        .array(z.string())
-        .min(1, "Select at least one size"),
+      // Dynamic per-product sizes. Each product defines exactly the sizes it is
+      // available in — no fixed size-type assumptions.
+      sizes: z
+        .array(ProductSizeSchema)
+        .min(1, "Add at least one size")
+        .refine(
+          (sizes) => {
+            const labels = sizes.map((s) => s.label.trim().toLowerCase());
+            return new Set(labels).size === labels.length;
+          },
+          { message: "Duplicate sizes are not allowed" },
+        ),
 
       images: isEditMode
         ? z.array(z.instanceof(File)).optional()

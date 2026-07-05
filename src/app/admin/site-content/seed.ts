@@ -22,6 +22,12 @@ const SITE_CONTENT_DEFAULTS: SiteContentDefault[] = [
     group: "social-links",
   },
   {
+    key: "social_phone",
+    value: "+923106040861",
+    label: "Public Contact Phone (shown in footer, support & location pages)",
+    group: "social-links",
+  },
+  {
     key: "social_instagram",
     value: "https://www.instagram.com/saaj_tradition",
     label: "Instagram URL",
@@ -305,6 +311,12 @@ const SITE_CONTENT_DEFAULTS: SiteContentDefault[] = [
     label: "Newsletter Description",
     group: "newsletter",
   },
+  {
+    key: "newsletter_image",
+    value: "/assets/newsletter-image3.jpg",
+    label: "Newsletter Image (URL or uploaded path)",
+    group: "newsletter",
+  },
   // === Shipping ===
   {
     key: "shipping_charge",
@@ -398,7 +410,7 @@ const SITE_CONTENT_DEFAULTS: SiteContentDefault[] = [
   {
     key: "partners_logos",
     value: "LVMH\nKERING\nRICHEMONT\nCAPRI\nTAPESTRY\nPRADA GROUP",
-    label: "Partner Names (one per line)",
+    label: "Partners (name, logo, or both)",
     group: "partner-logos-marquee",
   },
   // === WhatsApp Chat Button ===
@@ -413,6 +425,51 @@ const SITE_CONTENT_DEFAULTS: SiteContentDefault[] = [
     value: "",
     label: "WhatsApp Phone Number (e.g. 923001234567 — country code, no + or spaces)",
     group: "whatsapp-chat",
+  },
+  // === Location Page ===
+  {
+    key: "location_store_name",
+    value: "Saaj Tradition",
+    label: "Store Name (shown on map card)",
+    group: "location",
+  },
+  {
+    key: "location_address",
+    value: "47PF+R29, Ahmedpur East, Punjab, Pakistan",
+    label: "Store Address",
+    group: "location",
+  },
+  {
+    key: "location_hours_days",
+    value: "Mon – Sat",
+    label: "Opening Days (e.g. Mon – Sat)",
+    group: "location",
+  },
+  {
+    key: "location_hours_time",
+    value: "10:00 AM – 8:00 PM",
+    label: "Opening Hours (e.g. 10:00 AM – 8:00 PM)",
+    group: "location",
+  },
+  {
+    key: "location_hours_note",
+    value: "Closed Sundays",
+    label: "Hours Note (e.g. Closed Sundays)",
+    group: "location",
+  },
+  {
+    key: "location_map_query",
+    value: "47PF+R29 Ahmedpur East Pakistan",
+    label: "Google Maps Search Query (address or Plus Code used for the map & directions)",
+    group: "location",
+  },
+  // === Support Page ===
+  {
+    key: "support_faq",
+    value:
+      "How can I track my order? | You can track your order by emailing us. A member of our team will provide the tracking details.\nWhat is your return policy? | We offer a 10-day return policy. Items must be in original condition with tags attached.\nDo you offer international shipping? | We only ship within Pakistan. Shipping fees and delivery times vary by location.\nWhat payment methods do you accept? | We accept major credit and debit cards, as well as payments through JazzCash, EasyPaisa, and bank cards. All transactions are processed securely, and we do not store your card details on our servers.\nHow do I contact customer support? | You can contact our customer support team via email. Our support hours are Monday through Friday, 9 AM to 6 PM. We aim to respond to all inquiries within 24 hours, excluding weekends and holidays. For faster assistance, please include your order number when reaching out.",
+    label: "FAQ (one per line, format: Question | Answer)",
+    group: "support",
   },
 ];
 

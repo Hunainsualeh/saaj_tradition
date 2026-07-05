@@ -41,6 +41,14 @@ model Product {
   lowStockThreshold Int?
   showLowStockWarning Boolean         @default(false)
   orderItems     OrderItem[]
+
+  // Hot-path indexes:
+  //  - listing / "new arrivals":  where isActive orderBy createdAt
+  //  - featured / marquee:        where isActive, isFeatured
+  //  - price filter + sort:       where price gte/lte, orderBy price
+  @@index([isActive, createdAt])
+  @@index([isActive, isFeatured])
+  @@index([price])
 }
 
 model Size {
@@ -82,6 +90,7 @@ model Cart {
 
   @@index([status])
   @@index([updatedAt])
+  @@index([reservedAt])
 }
 
 model CartItem {

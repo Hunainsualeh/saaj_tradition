@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { invalidateCacheTag } from "../helpers/cache-helpers";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import { prisma } from "@/lib/prisma";
 import { CouponMutationInput, ServerActionResponse } from "@/types/server";
@@ -15,7 +15,7 @@ import { wrapServerCall } from "../helpers/generic-helpers";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
 import { requireAdmin } from "@/lib/server/helpers/require-admin";
 import { validateCouponCode } from "@/lib/server/queries";
-import { COOKIE_COUPON_CODE } from "@/lib/constants/cookie-variables";
+import { COOKIE_CART_ID, COOKIE_COUPON_CODE } from "@/lib/constants/cookie-variables";
 import { CACHE_TAG_CART, CACHE_TAG_COUPON } from "@/lib/constants/cache-tags";
 import { rateLimitCoupon } from "@/lib/rate-limit";
 
@@ -103,9 +103,17 @@ export async function applyCouponCode(
   code: string,
 ): Promise<ServerActionResponse<CouponValidationResult>> {
   return wrapServerCall(async () => {
-      await requireAdmin();
-    // Rate limit: 10 coupon attempts per minute per code
-    const rl = await rateLimitCoupon(code);
+    const cookieStore = await cookies();
+
+    // Rate limit: 10 coupon attempts per minute, keyed by CART (falling back to
+    // client IP). Keying by cart/IP — not by `code` — prevents (a) unlimited
+    // coupon-code enumeration by simply varying the code each attempt, and
+    // (b) a shared popular code (e.g. "SALE20") exhausting one global bucket and
+    // falsely rate-limiting every legitimate customer.
+    const cartId = cookieStore.get(COOKIE_CART_ID)?.value;
+    const hdrs = await headers();
+    const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "127.0.0.1";
+    const rl = await rateLimitCoupon(cartId ?? `ip:${ip}`);
     if (!rl.allowed) {
       return { valid: false, discountPercent: 0, code: "", message: "Too many attempts. Please try again later." };
     }
@@ -120,7 +128,6 @@ export async function applyCouponCode(
       return result.data;
     }
 
-    const cookieStore = await cookies();
     cookieStore.set(COOKIE_COUPON_CODE, code.toUpperCase(), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -139,7 +146,6 @@ export async function removeCouponCode(): Promise<
   ServerActionResponse<void>
 > {
   return wrapServerCall(async () => {
-      await requireAdmin();
     const cookieStore = await cookies();
     cookieStore.delete(COOKIE_COUPON_CODE);
     invalidateCacheTag(CACHE_TAG_CART);

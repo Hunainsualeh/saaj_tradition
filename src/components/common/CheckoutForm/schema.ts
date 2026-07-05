@@ -8,7 +8,7 @@ export const deliveryDetailsSchema = z
     phone: z.string().min(10, "Valid phone number is required"),
     address: z.string().min(1, "Address is required"),
     city: z.string().min(1, "City is required"),
-    state: z.string().min(1, "State is required"),
+    state: z.string().min(1, "Province is required"),
     zipCode: z.string().min(1, "Valid ZIP code required"),
     country: z.string().min(1, "Country is required"),
 
@@ -45,7 +45,7 @@ export const deliveryDetailsSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["billingState"],
-        message: "Billing state is required",
+        message: "Billing province is required",
       });
     }
 

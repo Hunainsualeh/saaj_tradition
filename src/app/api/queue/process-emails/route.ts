@@ -1,17 +1,22 @@
 import { NextResponse } from "next/server";
-import { dequeue, completeJob, type QueueJob, type EmailJob } from "@/lib/redis-queue";
+import { dequeue, completeJob, failJob, type QueueJob, type EmailJob } from "@/lib/redis-queue";
 import { sendOrderConfirmationEmails, sendOrderStatusEmail } from "@/lib/server/actions/email-actions";
 
 const MAX_JOBS_PER_RUN = 10;
 const CRON_SECRET = process.env.CRON_SECRET;
 
 export async function GET(req: Request) {
-  // Protect cron endpoint with secret (Vercel cron or manual trigger)
-  if (CRON_SECRET) {
-    const authHeader = req.headers.get("authorization");
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  // Protect cron endpoint with secret (Vercel cron or manual trigger).
+  // Fail closed: if no secret is configured, refuse rather than run unauthenticated.
+  if (!CRON_SECRET) {
+    return NextResponse.json(
+      { error: "CRON_SECRET not configured" },
+      { status: 401 },
+    );
+  }
+  const authHeader = req.headers.get("authorization");
+  if (authHeader !== `Bearer ${CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let processed = 0;
@@ -37,7 +42,10 @@ export async function GET(req: Request) {
     } catch (err) {
       console.error(`[Queue Worker] Failed to process email job ${job.id}:`, err);
       failed++;
-      // Job stays in processing list for retry on next run
+      // Re-queue with an incremented attempt count (or dead-letter once the
+      // retry budget is exhausted). Without this the job would be orphaned in
+      // the processing list and never retried.
+      await failJob("emails", job as QueueJob);
     }
   }
 

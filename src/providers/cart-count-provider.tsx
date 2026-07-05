@@ -6,6 +6,7 @@ import {
   useState,
   ReactNode,
   useCallback,
+  useMemo,
 } from "react";
 
 import { ServerActionResponse } from "@/types/server";
@@ -41,10 +42,13 @@ export function CartCountProvider({
     }
   }, [fetchCartItemCount]);
 
+  const value = useMemo(
+    () => ({ itemCount, refreshCartCount, setItemCount }),
+    [itemCount, refreshCartCount],
+  );
+
   return (
-    <CartCountContext.Provider
-      value={{ itemCount, refreshCartCount, setItemCount }}
-    >
+    <CartCountContext.Provider value={value}>
       {children}
     </CartCountContext.Provider>
   );

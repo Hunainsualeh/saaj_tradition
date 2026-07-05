@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 type CheckoutSuccessPageProps = {
-  searchParams: Promise<{ orderId?: string }>;
+  searchParams: Promise<{ orderId?: string; token?: string }>;
 };
 
 export default async function CheckoutSuccessPage(
@@ -19,14 +19,18 @@ export default async function CheckoutSuccessPage(
 ) {
   // === PROPS ===
   const searchParams = await props.searchParams;
-  const { orderId } = searchParams;
+  const { orderId, token } = searchParams;
+
+  // Prefer the unguessable tracking token; fall back to raw orderId for any
+  // legacy links still in flight.
+  const identifier = token ?? orderId;
 
   // === FETCH DATA & REDIRECT ===
-  if (!orderId) {
+  if (!identifier) {
     redirect("/");
   }
 
-  const order = await getOrderForSuccessPage(orderId);
+  const order = await getOrderForSuccessPage(identifier);
 
   if (!order || !order.success || !order.data) {
     redirect("/");

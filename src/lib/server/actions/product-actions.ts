@@ -9,7 +9,12 @@ import { prisma } from "@/lib/prisma";
 import { ProductMutationInput, ServerActionResponse } from "@/types/server";
 import { adminRoutes } from "@/lib/routing";
 import { wrapServerCall } from "../helpers/generic-helpers";
-import { CACHE_TAG_PRODUCT, SIZE_TEMPLATES } from "@/lib/constants";
+import {
+  CACHE_TAG_PRODUCT,
+  IN_STOCK_QTY,
+  OUT_OF_STOCK_QTY,
+  ONE_SIZE_LABEL,
+} from "@/lib/constants";
 import { AdminProductsFormNoFileData } from "@/components/admin/forms/AdminProductsForm/schema";
 import { isDemoMode } from "@/lib/server/helpers/demo-mode";
 import { requireAdmin } from "@/lib/server/helpers/require-admin";
@@ -24,20 +29,18 @@ export async function createProduct(
       return { id: `demo-${data.slug}` };
     }
 
-    if (!data.sizeType) {
-      throw new Error("sizeType is required");
-    }
-
-    // Use admin-selected sizes; fall back to full template if none specified
-    const sizeLabels =
-      data.selectedSizes?.length
-        ? data.selectedSizes
-        : SIZE_TEMPLATES[data.sizeType];
-
-    const sizes = sizeLabels.map((size) => ({
-      label: size,
-      stockTotal: 10,
+    // Availability stock model: an in-stock size gets a high sentinel so cart
+    // reservations never block a sale; an out-of-stock size gets 0.
+    const sizes = data.sizes.map((size) => ({
+      label: size.label,
+      stockTotal: size.inStock ? IN_STOCK_QTY : OUT_OF_STOCK_QTY,
     }));
+
+    // Derive the size type for display/sorting purposes only.
+    const sizeType =
+      data.sizes.length === 1 && data.sizes[0].label === ONE_SIZE_LABEL
+        ? "OneSize"
+        : "Standard";
 
     // Validate collection IDs exist before connecting to prevent P2025
     const safeCollectionIds = data.collectionIds?.length
@@ -66,8 +69,9 @@ export async function createProduct(
         stockStatus: data.stockStatus ?? "AVAILABLE",
         lowStockThreshold: data.lowStockThreshold ?? null,
         showLowStockWarning: data.showLowStockWarning ?? false,
+        shippingCharge: data.shippingCharge != null ? new Decimal(data.shippingCharge) : null,
         images: data.imageUrls,
-        sizeType: data.sizeType,
+        sizeType,
 
         sizes: {
           create: sizes,
@@ -96,11 +100,42 @@ export async function updateProductById(
       return { id };
     }
 
-    // Check if sizeType has changed so we can recreate sizes
-    const current = data.sizeType
-      ? await prisma.product.findUnique({ where: { id }, select: { sizeType: true } })
-      : null;
-    const sizeTypeChanged = current && current.sizeType !== data.sizeType;
+    // === RECONCILE SIZES ===
+    // Always sync the product's sizes to exactly what the admin selected:
+    // remove deselected sizes, update availability on kept ones, add new ones.
+    // (The old code only touched sizes when the size *type* changed, so size
+    // edits silently did nothing.)
+    const existingSizes = await prisma.size.findMany({
+      where: { productId: id },
+      select: { id: true, label: true },
+    });
+    const desiredLabels = new Set(
+      data.sizes.map((s) => s.label.toLowerCase()),
+    );
+    const existingByLabel = new Map(
+      existingSizes.map((s) => [s.label.toLowerCase(), s]),
+    );
+
+    const sizeIdsToDelete = existingSizes
+      .filter((s) => !desiredLabels.has(s.label.toLowerCase()))
+      .map((s) => s.id);
+
+    const sizeUpdates: { where: { id: string }; data: { stockTotal: number } }[] = [];
+    const sizeCreates: { label: string; stockTotal: number }[] = [];
+    for (const size of data.sizes) {
+      const stockTotal = size.inStock ? IN_STOCK_QTY : OUT_OF_STOCK_QTY;
+      const existing = existingByLabel.get(size.label.toLowerCase());
+      if (existing) {
+        sizeUpdates.push({ where: { id: existing.id }, data: { stockTotal } });
+      } else {
+        sizeCreates.push({ label: size.label, stockTotal });
+      }
+    }
+
+    const sizeType =
+      data.sizes.length === 1 && data.sizes[0].label === ONE_SIZE_LABEL
+        ? "OneSize"
+        : "Standard";
 
     // Validate collection IDs exist before connecting to prevent P2025
     const safeCollectionIds = data.collectionIds?.length
@@ -112,12 +147,12 @@ export async function updateProductById(
         ).map((c) => c.id)
       : [];
 
-    const created = await prisma.product.update({
+    const updated = await prisma.product.update({
       where: { id },
       data: {
         name: data.name,
         description: data.description,
-        price: data.price,
+        price: new Decimal(data.price),
         compareAtPrice: data.compareAtPrice
           ? new Decimal(data.compareAtPrice)
           : null,
@@ -130,32 +165,24 @@ export async function updateProductById(
         stockStatus: data.stockStatus ?? "AVAILABLE",
         lowStockThreshold: data.lowStockThreshold ?? null,
         showLowStockWarning: data.showLowStockWarning ?? false,
+        shippingCharge: data.shippingCharge != null ? new Decimal(data.shippingCharge) : null,
         images: data.imageUrls,
-        sizeType: data.sizeType,
+        sizeType,
         collections: {
           set: safeCollectionIds.map((cid) => ({ id: cid })),
         },
-        ...(sizeTypeChanged && data.sizeType
-          ? {
-              sizes: {
-                deleteMany: {},
-                create: (data.selectedSizes?.length
-                  ? data.selectedSizes
-                  : SIZE_TEMPLATES[data.sizeType]
-                ).map((label) => ({
-                  label,
-                  stockTotal: 10,
-                })),
-              },
-            }
-          : {}),
+        sizes: {
+          deleteMany: { id: { in: sizeIdsToDelete } },
+          update: sizeUpdates,
+          create: sizeCreates,
+        },
       },
     });
 
     revalidatePath(adminRoutes.products);
     invalidateCacheTag(CACHE_TAG_PRODUCT);
 
-    return { id: created.id };
+    return { id: updated.id };
   });
 }
 

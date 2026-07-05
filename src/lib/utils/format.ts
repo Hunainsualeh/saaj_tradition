@@ -23,3 +23,31 @@ export function formatDateToYYYYMMDD(
 export function roundToTwoDecimals(value: number): number {
   return Math.round(value * 100) / 100;
 }
+
+/**
+ * Deterministic date/time formatting for admin views. A fixed locale + explicit
+ * options + a fixed timezone (the store operates in PKT) guarantee the server
+ * and client render identical strings, preventing hydration mismatches that
+ * occur when a runtime's default locale/timezone differs.
+ */
+const ADMIN_TZ = "Asia/Karachi";
+
+export function formatAdminDate(date: Date | string): string {
+  return new Date(date).toLocaleDateString("en-PK", {
+    timeZone: ADMIN_TZ,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export function formatAdminDateTime(date: Date | string): string {
+  const d = new Date(date);
+  const time = d.toLocaleTimeString("en-PK", {
+    timeZone: ADMIN_TZ,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+  return `${formatAdminDate(d)}, ${time}`;
+}

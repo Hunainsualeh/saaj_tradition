@@ -1,8 +1,12 @@
+import { unstable_cache } from "next/cache";
 import { OrderStatus, PaymentMethod, PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ServerActionResponse } from "@/types/server";
 import { PaymentRecord, PaymentSummary } from "@/types/client";
 import { wrapServerCall } from "../helpers";
+import { CACHE_TAG_CART } from "@/lib/constants/cache-tags";
+
+const PAYMENT_RECORDS_LIMIT = 500;
 
 const REVENUE_STATUSES = [
   OrderStatus.PAID,
@@ -11,10 +15,8 @@ const REVENUE_STATUSES = [
   OrderStatus.DELIVERED,
 ];
 
-export async function getPaymentSummary(): Promise<
-  ServerActionResponse<PaymentSummary>
-> {
-  return wrapServerCall(async () => {
+const getPaymentSummaryCached = unstable_cache(
+  async (): Promise<PaymentSummary> => {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -82,7 +84,15 @@ export async function getPaymentSummary(): Promise<
       monthlyRevenue: Number(monthlyRevenueData._sum.totalPrice ?? 0),
       monthlyOrders: monthlyOrdersCount,
     };
-  });
+  },
+  [CACHE_TAG_CART, "payment-summary"],
+  { tags: [CACHE_TAG_CART], revalidate: 120 },
+);
+
+export async function getPaymentSummary(): Promise<
+  ServerActionResponse<PaymentSummary>
+> {
+  return wrapServerCall(() => getPaymentSummaryCached());
 }
 
 export async function getPaymentRecords(filters?: {
@@ -112,9 +122,21 @@ export async function getPaymentRecords(filters?: {
       }
       where.createdAt = createdAt;
     }
+    if (filters?.search) {
+      const s = filters.search;
+      const orderNum = parseInt(s, 10);
+      where.OR = [
+        { delieveryName: { contains: s, mode: "insensitive" } },
+        { deliveryEmail: { contains: s, mode: "insensitive" } },
+        { deliveryPhone: { contains: s, mode: "insensitive" } },
+        { deliveryCity: { contains: s, mode: "insensitive" } },
+        ...(Number.isFinite(orderNum) ? [{ orderNumber: orderNum }] : []),
+      ];
+    }
 
     const orders = await prisma.order.findMany({
       where,
+      take: PAYMENT_RECORDS_LIMIT,
       select: {
         id: true,
         orderNumber: true,

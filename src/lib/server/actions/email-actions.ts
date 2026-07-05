@@ -1,5 +1,7 @@
 "use server";
 
+import { unstable_cache } from "next/cache";
+
 import { prisma } from "@/lib/prisma";
 import {
   sendOrderConfirmationEmail,
@@ -7,9 +9,13 @@ import {
   sendOrderStatusUpdateEmail,
 } from "@/lib/email/email-service";
 import { EmailTemplateType } from "@prisma/client";
+import { headers } from "next/headers";
+
 import { wrapServerCall } from "../helpers";
 import { ServerActionResponse } from "@/types/server";
 import { getCurrentAdmin } from "./admin-auth-actions";
+import { CACHE_TAG_CART } from "@/lib/constants/cache-tags";
+import { rateLimitOrderEmail, rateLimitUnsubscribe } from "@/lib/rate-limit";
 
 
 /** Verify the caller is an authenticated admin; throws if not */
@@ -46,6 +52,14 @@ export async function sendOrderConfirmationEmails(
   orderId: string,
 ): Promise<ServerActionResponse<void>> {
   return wrapServerCall(async () => {
+    // Bound abuse of this exposed, system-callable action (see rateLimitOrderEmail).
+    // Silent no-op when exceeded so the queue doesn't get stuck retrying.
+    const rl = await rateLimitOrderEmail(orderId);
+    if (!rl.allowed) {
+      console.warn(`[Email] Order-email rate limit hit for ${orderId} (confirmation) — skipping`);
+      return;
+    }
+
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
@@ -163,6 +177,12 @@ export async function sendOrderStatusEmail(
   customMessage?: string,
 ): Promise<ServerActionResponse<void>> {
   return wrapServerCall(async () => {
+    const rl = await rateLimitOrderEmail(orderId);
+    if (!rl.allowed) {
+      console.warn(`[Email] Order-email rate limit hit for ${orderId} (status) — skipping`);
+      return;
+    }
+
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       select: {
@@ -196,6 +216,7 @@ export async function getEmailTemplates(): Promise<
   ServerActionResponse<Awaited<ReturnType<typeof prisma.emailTemplate.findMany>>>
 > {
   return wrapServerCall(async () => {
+    await requireAdmin();
     return prisma.emailTemplate.findMany({ orderBy: { updatedAt: "desc" } });
   });
 }
@@ -205,6 +226,7 @@ export async function getEmailTemplate(id: string): Promise<
   ServerActionResponse<Awaited<ReturnType<typeof prisma.emailTemplate.findUnique>>>
 > {
   return wrapServerCall(async () => {
+    await requireAdmin();
     return prisma.emailTemplate.findUnique({ where: { id } });
   });
 }
@@ -258,18 +280,22 @@ export async function getNewsletterSubscribers(): Promise<
   ServerActionResponse<Awaited<ReturnType<typeof prisma.newsletterSubscriber.findMany>>>
 > {
   return wrapServerCall(async () => {
+    await requireAdmin();
     return prisma.newsletterSubscriber.findMany({
       orderBy: { subscribedAt: "desc" },
+      take: 10000,
     });
   });
 }
 
-/** Subscribe to newsletter */
+/** Subscribe to newsletter (admin only — the public path is the rate-limited
+ * `subscribeToNewsletter` in newsletter-actions.ts). */
 export async function subscribeToNewsletterDB(
   email: string,
   name?: string,
 ): Promise<ServerActionResponse<void>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     await prisma.newsletterSubscriber.upsert({
       where: { email },
       update: { isActive: true, name: name ?? undefined },
@@ -283,6 +309,15 @@ export async function unsubscribeFromNewsletter(
   email: string,
 ): Promise<ServerActionResponse<void>> {
   return wrapServerCall(async () => {
+    // Public endpoint (email footer links carry no token) — throttle by IP to
+    // stop mass/abusive unsubscribes while allowing normal one-off use.
+    const hdrs = await headers();
+    const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "127.0.0.1";
+    const rl = await rateLimitUnsubscribe(ip);
+    if (!rl.allowed) {
+      throw new Error("Too many requests. Please try again shortly.");
+    }
+
     await prisma.newsletterSubscriber
       .update({
         where: { email },
@@ -364,12 +399,12 @@ export async function sendCustomEmailToOrderCustomer(
   });
 }
 
-// allow admin UI to fetch a preview of the status update template
 export async function previewStatusEmail(
   orderId: string,
   customMessage?: string,
 ): Promise<ServerActionResponse<{ subject: string; html: string }>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       select: {
@@ -407,6 +442,7 @@ export async function sendTestEmailsToAddress(
   testEmail: string,
 ): Promise<ServerActionResponse<{ sent: number; failed: string[] }>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     const {
       sendOrderConfirmationEmail,
       sendAdminOrderNotificationEmail,
@@ -515,61 +551,76 @@ export type OrderCustomer = {
   lastOrderAt: Date;
 };
 
+// Aggregate per email in the database (one row per customer) instead of pulling
+// every order into memory and grouping in JS. `DISTINCT ON` keeps the most-recent
+// order's name + date, and the window COUNT gives the total. Cached because this
+// scans the whole Order table; invalidated on order changes via CACHE_TAG_CART.
+const getOrderCustomersCached = unstable_cache(
+  async (): Promise<OrderCustomer[]> => {
+    const rows = await prisma.$queryRaw<
+      Array<{
+        email: string;
+        name: string | null;
+        lastOrderAt: Date;
+        orderCount: bigint;
+      }>
+    >`
+      SELECT DISTINCT ON ("deliveryEmail")
+        "deliveryEmail" AS email,
+        "delieveryName" AS name,
+        "createdAt" AS "lastOrderAt",
+        COUNT(*) OVER (PARTITION BY "deliveryEmail") AS "orderCount"
+      FROM "Order"
+      WHERE "deliveryEmail" IS NOT NULL
+      ORDER BY "deliveryEmail", "createdAt" DESC
+    `;
+
+    return rows
+      .map<OrderCustomer>((row) => ({
+        email: row.email,
+        name: row.name ?? "—",
+        orderCount: Number(row.orderCount),
+        lastOrderAt: row.lastOrderAt,
+      }))
+      .sort((a, b) => b.lastOrderAt.getTime() - a.lastOrderAt.getTime());
+  },
+  [CACHE_TAG_CART, "order-customers"],
+  { tags: [CACHE_TAG_CART], revalidate: 300 },
+);
+
 /** Get distinct customers from orders (with email), sorted by most recent */
 export async function getOrderCustomers(): Promise<
   ServerActionResponse<OrderCustomer[]>
 > {
   return wrapServerCall(async () => {
-    const rows = await prisma.order.findMany({
-      where: { deliveryEmail: { not: null } },
-      select: {
-        deliveryEmail: true,
-        delieveryName: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    // Group by email
-    const map = new Map<string, OrderCustomer>();
-    for (const row of rows) {
-      const email = row.deliveryEmail!;
-      if (map.has(email)) {
-        map.get(email)!.orderCount += 1;
-      } else {
-        map.set(email, {
-          email,
-          name: row.delieveryName ?? "—",
-          orderCount: 1,
-          lastOrderAt: row.createdAt,
-        });
-      }
-    }
-
-    return Array.from(map.values()).sort(
-      (a, b) => b.lastOrderAt.getTime() - a.lastOrderAt.getTime(),
-    );
+    await requireAdmin();
+    return getOrderCustomersCached();
   });
 }
 
-/** Send a welcome email to a newsletter subscriber */
+/** Send a welcome email to a newsletter subscriber (admin only) */
 export async function sendWelcomeEmailAction(
   email: string,
   name?: string,
 ): Promise<ServerActionResponse<void>> {
   return wrapServerCall(async () => {
+    // Admin-only: the sole caller is the admin customers UI. Without this guard
+    // the exposed server action lets anyone drive the store's SMTP to send mail
+    // to arbitrary addresses (spam / sender-reputation abuse).
+    await requireAdmin();
     const { sendWelcomeEmail } = await import("@/lib/email/email-service");
     await sendWelcomeEmail({ to: email, name });
   });
 }
 
-/** Send a thank-you email to a customer who ordered */
+/** Send a thank-you email to a customer who ordered (admin only) */
 export async function sendThankYouEmailAction(
   email: string,
   customerName: string,
   orderNumber?: number | string,
 ): Promise<ServerActionResponse<void>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     const { sendThankYouEmail } = await import("@/lib/email/email-service");
     await sendThankYouEmail({ to: email, customerName, orderNumber });
   });

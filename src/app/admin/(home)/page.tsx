@@ -5,8 +5,6 @@ import {
   getDashboardProductStats,
 } from "@/lib/server/queries";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "Dashboard",
 };

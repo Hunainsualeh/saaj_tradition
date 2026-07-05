@@ -43,10 +43,28 @@ async function cleanupAbandonedCarts() {
 
   console.log(`[Scheduled Cleanup] Found ${abandonedCarts.length} abandoned cart(s). Releasing stock.`);
 
+  let releasedAny = false;
+
   // Process each cart in its own transaction to avoid timeout with many carts
   for (const cart of abandonedCarts) {
     try {
-      await prisma.$transaction(async (tx) => {
+      const released = await prisma.$transaction(async (tx) => {
+        // Atomically CLAIM the release: only proceed if this cart still holds a
+        // reservation. `updateMany` re-evaluates `reservedAt IS NOT NULL` after
+        // acquiring the row lock, so under concurrency exactly one runner (this
+        // path or the cron) wins — preventing double-decrement of stockReserved
+        // (which would otherwise let the same stock be oversold).
+        const claimed = await tx.cart.updateMany({
+          where: { id: cart.id, reservedAt: { not: null } },
+          data: {
+            reservedAt: null,
+            status: CartStatus.ACTIVE,
+            abandonedAt: new Date(),
+          },
+        });
+
+        if (claimed.count === 0) return false; // already released elsewhere
+
         if (cart.items.length > 0) {
           await Promise.all(
             cart.items.map((item) =>
@@ -58,20 +76,19 @@ async function cleanupAbandonedCarts() {
             ),
           );
         }
-
-        await tx.cart.update({
-          where: { id: cart.id },
-          data: {
-            reservedAt: null,
-            status: CartStatus.ACTIVE,
-            abandonedAt: new Date(),
-          },
-        });
+        return true;
       });
+
+      if (released) releasedAny = true;
     } catch (error) {
       console.error(`[Scheduled Cleanup] Failed to release cart ${cart.id}:`, error);
     }
   }
+
+  // Stock changed — invalidate product caches so listings/PDPs reflect it.
+  // Awaited so any error surfaces to this function's caller (which .catch-es it)
+  // rather than becoming an unhandled rejection in the fire-and-forget path.
+  if (releasedAny) await invalidateCacheTag(CACHE_TAG_PRODUCT);
 }
 
 // === QUERIES ===
@@ -215,6 +232,10 @@ export async function addToCart({
       }
 
       const product = size.product;
+
+      if (!product.isActive) {
+        throw new Error("This product is no longer available");
+      }
 
       const existingItem = cart?.items.find(
         (item) => item.productId === productId && item.sizeId === sizeId,
@@ -392,11 +413,12 @@ export async function initiateCheckout(
       throw new Error("Too many checkout attempts. Please wait a moment and try again.");
     }
 
-    try {
-      await cleanupAbandonedCarts();
-    } catch (e) {
-      console.error("[Cleanup Error] Failed to cleanup abandoned carts", e);
-    }
+    // Fire-and-forget: releasing stock from long-abandoned carts must NOT block
+    // the customer's checkout request. The scheduled `cleanup-expired-carts`
+    // cron is the authoritative cleanup path; this is only a best-effort nudge.
+    void cleanupAbandonedCarts().catch((e) =>
+      console.error("[Cleanup Error] Failed to cleanup abandoned carts", e),
+    );
     const couponCode = cookieStore.get(COOKIE_COUPON_CODE)?.value;
 
     // === STEP 0: VALIDATE COUPON IF PRESENT ===

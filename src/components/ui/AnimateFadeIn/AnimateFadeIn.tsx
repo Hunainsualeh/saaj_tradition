@@ -1,12 +1,6 @@
 "use client";
 
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
-
-import {
-  SCROLL_ANIMATION_IN_VIEW_CONFIG,
-  SCROLL_ANIMATION_IN_VIEW_CONFIG_NO_MARGIN,
-} from "@/lib/animations";
+import { useInViewOnce } from "@/lib/animations/use-in-view-once";
 
 type AnimateFadeInProps = {
   children: React.ReactNode;
@@ -17,8 +11,17 @@ type AnimateFadeInProps = {
   noMargin?: boolean;
 };
 
+const DURATION_MS: Record<string, number> = {
+  short: 150,
+  normal: 300,
+  long: 700,
+};
+
+/**
+ * Fade-in-on-scroll wrapper. CSS-transition based (no framer-motion) so it
+ * adds zero JS animation cost on the home page's hottest grids.
+ */
 export function AnimateFadeIn(props: AnimateFadeInProps) {
-  // === PROPS ===
   const {
     children,
     className = "",
@@ -28,35 +31,22 @@ export function AnimateFadeIn(props: AnimateFadeInProps) {
     noMargin = false,
   } = props;
 
-  // === REF ===
-  const ref = useRef<HTMLDivElement>(null);
-
-  // === HOOKS ===
-  const isInView = useInView(
-    ref,
-    noMargin
-      ? SCROLL_ANIMATION_IN_VIEW_CONFIG_NO_MARGIN
-      : SCROLL_ANIMATION_IN_VIEW_CONFIG,
-  );
-
-  // === DURATION MAP ===
-  // match tailwind duration classes
-  const durationMap: { [key: string]: number } = {
-    short: 0.15,
-    normal: 0.3,
-    long: 0.7,
-  };
-  const durationValue = durationMap[duration] || durationMap["normal"];
+  const { ref, inView } = useInViewOnce(noMargin ? "0px" : "-150px");
+  const durationMs = DURATION_MS[duration] ?? DURATION_MS.normal;
+  const visible = !hidden && inView;
 
   return (
-    <motion.div
+    <div
       ref={ref}
       className={className}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: hidden ? 0 : isInView ? 1 : 0 }}
-      transition={{ delay, duration: durationValue, ease: "easeInOut" }}
+      style={{
+        opacity: visible ? 1 : 0,
+        transition: `opacity ${durationMs}ms ease-in-out`,
+        transitionDelay: `${Math.round(delay * 1000)}ms`,
+        willChange: "opacity",
+      }}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }

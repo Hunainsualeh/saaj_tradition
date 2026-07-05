@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  ReactNode,
+} from "react";
 
 // === TYPES ===
 interface DialogProduct {
@@ -29,27 +36,23 @@ export const CartDialogProvider = ({ children }: { children: ReactNode }) => {
     null,
   );
 
-  const showDialog = (product: DialogProduct) => {
+  const showDialog = useCallback((product: DialogProduct) => {
     setDialogProduct(product);
     setDialogOpen(true);
-  };
+  }, []);
 
-  const hideDialog = () => {
+  const hideDialog = useCallback(() => {
     setDialogOpen(false);
     setDialogProduct(null);
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({ dialogOpen, dialogProduct, showDialog, hideDialog }),
+    [dialogOpen, dialogProduct, showDialog, hideDialog],
+  );
 
   return (
-    <CartContext.Provider
-      value={{
-        dialogOpen,
-        dialogProduct,
-        showDialog,
-        hideDialog,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
+    <CartContext.Provider value={value}>{children}</CartContext.Provider>
   );
 };
 

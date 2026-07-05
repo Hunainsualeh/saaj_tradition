@@ -88,6 +88,7 @@ export async function GET(req: NextRequest) {
       paymentSessionId: true,
       totalPrice: true,
       updatedAt: true,
+      trackingToken: true,
     },
   });
 
@@ -105,9 +106,13 @@ export async function GET(req: NextRequest) {
     order.status === OrderStatus.REFUNDED;
 
   // If already paid, send straight to the success page — no failure needed.
+  // Prefer the unguessable tracking token in the customer-visible URL.
   if (alreadyPaid) {
+    const query = order.trackingToken
+      ? `token=${encodeURIComponent(order.trackingToken)}`
+      : `orderId=${orderId}`;
     return NextResponse.redirect(
-      new URL(`/checkout/success?orderId=${orderId}`, req.nextUrl.origin),
+      new URL(`/checkout/success?${query}`, req.nextUrl.origin),
     );
   }
   if (isTerminalStatus) {
@@ -172,7 +177,12 @@ export async function GET(req: NextRequest) {
       data: {
         paymentMethod: PaymentMethod.PAYFAST,
         paymentStatus: PaymentStatus.PENDING,
-        paymentSessionId: `payfast_${order.id}`,
+        // Persist the EXACT basket_id sent to PayFast (`${orderId}_${timestamp}`).
+        // The reconciliation cron queries PayFast's transaction-status API by
+        // basket_id, so it MUST match. Storing a synthetic `payfast_${id}` here
+        // silently broke reconciliation — paid orders whose ITN never arrived
+        // could never be recovered and were auto-expired as FAILED after 24h.
+        paymentSessionId: payload.fields.basket_id,
         updatedAt: new Date(),
       },
     });

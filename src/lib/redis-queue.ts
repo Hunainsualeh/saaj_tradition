@@ -34,9 +34,11 @@ export async function enqueue<T>(
 
   const available = await isRedisAvailable();
   if (!available || !r()) {
-    // Fallback: execute immediately if Redis is down
+    // Fallback: execute immediately if Redis is down. Awaited (not
+    // fire-and-forget) so the work completes before a serverless function is
+    // frozen/killed — otherwise transactional emails silently vanish.
     if (fallbackFn) {
-      fallbackFn(data).catch((err) =>
+      await fallbackFn(data).catch((err) =>
         console.error(`[Queue] Fallback execution failed for ${jobType}:`, err),
       );
     }
@@ -46,9 +48,9 @@ export async function enqueue<T>(
   try {
     await r()!.lpush(`${QUEUE_PREFIX}${queueName}`, JSON.stringify(job));
   } catch {
-    // If enqueueing fails, try the fallback
+    // If enqueueing fails, run the fallback synchronously (see note above).
     if (fallbackFn) {
-      fallbackFn(data).catch((err) =>
+      await fallbackFn(data).catch((err) =>
         console.error(`[Queue] Fallback execution failed for ${jobType}:`, err),
       );
     }
@@ -97,6 +99,54 @@ export async function completeJob(
     );
   } catch {
     // Non-critical
+  }
+}
+
+const DEADLETTER_PREFIX = "queue:dead:";
+const DEFAULT_MAX_ATTEMPTS = 3;
+
+/**
+ * Handle a failed job. Removes the in-flight copy from the processing list and
+ * either re-queues it (with an incremented attempt count, capped at
+ * `maxAttempts`) or moves it to a dead-letter list so it can be inspected.
+ *
+ * Without this, a job that throws stays orphaned in the processing list forever
+ * — `dequeue` only reads the MAIN queue, so it would never be retried.
+ */
+export async function failJob(
+  queueName: string,
+  job: QueueJob,
+  maxAttempts = DEFAULT_MAX_ATTEMPTS,
+): Promise<void> {
+  const available = await isRedisAvailable();
+  if (!available || !r()) return;
+
+  const client = r()!;
+  const originalSerialized = JSON.stringify(job);
+
+  try {
+    // Remove the in-flight copy first so a retry can't duplicate it.
+    await client.lrem(`${PROCESSING_PREFIX}${queueName}`, 1, originalSerialized);
+
+    const nextAttempts = (job.attempts ?? 0) + 1;
+    if (nextAttempts < maxAttempts) {
+      const retried: QueueJob = { ...job, attempts: nextAttempts };
+      await client.lpush(`${QUEUE_PREFIX}${queueName}`, JSON.stringify(retried));
+    } else {
+      // Exhausted retries — park in the dead-letter list (kept 7 days) instead
+      // of losing it silently, so failures are visible/recoverable.
+      const dead: QueueJob = { ...job, attempts: nextAttempts };
+      await client
+        .multi()
+        .lpush(`${DEADLETTER_PREFIX}${queueName}`, JSON.stringify(dead))
+        .expire(`${DEADLETTER_PREFIX}${queueName}`, 60 * 60 * 24 * 7)
+        .exec();
+      console.error(
+        `[Queue] Job ${job.id} moved to dead-letter after ${nextAttempts} attempts`,
+      );
+    }
+  } catch (error) {
+    console.error(`[Queue] Failed to handle job failure for ${job.id}:`, error);
   }
 }
 

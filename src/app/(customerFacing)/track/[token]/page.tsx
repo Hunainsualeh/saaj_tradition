@@ -38,6 +38,15 @@ async function getOrderByToken(token: string) {
       discountAmount: true,
       couponCode: true,
       totalPrice: true,
+      orderItems: {
+        select: {
+          title: true,
+          quantity: true,
+          unitPrice: true,
+          image: true,
+          sizeLabel: true,
+        },
+      },
       cart: {
         select: {
           items: {
@@ -107,10 +116,22 @@ export default async function OrderTrackingPage({ params }: Props) {
   const estimatedDelivery = getEstimatedDelivery(order.status, siteContent);
   const isCancelled = order.status === "CANCELLED" || order.status === "REFUNDED";
 
+  // Prefer orderItems snapshot; fall back to live cart items for legacy orders
+  const displayItems =
+    order.orderItems.length > 0
+      ? order.orderItems.map((i) => ({
+          title: i.title,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          image: i.image,
+          size: { label: i.sizeLabel ?? "—" },
+        }))
+      : order.cart.items;
+
   const total = Number(order.totalPrice);
   const discount = order.discountAmount ? Number(order.discountAmount) : 0;
   const shipping = order.shippingAmount ? Number(order.shippingAmount) : 0;
-  const subtotal = order.cart.items.reduce(
+  const subtotal = displayItems.reduce(
     (s, i) => s + Number(i.unitPrice) * i.quantity,
     0,
   );
@@ -188,8 +209,8 @@ export default async function OrderTrackingPage({ params }: Props) {
         <div className="bg-white rounded-2xl p-5 shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
           <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-12 mb-4">Items Ordered</h2>
           <div className="space-y-3">
-            {order.cart.items.map((item, i) => (
-              <div key={i} className={`flex gap-3 items-center pb-3 ${i < order.cart.items.length - 1 ? "border-b border-neutral-03" : ""}`}>
+            {displayItems.map((item, i) => (
+              <div key={i} className={`flex gap-3 items-center pb-3 ${i < displayItems.length - 1 ? "border-b border-neutral-03" : ""}`}>
                 {item.image && (
                   <Image
                     src={item.image}

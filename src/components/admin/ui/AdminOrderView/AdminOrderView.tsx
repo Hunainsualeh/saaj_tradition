@@ -30,6 +30,68 @@ const ORDER_STATUSES = [
 
 const PAYMENT_STATUSES = ["PENDING", "PAID", "FAILED", "REFUNDED"] as const;
 
+// Deterministic date/time formatting. Using a fixed locale + explicit options +
+// a fixed timezone (the store operates in PKT) guarantees the server and client
+// render identical strings, avoiding hydration mismatches.
+const DATE_TZ = "Asia/Karachi";
+
+function formatDate(date: Date | string) {
+  return new Date(date).toLocaleDateString("en-PK", {
+    timeZone: DATE_TZ,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatTime(date: Date | string) {
+  return new Date(date).toLocaleTimeString("en-PK", {
+    timeZone: DATE_TZ,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+}
+
+function formatDateTime(date: Date | string) {
+  return `${formatDate(date)}, ${formatTime(date)}`;
+}
+
+const ORDER_STATUS_STYLES: Record<string, string> = {
+  PENDING:    "bg-yellow-100 text-yellow-800",
+  PAID:       "bg-blue-100 text-blue-800",
+  PROCESSING: "bg-orange-100 text-orange-800",
+  SHIPPED:    "bg-purple-100 text-purple-800",
+  DELIVERED:  "bg-green-100 text-green-800",
+  CANCELLED:  "bg-red-100 text-red-800",
+  REFUNDED:   "bg-gray-100 text-gray-700",
+};
+
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  PENDING:    "Pending",
+  PAID:       "Paid",
+  PROCESSING: "Processing",
+  SHIPPED:    "Shipped",
+  DELIVERED:  "Delivered",
+  CANCELLED:  "Cancelled",
+  REFUNDED:   "Refunded",
+};
+
+const PAYMENT_STATUS_STYLES: Record<string, string> = {
+  PENDING:  "bg-yellow-100 text-yellow-800",
+  PAID:     "bg-green-100 text-green-800",
+  FAILED:   "bg-red-100 text-red-800",
+  REFUNDED: "bg-gray-100 text-gray-700",
+};
+
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING:  "Pending",
+  PAID:     "Paid",
+  FAILED:   "Failed",
+  REFUNDED: "Refunded",
+};
+
 type AdminOrderViewProps = {
   order: GetAdminOrder;
 };
@@ -65,7 +127,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
         <tr>
           <td style="padding:8px 4px;border-bottom:1px solid #e5e5e5;">
             <div style="font-weight:500;">${item.title}</div>
-            <div style="color:#6b7280;font-size:12px;">Size: ${item.size.label}</div>
+            <div style="color:#6b7280;font-size:12px;">Size: ${item.size?.label ?? "—"}</div>
           </td>
           <td style="padding:8px 4px;border-bottom:1px solid #e5e5e5;text-align:center;color:#6b7280;">${item.quantity}</td>
           <td style="padding:8px 4px;border-bottom:1px solid #e5e5e5;text-align:right;color:#6b7280;">Rs.${Math.round(item.unitPrice)}</td>
@@ -121,7 +183,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
     <div>
       <h1>Order #${order.orderNumber}</h1>
       <p style="color:#6b7280;font-size:12px;margin-top:4px;">
-        ${new Date(order.createdAt).toLocaleDateString()} at ${new Date(order.createdAt).toLocaleTimeString()}
+        ${formatDate(order.createdAt)} at ${formatTime(order.createdAt)}
       </p>
     </div>
     <div style="text-align:right;">
@@ -214,7 +276,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
     });
     if (result.success) {
       setOrderStatus(result.data.status as typeof orderStatus);
-      toast.success(`Order status updated to ${newStatus}${sendEmail && order.deliveryEmail ? " (email sent)" : ""}`);
+      toast.success(`Order status updated to ${ORDER_STATUS_LABELS[newStatus] ?? newStatus}${sendEmail && order.deliveryEmail ? " (email sent)" : ""}`);
     } else {
       toast.error("Failed to update order status");
     }
@@ -224,7 +286,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
     const result = await updatePaymentStatus(order.id, newStatus);
     if (result.success) {
       setPaymentStat(result.data.paymentStatus as typeof paymentStat);
-      toast.success(`Payment status updated to ${newStatus}`);
+      toast.success(`Payment status updated to ${PAYMENT_STATUS_LABELS[newStatus] ?? newStatus}`);
     } else {
       toast.error("Failed to update payment status");
     }
@@ -264,8 +326,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
             Order #{order.orderNumber}
           </h2>
           <p className="text-xs md:text-sm text-neutral-09 mt-1">
-            Created: {new Date(order.createdAt).toLocaleDateString()} at{" "}
-            {new Date(order.createdAt).toLocaleTimeString()}
+            Created: {formatDate(order.createdAt)} at {formatTime(order.createdAt)}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -293,14 +354,19 @@ export function AdminOrderView(props: AdminOrderViewProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <div className="bg-neutral-01 p-4 rounded">
             <p className="text-sm text-neutral-09 mb-2">Order Status</p>
+            <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold mb-2 ${ORDER_STATUS_STYLES[orderStatus] ?? "bg-neutral-100 text-neutral-700"}`}>
+              {ORDER_STATUS_LABELS[orderStatus] ?? orderStatus}
+            </span>
             <AdminSelect value={orderStatus} onValueChange={handleOrderStatusChange}>
               <AdminSelectTrigger className="w-full">
-                <AdminSelectValue />
+                <AdminSelectValue placeholder="Change status…" />
               </AdminSelectTrigger>
               <AdminSelectContent>
                 {ORDER_STATUSES.map((s) => (
                   <AdminSelectItem key={s} value={s}>
-                    {s}
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${ORDER_STATUS_STYLES[s] ?? ""}`}>
+                      {ORDER_STATUS_LABELS[s] ?? s}
+                    </span>
                   </AdminSelectItem>
                 ))}
               </AdminSelectContent>
@@ -308,14 +374,19 @@ export function AdminOrderView(props: AdminOrderViewProps) {
           </div>
           <div className="bg-neutral-01 p-4 rounded">
             <p className="text-sm text-neutral-09 mb-2">Payment Status</p>
+            <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold mb-2 ${PAYMENT_STATUS_STYLES[paymentStat] ?? "bg-neutral-100 text-neutral-700"}`}>
+              {PAYMENT_STATUS_LABELS[paymentStat] ?? paymentStat}
+            </span>
             <AdminSelect value={paymentStat} onValueChange={handlePaymentStatusChange}>
               <AdminSelectTrigger className="w-full">
-                <AdminSelectValue />
+                <AdminSelectValue placeholder="Change status…" />
               </AdminSelectTrigger>
               <AdminSelectContent>
                 {PAYMENT_STATUSES.map((s) => (
                   <AdminSelectItem key={s} value={s}>
-                    {s}
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${PAYMENT_STATUS_STYLES[s] ?? ""}`}>
+                      {PAYMENT_STATUS_LABELS[s] ?? s}
+                    </span>
                   </AdminSelectItem>
                 ))}
               </AdminSelectContent>
@@ -391,7 +462,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
                   {item.title}
                 </h4>
                 <p className="text-xs md:text-sm text-neutral-09">
-                  Size: {item.size.label}
+                  Size: {item.size?.label ?? "N/A"}
                 </p>
                 <p className="text-xs md:text-sm text-neutral-09">
                   Quantity: {item.quantity}
@@ -623,7 +694,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
                 <div className="flex-1 min-w-0">
                   <p className="text-neutral-700 truncate">{evt.message ?? "—"}</p>
                   <p className="text-neutral-500 text-[10px] mt-0.5">
-                    {new Date(evt.createdAt).toLocaleString("en-PK")} · via {evt.source}
+                    {formatDateTime(evt.createdAt)} · via {evt.source}
                   </p>
                 </div>
               </div>

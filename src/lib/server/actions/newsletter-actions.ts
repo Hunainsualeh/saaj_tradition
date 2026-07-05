@@ -29,14 +29,12 @@ export async function subscribeToNewsletter(
   }
 
   try {
-    // Save / re-activate subscriber in DB
     await prisma.newsletterSubscriber.upsert({
       where: { email },
       update: { isActive: true },
       create: { email },
     });
 
-    // Send welcome email (best-effort)
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
       const { sendWelcomeEmail } = await import("@/lib/email/email-service");
       await sendWelcomeEmail({ to: email }).catch((err) =>
@@ -45,8 +43,6 @@ export async function subscribeToNewsletter(
     }
   } catch (error) {
     console.error("[Newsletter] Subscribe error:", error);
-    // Still return success to the user — DB may have a unique-constraint error
-    // which means they were already subscribed; that's fine.
   }
 
   return {

@@ -6,7 +6,6 @@ import { TestimonialItem } from "@/types/client";
 import { Testimonial } from "@prisma/client";
 import { wrapServerCall } from "@/lib/server/helpers";
 import { CACHE_TAG_TESTIMONIAL } from "@/lib/constants/cache-tags";
-import { redisCache } from "@/lib/redis-cache";
 
 export async function getTestimonials(): Promise<
   ServerActionResponse<TestimonialItem[]>
@@ -31,13 +30,7 @@ const getActiveTestimonialsCached = unstable_cache(
 export async function getActiveTestimonials(): Promise<
   ServerActionResponse<TestimonialItem[]>
 > {
-  return wrapServerCall(() =>
-    redisCache(
-      () => getActiveTestimonialsCached(),
-      [CACHE_TAG_TESTIMONIAL, "active"],
-      { tags: [CACHE_TAG_TESTIMONIAL], ttl: 600 },
-    ),
-  );
+  return wrapServerCall(() => getActiveTestimonialsCached());
 }
 
 export async function getTestimonialById(

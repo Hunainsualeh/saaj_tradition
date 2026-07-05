@@ -19,6 +19,7 @@ export type SerializedProduct = {
   slug: string;
   categories: { name: string; slug: string }[];
   sizeType: string | null;
+  shippingCharge: number | null;
 };
 
 // === PRODUCT WITH ORDER ITEM COUNTS ===

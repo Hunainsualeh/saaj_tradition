@@ -140,7 +140,7 @@ export function AdminTeamForm(props: AdminTeamFormProps) {
   const isBusy = isActionLocked || isDeleting;
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full max-w-2xl">
       <form
         onSubmit={
           isEditMode

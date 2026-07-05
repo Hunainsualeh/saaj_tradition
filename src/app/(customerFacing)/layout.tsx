@@ -6,8 +6,8 @@ import { CartCountProvider, CartDialogProvider, CartSidebarProvider } from "@/pr
 import { getCartItemCount, getCartAction } from "@/lib/server/actions";
 import { AddToCartDialog } from "@/components/common/AddToCartDialog/AddToCartDialog";
 import { CartSidebar } from "@/components/common/CartSidebar/CartSidebar";
-import { getCollections, getSiteContentMap } from "@/lib/server/queries";
-import { STORE_EMAIL, STORE_INSTAGRAM, STORE_FACEBOOK } from "@/lib/constants/store-information";
+import { getCollections, getAllCategories, getSiteContentMap } from "@/lib/server/queries";
+import { STORE_EMAIL, STORE_PHONE, STORE_INSTAGRAM, STORE_FACEBOOK } from "@/lib/constants/store-information";
 import { WhatsAppChatButton } from "@/components/common/WhatsAppChatButton/WhatsAppChatButton";
 
 export const metadata: Metadata = {
@@ -22,8 +22,9 @@ export default async function CustomerLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [collectionsResponse, contentMapRes] = await Promise.all([
+  const [collectionsResponse, categoriesResponse, contentMapRes] = await Promise.all([
     getCollections(),
+    getAllCategories(),
     getSiteContentMap(),
   ]);
   const collections = collectionsResponse.success
@@ -33,9 +34,17 @@ export default async function CustomerLayout({
         slug: c.slug,
       }))
     : [];
+  const categories = categoriesResponse.success
+    ? categoriesResponse.data.map((c) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+      }))
+    : [];
 
   const cm = contentMapRes.success ? contentMapRes.data : {};
   const footerEmail = cm.social_email || STORE_EMAIL;
+  const footerPhone = cm.social_phone || STORE_PHONE;
   const footerInstagram = cm.social_instagram || STORE_INSTAGRAM;
   const footerFacebook = cm.social_facebook || STORE_FACEBOOK;
   const footerWhatsapp = cm.social_whatsapp || undefined;
@@ -50,10 +59,11 @@ export default async function CustomerLayout({
       <CartSidebarProvider fetchCart={getCartAction}>
         <CartDialogProvider>
           <div className="min-h-screen flex flex-col">
-            <Navbar collections={collections} />
+            <Navbar collections={collections} categories={categories} />
             <div className="flex-1">{children}</div>
             <Footer
               email={footerEmail}
+              phone={footerPhone}
               instagram={footerInstagram}
               facebook={footerFacebook}
               whatsapp={footerWhatsapp}

@@ -7,9 +7,10 @@ import { useCartCount } from "@/providers";
 
 type NavbarProps = {
   collections?: { id: string; name: string; slug: string }[];
+  categories?: { id: string; name: string; slug: string }[];
 };
 
-export function Navbar({ collections = [] }: NavbarProps) {
+export function Navbar({ collections = [], categories = [] }: NavbarProps) {
   const { itemCount, refreshCartCount } = useCartCount();
   const hasFetched = useRef(false);
 
@@ -20,5 +21,11 @@ export function Navbar({ collections = [] }: NavbarProps) {
     }
   }, [refreshCartCount]);
 
-  return <NavbarUI itemCount={itemCount} collections={collections} />;
+  return (
+    <NavbarUI
+      itemCount={itemCount}
+      collections={collections}
+      categories={categories}
+    />
+  );
 }

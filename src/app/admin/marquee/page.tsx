@@ -5,7 +5,7 @@ import { AdminMarqueeForm } from "@/components/admin/forms/AdminMarqueeForm";
 import { getAllSiteContent, getAllProductsBasic } from "@/lib/server/queries";
 import { seedSiteContentDefaults } from "../site-content/seed";
 
-export const metadata: Metadata = { title: "Marquee Settings" };
+export const metadata: Metadata = { title: "Announcement" };
 
 const MARQUEE_KEYS = new Set([
   "announcement_active",
@@ -40,7 +40,7 @@ export default async function AdminMarqueePage() {
 
   return (
     <div>
-      <AdminHeading heading="Marquee Settings" />
+      <AdminHeading heading="Announcement" />
       <p className="text-neutral-10 text-sm mb-6">
         Control the scrolling marquee strips shown on the storefront. Toggle
         each section on or off and edit its content below.

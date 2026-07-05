@@ -94,8 +94,9 @@ async function requestPayFastToken(input: {
     currency_code: currencyCode,
   });
 
-  // DEBUG logging
-  console.log("[PayFast token] POST", tokenUrl, body.toString());
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[PayFast token] POST", tokenUrl, "basket_id:", input.basketId);
+  }
 
   // In non-production environments the UAT endpoint often uses a self-signed
   // certificate which causes Node's native fetch to ECONNRESET during the TLS
@@ -149,7 +150,10 @@ async function requestPayFastToken(input: {
     throw err;
   }
 
-  console.log("[PayFast token] response", statusCode, rawText.slice(0, 1000));
+  if (process.env.NODE_ENV !== "production") {
+    const safeResponse = rawText.replace(/"token"\s*:\s*"[^"]+"/gi, '"token":"[REDACTED]"');
+    console.log("[PayFast token] response status:", statusCode, safeResponse.slice(0, 200));
+  }
 
   let data: PayFastTokenResponse;
   try {

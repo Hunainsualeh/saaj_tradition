@@ -12,12 +12,16 @@ import {
 } from "@/components/layout/Navbar/lib";
 import { routes } from "@/lib";
 import { getProductBySlug, getThreeRandomProducts } from "@/lib/server/queries";
-import { SizeTypeEnum } from "@prisma/client";
+import Script from "next/script";
+
+// ISR: product pages are cached and refreshed at most every 5 minutes; product
+// edits invalidate the CACHE_TAG_PRODUCT tag for immediate updates.
+export const revalidate = 300;
 
 type ProductPageProps = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 export async function generateMetadata(
@@ -32,8 +36,37 @@ export async function generateMetadata(
     };
   }
 
+  const p = product.data;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://saajtradition.com";
+  const url = `${siteUrl}/product/${p.slug}`;
+  // Trim to a clean meta-description length; strip newlines from the DB text.
+  const description =
+    (p.description ?? "").replace(/\s+/g, " ").trim().slice(0, 160) ||
+    "Traditional Bahawalpuri dresses from Saaj Tradition.";
+  const image = p.images?.[0];
+
   return {
-    title: product.data.name,
+    title: p.name,
+    description,
+    // Canonical points at the clean product URL so filtered/duplicate paths
+    // don't split ranking signals.
+    alternates: { canonical: `/product/${p.slug}` },
+    openGraph: {
+      title: p.name,
+      description,
+      url,
+      type: "website",
+      siteName: "Saaj Tradition",
+      // Use the product's own image so WhatsApp/Instagram/Facebook shares show
+      // the actual dress instead of the site logo.
+      images: image ? [{ url: image, alt: p.name }] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: p.name,
+      description,
+      images: image ? [image] : undefined,
+    },
   };
 }
 
@@ -68,8 +101,39 @@ export default async function ProductPage(props: ProductPageProps) {
     ? threeRandomProductsData.data
     : [];
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://saajtradition.com";
+  const isAvailable = product.stockStatus !== "OUT_OF_STOCK";
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description,
+    image: product.images,
+    url: `${siteUrl}/product/${product.slug}`,
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "PKR",
+      price: product.price,
+      availability: isAvailable
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock",
+      seller: {
+        "@type": "Organization",
+        name: "Saaj Tradition",
+      },
+    },
+  };
+
   return (
     <main>
+      <Script
+        id="product-jsonld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
       <BaseSection id="support-section" className="pb-16 xl:pb-20">
         <div className="flex flex-col gap-1 pt-6 md:pt-10 ">
           <div className="pb-4">
@@ -93,10 +157,10 @@ export default async function ProductPage(props: ProductPageProps) {
             {/* Purchase Panel */}
             <ProductPurchasePanel
               product={product}
+              // Auto-select when there's a single size (One Size or a product
+              // that only comes in one size) so it's purchasable without a picker.
               defaultSize={
-                product.sizeType === SizeTypeEnum.OneSize
-                  ? product.sizes[0]?.id
-                  : ""
+                product.sizes.length === 1 ? product.sizes[0]?.id : ""
               }
             />
           </div>
@@ -115,7 +179,7 @@ export default async function ProductPage(props: ProductPageProps) {
             threeRandomProducts.map((product) => (
               <ProductTile
                 key={product.id}
-                id={id}
+                id={product.id}
                 slug={product.slug}
                 name={product.name}
                 price={Number(product.price)}

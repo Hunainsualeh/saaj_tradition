@@ -1,9 +1,8 @@
 "use client";
 
-import { motion, useInView, Variants } from "framer-motion";
-import { useRef } from "react";
+import { Children } from "react";
 
-import { SCROLL_ANIMATION_IN_VIEW_CONFIG } from "@/lib/animations";
+import { useInViewOnce } from "@/lib/animations/use-in-view-once";
 
 type AnimateStaggerProps = {
   children?: React.ReactNode;
@@ -14,8 +13,18 @@ type AnimateStaggerProps = {
   disableIsInView?: boolean;
 };
 
+const DURATION_MS: Record<string, number> = {
+  short: 150,
+  normal: 300,
+  long: 700,
+};
+
+/**
+ * Staggered fade/slide-up of children on scroll-in. CSS-transition based
+ * (no framer-motion): each child gets an incremental transition-delay.
+ * The slide distance is read from the `--animate-y` CSS variable (default 200px).
+ */
 export function AnimateStagger(props: AnimateStaggerProps) {
-  // === PROPS ===
   const {
     children,
     className = "",
@@ -25,62 +34,33 @@ export function AnimateStagger(props: AnimateStaggerProps) {
     disableIsInView = false,
   } = props;
 
-  // === REF ===
-  const ref = useRef<HTMLDivElement>(null);
+  const { ref, inView } = useInViewOnce("-150px");
+  const visible = disableIsInView || inView;
+  const durationMs = DURATION_MS[duration] ?? DURATION_MS.normal;
 
-  // === HOOKS ===
-  const isInView = useInView(ref, SCROLL_ANIMATION_IN_VIEW_CONFIG);
-
-  // === DURATION MAP ===
-  const durationMap: { [key: string]: number } = {
-    short: 0.15,
-    normal: 0.3,
-    long: 0.7,
-  };
-  const durationValue = durationMap[duration] || durationMap["normal"];
-
-  // === FRAMER MOTION VARIANTS ===
-  const container: Variants = {
-    hidden: {},
-    visible: {
-      transition: {
-        staggerChildren: staggerDelay,
-      },
-    },
-  };
-
-  const item: Variants = {
-    hidden: {
-      opacity: 0,
-      y: "var(--animate-y, 200px)",
-    },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: durationValue,
-        ease: "easeInOut",
-      },
-    },
-  };
+  const items = Children.toArray(children);
 
   return (
-    <motion.div
-      ref={ref}
-      className={className}
-      variants={container}
-      initial="hidden"
-      animate={disableIsInView ? "visible" : isInView ? "visible" : "hidden"}
-    >
-      {Array.isArray(children) ? (
-        children.map((child, index) => (
-          <motion.div className={childClassName} key={index} variants={item}>
-            {child}
-          </motion.div>
-        ))
-      ) : (
-        <motion.div variants={item}>{children}</motion.div>
-      )}
-    </motion.div>
+    <div ref={ref} className={className}>
+      {items.map((child, index) => (
+        <div
+          key={index}
+          className={childClassName}
+          style={{
+            opacity: visible ? 1 : 0,
+            transform: visible
+              ? "translateY(0)"
+              : "translateY(var(--animate-y, 200px))",
+            transition: `opacity ${durationMs}ms ease-in-out, transform ${durationMs}ms ease-in-out`,
+            transitionDelay: visible
+              ? `${Math.round(index * staggerDelay * 1000)}ms`
+              : "0ms",
+            willChange: "opacity, transform",
+          }}
+        >
+          {child}
+        </div>
+      ))}
+    </div>
   );
 }

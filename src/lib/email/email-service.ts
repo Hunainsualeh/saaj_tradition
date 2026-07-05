@@ -26,16 +26,21 @@ type OrderItem = {
 
 function buildOrderItemsHtml(items: OrderItem[]): string {
   return items
-    .map(
-      (item) => `
+    .map((item) => {
+      // Escape all interpolated, product-derived strings to prevent HTML
+      // injection in the rendered email / admin email preview.
+      const safeTitle = sanitizeForHtml(item.title);
+      const safeImage = sanitizeForHtml(item.image);
+      const safeSize = sanitizeForHtml(item.size);
+      return `
     <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0ece8;border-radius:8px;margin-bottom:12px;">
       <tr>
         <td class="item-image" style="padding:12px;width:70px;vertical-align:top;">
-          <img src="${item.image}" alt="${item.title}" width="58" height="58" style="width:58px;height:58px;object-fit:cover;border-radius:6px;" />
+          <img src="${safeImage}" alt="${safeTitle}" width="58" height="58" style="width:58px;height:58px;object-fit:cover;border-radius:6px;" />
         </td>
         <td style="padding:12px;vertical-align:middle;">
-          <p style="font-weight:600;color:#1a1a2e;font-size:14px;margin-bottom:4px;">${item.title}</p>
-          <p style="font-size:12px;color:#888;margin-bottom:2px;">Size: ${item.size}</p>
+          <p style="font-weight:600;color:#1a1a2e;font-size:14px;margin-bottom:4px;">${safeTitle}</p>
+          <p style="font-size:12px;color:#888;margin-bottom:2px;">Size: ${safeSize}</p>
           <p style="font-size:12px;color:#888;">Qty: ${item.quantity} × Rs. ${Math.round(item.unitPrice)}</p>
         </td>
         <td align="right" style="padding:12px;vertical-align:middle;">
@@ -43,8 +48,8 @@ function buildOrderItemsHtml(items: OrderItem[]): string {
         </td>
       </tr>
     </table>
-  `,
-    )
+  `;
+    })
     .join("");
 }
 
@@ -344,7 +349,7 @@ export async function renderOrderStatusUpdateEmail(input: {
   );
 
   const customMessage = input.customMessage
-    ? `<div style="margin-top:20px;padding:16px;background:#faf8f5;border-left:3px solid #c9a84c;border-radius:4px;"><p style="font-size:14px;color:#444;line-height:1.8;">${input.customMessage}</p></div>`
+    ? `<div style="margin-top:20px;padding:16px;background:#faf8f5;border-left:3px solid #c9a84c;border-radius:4px;"><p style="font-size:14px;color:#444;line-height:1.8;">${sanitizeForHtml(input.customMessage)}</p></div>`
     : "";
 
   const vars: Record<string, string> = {
@@ -480,6 +485,36 @@ export async function sendCollectionUpdateEmail(input: {
   });
 }
 
+// ─── BATCH BROADCAST HELPERS ─────────────────────────────────────────────────
+
+const BATCH_SIZE = 50;
+const BATCH_DELAY_MS = 1000;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function sendInBatches<T>(
+  subscribers: T[],
+  sendFn: (sub: T) => Promise<void>,
+): Promise<{ sent: number; failed: number; total: number }> {
+  let sent = 0;
+  let failed = 0;
+
+  for (let i = 0; i < subscribers.length; i += BATCH_SIZE) {
+    const batch = subscribers.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(batch.map(sendFn));
+    sent += results.filter((r) => r.status === "fulfilled").length;
+    failed += results.filter((r) => r.status === "rejected").length;
+
+    if (i + BATCH_SIZE < subscribers.length) {
+      await sleep(BATCH_DELAY_MS);
+    }
+  }
+
+  return { sent, failed, total: subscribers.length };
+}
+
 // ─── BROADCAST TO ALL NEWSLETTER SUBSCRIBERS ────────────────────────────────
 
 export async function broadcastNewsletter(input: {
@@ -492,21 +527,16 @@ export async function broadcastNewsletter(input: {
 }) {
   const subscribers = await prisma.newsletterSubscriber.findMany({
     where: { isActive: true },
+    select: { email: true, name: true },
   });
 
-  const results = await Promise.allSettled(
-    subscribers.map((sub) =>
-      sendNewsletterEmail({
-        to: sub.email,
-        subscriberName: sub.name ?? "Valued Customer",
-        ...input,
-      }),
-    ),
+  return sendInBatches(subscribers, (sub) =>
+    sendNewsletterEmail({
+      to: sub.email,
+      subscriberName: sub.name ?? "Valued Customer",
+      ...input,
+    }),
   );
-
-  const sent = results.filter((r) => r.status === "fulfilled").length;
-  const failed = results.filter((r) => r.status === "rejected").length;
-  return { sent, failed, total: subscribers.length };
 }
 
 export async function broadcastProductUpdate(input: {
@@ -518,16 +548,13 @@ export async function broadcastProductUpdate(input: {
 }) {
   const subscribers = await prisma.newsletterSubscriber.findMany({
     where: { isActive: true },
+    select: { email: true },
   });
 
-  const results = await Promise.allSettled(
-    subscribers.map((sub) =>
-      sendProductUpdateEmail({ to: sub.email, ...input }),
-    ),
+  const { sent, total } = await sendInBatches(subscribers, (sub) =>
+    sendProductUpdateEmail({ to: sub.email, ...input }),
   );
-
-  const sent = results.filter((r) => r.status === "fulfilled").length;
-  return { sent, total: subscribers.length };
+  return { sent, total };
 }
 
 export async function broadcastCollectionUpdate(input: {
@@ -538,16 +565,13 @@ export async function broadcastCollectionUpdate(input: {
 }) {
   const subscribers = await prisma.newsletterSubscriber.findMany({
     where: { isActive: true },
+    select: { email: true },
   });
 
-  const results = await Promise.allSettled(
-    subscribers.map((sub) =>
-      sendCollectionUpdateEmail({ to: sub.email, ...input }),
-    ),
+  const { sent, total } = await sendInBatches(subscribers, (sub) =>
+    sendCollectionUpdateEmail({ to: sub.email, ...input }),
   );
-
-  const sent = results.filter((r) => r.status === "fulfilled").length;
-  return { sent, total: subscribers.length };
+  return { sent, total };
 }
 
 // ─── SEND CUSTOM EMAIL TO SINGLE ADDRESS ────────────────────────────────────

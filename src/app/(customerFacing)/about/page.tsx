@@ -219,6 +219,7 @@ export default async function AboutPage() {
           <NewsletterCard
             heading={c.newsletter_heading}
             description={c.newsletter_description}
+            imageSrc={c.newsletter_image}
           />
         </BaseSection>
       </div>

@@ -96,7 +96,7 @@ export function AdminShippingForm({
         <div className="flex items-end gap-3 max-w-xs">
           <AdminField className="flex-1">
             <AdminFieldLabel htmlFor="globalRate">
-              Amount ($)
+              Amount (Rs.)
             </AdminFieldLabel>
             <AdminInput
               id="globalRate"
@@ -143,7 +143,7 @@ export function AdminShippingForm({
                 Price
               </span>
               <span className="col-span-4 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                Shipping Override ($)
+                Shipping Override (Rs.)
               </span>
             </div>
 

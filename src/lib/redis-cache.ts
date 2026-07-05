@@ -1,20 +1,9 @@
 import { redis, isRedisAvailable } from "@/lib/redis";
 
-/** Default TTL for cached data (5 minutes) */
-const DEFAULT_TTL = 300;
-
 /** Safe getter — returns null when Redis is not configured */
 function getRedis() {
   return redis;
 }
-
-/**
- * Redis-backed cache with tag-based invalidation.
- *
- * Falls back gracefully to direct DB calls when Redis is unavailable.
- * Works alongside Next.js `unstable_cache` — Redis serves as the first layer
- * to reduce database hits, while `unstable_cache` provides in-process caching.
- */
 
 function buildKey(keyParts: string[]): string {
   return `cache:${keyParts.join(":")}`;
@@ -24,55 +13,11 @@ function buildTagSetKey(tag: string): string {
   return `cache-tag:${tag}`;
 }
 
-/**
- * Cache a function result in Redis with optional tag-based invalidation.
- *
- * @param fn - Async function whose result should be cached
- * @param keyParts - Array of strings forming the cache key
- * @param options.tags - Cache tags for invalidation
- * @param options.ttl - TTL in seconds (default: 300)
- */
-export async function redisCache<T>(
-  fn: () => Promise<T>,
-  keyParts: string[],
-  options?: { tags?: string[]; ttl?: number },
-): Promise<T> {
-  const r = getRedis();
-  const available = r ? await isRedisAvailable() : false;
-  if (!available || !r) return fn();
-
-  const key = buildKey(keyParts);
-  const ttl = options?.ttl ?? DEFAULT_TTL;
-
-  try {
-    const cached = await r.get(key);
-    if (cached !== null) {
-      return JSON.parse(cached) as T;
-    }
-  } catch {
-    // Parsing error or connection hiccup — fall through to fetch fresh data
-  }
-
-  const data = await fn();
-
-  try {
-    const serialized = JSON.stringify(data);
-    await r.setex(key, ttl, serialized);
-
-    // Register key under each tag for invalidation
-    if (options?.tags) {
-      const pipeline = r.pipeline();
-      for (const tag of options.tags) {
-        pipeline.sadd(buildTagSetKey(tag), key);
-      }
-      await pipeline.exec();
-    }
-  } catch {
-    // Non-critical — cache write failure shouldn't break the app
-  }
-
-  return data;
-}
+// NOTE: Read caching is owned exclusively by the Next.js Data Cache via
+// `unstable_cache` (every query wraps itself). A former `redisCache()` wrapper
+// added a redundant second cache layer and was removed. Redis is still used
+// below for tag-set bookkeeping, and elsewhere for rate limiting, the email
+// queue, and admin session revocation.
 
 /**
  * Invalidate all cache entries associated with a tag.

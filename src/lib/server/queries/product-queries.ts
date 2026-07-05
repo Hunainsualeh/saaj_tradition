@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
+import { cache } from "react";
 
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus, Prisma } from "@prisma/client";
 import { ServerActionResponse } from "@/types/server";
 import {
   ProductDashboardStats,
@@ -12,16 +13,16 @@ import { prisma } from "@/lib/prisma";
 import { CACHE_TAG_PRODUCT } from "@/lib/constants/cache-tags";
 import { SIZE_TEMPLATES, SIZE_TYPES } from "@/lib/constants";
 import { SerializedProduct } from "@/types/client";
-import { redisCache } from "@/lib/redis-cache";
 
 /** Convert Prisma Product Decimals to plain numbers for client serialization */
-function serializeProduct<T extends { price: unknown; compareAtPrice?: unknown; categories?: unknown }>(product: T) {
+function serializeProduct<T extends { price: unknown; compareAtPrice?: unknown; shippingCharge?: unknown; categories?: unknown }>(product: T) {
   // `categories` is optional on the generic but we always want an array in the
   // serialized output that matches `SerializedProduct`.
   const base: Record<string, unknown> = {
     ...product,
     price: Number(product.price),
     compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : null,
+    shippingCharge: product.shippingCharge != null ? Number(product.shippingCharge) : null,
   };
 
   if ("categories" in product) {
@@ -50,13 +51,7 @@ const getThreeLatestProductsCached = unstable_cache(
 export async function getThreeLatestProducts(): Promise<
   ServerActionResponse<SerializedProduct[]>
 > {
-  return wrapServerCall(async () => {
-    return redisCache(
-      () => getThreeLatestProductsCached(),
-      [CACHE_TAG_PRODUCT, "latest-three"],
-      { tags: [CACHE_TAG_PRODUCT], ttl: 300 },
-    );
-  });
+  return wrapServerCall(() => getThreeLatestProductsCached());
 }
 
 // Featured products for home page new arrivals
@@ -65,6 +60,7 @@ const getFeaturedProductsCached = unstable_cache(
     const products = await prisma.product.findMany({
       where: { isActive: true, isFeatured: true },
       orderBy: { updatedAt: "desc" },
+      take: 12,
       include: { categories: { select: { name: true, slug: true } } },
     });
 
@@ -77,20 +73,13 @@ const getFeaturedProductsCached = unstable_cache(
 export async function getFeaturedProducts(): Promise<
   ServerActionResponse<SerializedProduct[]>
 > {
-  return wrapServerCall(async () => {
-    return redisCache(
-      () => getFeaturedProductsCached(),
-      [CACHE_TAG_PRODUCT, "featured"],
-      { tags: [CACHE_TAG_PRODUCT], ttl: 300 },
-    );
-  });
+  return wrapServerCall(() => getFeaturedProductsCached());
 }
 
-// Marquee products — by specific IDs or latest 12 active products as fallback
-export async function getMarqueeProducts(
-  ids: string[],
-): Promise<ServerActionResponse<SerializedProduct[]>> {
-  return wrapServerCall(async () => {
+// Marquee products — by specific IDs or latest 12 active products as fallback.
+// Cached (keyed by the id list) so the home page never re-queries on every render.
+const getMarqueeProductsCached = unstable_cache(
+  async (ids: string[]): Promise<SerializedProduct[]> => {
     if (ids.length > 0) {
       const products = await prisma.product.findMany({
         where: { id: { in: ids }, isActive: true },
@@ -111,7 +100,15 @@ export async function getMarqueeProducts(
       include: { categories: { select: { name: true, slug: true } } },
     });
     return products.map(serializeProduct) as SerializedProduct[];
-  });
+  },
+  [CACHE_TAG_PRODUCT, "marquee"],
+  { tags: [CACHE_TAG_PRODUCT] },
+);
+
+export async function getMarqueeProducts(
+  ids: string[],
+): Promise<ServerActionResponse<SerializedProduct[]>> {
+  return wrapServerCall(() => getMarqueeProductsCached(ids));
 }
 
 // Minimal product list for admin pickers
@@ -127,26 +124,39 @@ export async function getAllProductsBasic(): Promise<
   );
 }
 
-const getThreeRandomProductsCache = unstable_cache(
-  async (currentSlug: string) => {
+// Cached pool of recent active products. Sampling 3 from this pool in-process
+// gives per-request variety WITHOUT a full-table `ORDER BY RANDOM()` scan on
+// every product page view. Invalidated on any product mutation via the tag.
+const getRelatedProductsPoolCached = unstable_cache(
+  async (): Promise<SerializedProduct[]> => {
     const products = await prisma.product.findMany({
-      where: { isActive: true, slug: { not: currentSlug } },
+      where: { isActive: true },
       orderBy: { createdAt: "desc" },
-      take: 3,
-      include: { categories: { select: { name: true, slug: true } } },
+      take: 24,
     });
-
-    return products.map(serializeProduct) as SerializedProduct[];
+    return products.map((p) =>
+      serializeProduct({ ...p, categories: [] }),
+    ) as SerializedProduct[];
   },
-  [CACHE_TAG_PRODUCT, "random-three"],
+  [CACHE_TAG_PRODUCT, "related-pool"],
   { tags: [CACHE_TAG_PRODUCT] },
 );
 
 export async function getThreeRandomProducts(
-  id: string,
+  currentSlug: string,
 ): Promise<ServerActionResponse<SerializedProduct[]>> {
   return wrapServerCall(async () => {
-    return await getThreeRandomProductsCache(id);
+    const pool = (await getRelatedProductsPoolCached()).filter(
+      (p) => p.slug !== currentSlug,
+    );
+
+    // Fisher–Yates shuffle, then take the first 3 for variety per request.
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
+    return pool.slice(0, 3);
   });
 }
 const getAllProductsWithTotalSoldCached = unstable_cache(
@@ -216,35 +226,60 @@ const getAllProductsWithTotalSoldCached = unstable_cache(
 export async function getAllProductsWithTotalSold(): Promise<
   ServerActionResponse<ProductGetAllCounts[]>
 > {
-  return wrapServerCall(async () => {
-    return redisCache(
-      () => getAllProductsWithTotalSoldCached(),
-      [CACHE_TAG_PRODUCT, "total-sold"],
-      { tags: [CACHE_TAG_PRODUCT], ttl: 120 },
-    );
-  });
+  return wrapServerCall(() => getAllProductsWithTotalSoldCached());
+}
+
+export type ProductQueryFilters = {
+  q?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sort?: "price-asc" | "price-desc" | "name-asc" | "name-desc" | "newest";
+};
+
+function buildOrderBy(sort?: string): Prisma.ProductOrderByWithRelationInput {
+  switch (sort) {
+    case "price-asc":  return { price: "asc" };
+    case "price-desc": return { price: "desc" };
+    case "name-asc":   return { name: "asc" };
+    case "name-desc":  return { name: "desc" };
+    default:           return { createdAt: "desc" };
+  }
 }
 
 export async function getProductsByCategorySlug(
   categorySlug?: string,
   page = 1,
   pageSize = 12,
+  filters: ProductQueryFilters = {},
 ): Promise<ServerActionResponse<{ products: SerializedProduct[]; total: number }>> {
   return wrapServerCall(async () => {
-    const where = categorySlug
-      ? { categories: { some: { slug: categorySlug } }, isActive: true as const }
-      : { isActive: true as const };
+    const where: Prisma.ProductWhereInput = {
+      isActive: true,
+      ...(categorySlug ? { categories: { some: { slug: categorySlug } } } : {}),
+      ...(filters.q ? {
+        OR: [
+          { name: { contains: filters.q, mode: "insensitive" } },
+          { description: { contains: filters.q, mode: "insensitive" } },
+        ],
+      } : {}),
+      ...(filters.minPrice !== undefined || filters.maxPrice !== undefined ? {
+        price: {
+          ...(filters.minPrice !== undefined ? { gte: filters.minPrice } : {}),
+          ...(filters.maxPrice !== undefined ? { lte: filters.maxPrice } : {}),
+        },
+      } : {}),
+    };
 
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
         include: { categories: { select: { name: true, slug: true }, take: 1 } },
-        orderBy: { createdAt: "desc" },
+        orderBy: buildOrderBy(filters.sort),
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
       prisma.product.count({ where }),
-    ])
+    ]);
 
     return { products: products.map(serializeProduct) as SerializedProduct[], total };
   });
@@ -254,17 +289,30 @@ export async function getProductsByCollectionSlug(
   slug: string,
   page = 1,
   pageSize = 12,
+  filters: ProductQueryFilters = {},
 ): Promise<ServerActionResponse<{ products: SerializedProduct[]; total: number }>> {
   return wrapServerCall(async () => {
-    const where = {
-      isActive: true as const,
+    const where: Prisma.ProductWhereInput = {
+      isActive: true,
       collections: { some: { slug } },
+      ...(filters.q ? {
+        OR: [
+          { name: { contains: filters.q, mode: "insensitive" } },
+          { description: { contains: filters.q, mode: "insensitive" } },
+        ],
+      } : {}),
+      ...(filters.minPrice !== undefined || filters.maxPrice !== undefined ? {
+        price: {
+          ...(filters.minPrice !== undefined ? { gte: filters.minPrice } : {}),
+          ...(filters.maxPrice !== undefined ? { lte: filters.maxPrice } : {}),
+        },
+      } : {}),
     };
 
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: buildOrderBy(filters.sort),
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -281,8 +329,9 @@ export async function getProductById(
 ): Promise<
   ServerActionResponse<
     | (SerializedProduct & {
+        categoryIds: string[];
         collections: { id: string; name: string }[];
-        existingSizeLabels: string[];
+        existingSizes: { label: string; inStock: boolean }[];
       })
     | null
   >
@@ -291,11 +340,14 @@ export async function getProductById(
     const product = await prisma.product.findFirst({
       where: { id },
       include: {
+        categories: {
+          select: { id: true, name: true, slug: true },
+        },
         collections: {
           select: { id: true, name: true },
         },
         sizes: {
-          select: { label: true },
+          select: { label: true, stockTotal: true },
         },
       },
     });
@@ -304,7 +356,12 @@ export async function getProductById(
     const serialized = serializeProduct(product) as SerializedProduct & { collections: { id: string; name: string }[] };
     return {
       ...serialized,
-      existingSizeLabels: product.sizes.map((s) => s.label),
+      categoryIds: product.categories.map((c) => c.id),
+      // Availability model: stockTotal > 0 means the size is in stock.
+      existingSizes: product.sizes.map((s) => ({
+        label: s.label,
+        inStock: s.stockTotal > 0,
+      })),
     };
   });
 }
@@ -347,17 +404,13 @@ const getProductBySlugCached = unstable_cache(
   { tags: [CACHE_TAG_PRODUCT] },
 );
 
-export async function getProductBySlug(
+// Wrapped in React `cache()` so the duplicate calls from `generateMetadata`
+// and the page body during a single render are de-duplicated into one lookup.
+export const getProductBySlug = cache(async function getProductBySlug(
   slug: string,
 ): Promise<ServerActionResponse<ProductWithSizes | null>> {
-  return wrapServerCall(async () =>
-    redisCache(
-      () => getProductBySlugCached(slug),
-      [CACHE_TAG_PRODUCT, "by-slug", slug],
-      { tags: [CACHE_TAG_PRODUCT], ttl: 300 },
-    ),
-  );
-}
+  return wrapServerCall(() => getProductBySlugCached(slug));
+});
 
 export async function getDashboardProductStats(): Promise<
   ServerActionResponse<ProductDashboardStats>

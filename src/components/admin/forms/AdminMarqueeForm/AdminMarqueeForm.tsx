@@ -12,6 +12,8 @@ import {
   AdminFieldLabel,
   AdminFieldSet,
   AdminInput,
+  AdminTagListField,
+  PartnerLogosField,
 } from "@/components/admin";
 
 type BasicProduct = { id: string; name: string; images: string[] };
@@ -271,7 +273,8 @@ export function AdminMarqueeForm({ items, allProducts }: AdminMarqueeFormProps) 
 
   const renderField = (item: SiteContentItem) => {
     const isColor = item.key.endsWith("_color");
-    const isMultiLine = item.key.endsWith("_texts") || item.key.endsWith("_logos");
+    const isPartnerLogos = item.key === "partners_logos";
+    const isMultiLine = item.key.endsWith("_texts");
     const currentVal = values[item.id] ?? "";
 
     return (
@@ -293,17 +296,18 @@ export function AdminMarqueeForm({ items, allProducts }: AdminMarqueeFormProps) 
               placeholder="#000000"
             />
           </div>
+        ) : isPartnerLogos ? (
+          <PartnerLogosField
+            value={currentVal}
+            onChange={(v) => set(item.id, v)}
+          />
         ) : isMultiLine ? (
-          <>
-            <textarea
-              id={item.key}
-              rows={5}
-              className="flex w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 min-h-[100px] font-mono"
-              value={currentVal}
-              onChange={(e) => set(item.id, e.target.value)}
-            />
-            <p className="text-[11px] text-neutral-400 mt-1">One entry per line.</p>
-          </>
+          <AdminTagListField
+            id={item.key}
+            value={currentVal}
+            onChange={(v) => set(item.id, v)}
+            placeholder="Type an announcement line and press Enter..."
+          />
         ) : (
           <AdminInput
             id={item.key}

@@ -5,6 +5,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useMemo,
   ReactNode,
 } from "react";
 
@@ -56,10 +57,13 @@ export function CartSidebarProvider({
     setIsOpen(false);
   }, []);
 
+  const value = useMemo(
+    () => ({ isOpen, cart, isLoading, openSidebar, closeSidebar, refreshCart }),
+    [isOpen, cart, isLoading, openSidebar, closeSidebar, refreshCart],
+  );
+
   return (
-    <CartSidebarContext.Provider
-      value={{ isOpen, cart, isLoading, openSidebar, closeSidebar, refreshCart }}
-    >
+    <CartSidebarContext.Provider value={value}>
       {children}
     </CartSidebarContext.Provider>
   );

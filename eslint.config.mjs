@@ -22,6 +22,16 @@ const eslintConfig = defineConfig([
     },
     rules: {
       "unused-imports/no-unused-imports": "error",
+      // Allow intentionally-unused names prefixed with "_" (e.g. params kept
+      // for call-site/signature compatibility).
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
     },
   },
   // Override default ignores of eslint-config-next.

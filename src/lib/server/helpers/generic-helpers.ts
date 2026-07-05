@@ -8,7 +8,19 @@ export async function wrapServerCall<T>(
     return { success: true, data };
   } catch (error) {
     console.error(error);
-    return { success: false, error: (error as Error).message };
+
+    // Surface intentional, user-facing messages (thrown as a plain Error, e.g.
+    // "Not enough stock", "Unauthorized") but never leak internal DB/driver
+    // errors — Prisma exceptions embed schema/query internals. Those, and any
+    // non-Error throw, get a generic message.
+    const name = (error as { name?: string })?.name ?? "";
+    const isInternalError = name.startsWith("PrismaClient") || !(error instanceof Error);
+    return {
+      success: false,
+      error: isInternalError
+        ? "Something went wrong. Please try again."
+        : (error as Error).message,
+    };
   }
 }
 

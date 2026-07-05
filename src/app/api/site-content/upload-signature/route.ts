@@ -32,7 +32,10 @@ export async function GET(req: NextRequest) {
 
   const apiSecret = process.env.CLOUDINARY_API_SECRET ?? "";
   const apiKey = process.env.CLOUDINARY_API_KEY ?? "";
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME ?? "";
+  const cloudName =
+    process.env.CLOUDINARY_CLOUD_NAME ??
+    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ??
+    "";
 
   if (!apiSecret || !apiKey || !cloudName) {
     return NextResponse.json(

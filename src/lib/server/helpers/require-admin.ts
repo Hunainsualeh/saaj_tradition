@@ -2,15 +2,20 @@ import { cookies } from "next/headers";
 import { createHmac, timingSafeEqual } from "crypto";
 
 import { prisma } from "@/lib/prisma";
+import { isTokenDenylisted } from "@/lib/redis-session";
 
 const ADMIN_COOKIE_NAME = "admin_session";
 
+/** Throws at call time if ADMIN_SESSION_SECRET is missing or still set to the insecure default. */
 function getSessionSecret(): string {
-  return (
-    process.env.ADMIN_SESSION_SECRET ??
-    process.env.PAYFAST_SECURE_KEY ??
-    "saaj-default-session-secret-change-me"
-  );
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  if (!secret) {
+    throw new Error("ADMIN_SESSION_SECRET env var is required but not set.");
+  }
+  if (secret === "saaj-default-session-secret-change-me") {
+    throw new Error("ADMIN_SESSION_SECRET must be changed from the default value.");
+  }
+  return secret;
 }
 
 /** Verify HMAC-signed session token and return the base64 payload, or null */
@@ -56,13 +61,15 @@ export async function requireAdmin(): Promise<AdminSession> {
     throw new Error("Unauthorized");
   }
 
-  let payload: string;
-  const verified = verifySession(token);
-  if (verified) {
-    payload = verified;
-  } else {
-    // Legacy fallback: accept raw base64 (will be re-signed on next login)
-    payload = token;
+  const payload = verifySession(token);
+  if (!payload) {
+    // Cookie present but signature invalid — reject with no fallback
+    throw new Error("Unauthorized");
+  }
+
+  // Reject cookies explicitly revoked at logout (best-effort; fail-open).
+  if (await isTokenDenylisted(token)) {
+    throw new Error("Unauthorized");
   }
 
   let decoded: { id?: string; role?: string };
@@ -105,14 +112,11 @@ export async function verifyAdminFromRequest(
   const token = match?.[1];
   if (!token) return null;
 
-  let payload: string;
-  const verified = verifySession(decodeURIComponent(token));
-  if (verified) {
-    payload = verified;
-  } else {
-    // Legacy fallback
-    payload = decodeURIComponent(token);
-  }
+  const decodedToken = decodeURIComponent(token);
+  const payload = verifySession(decodedToken);
+  if (!payload) return null;
+
+  if (await isTokenDenylisted(decodedToken)) return null;
 
   let decoded: { id?: string; role?: string };
   try {

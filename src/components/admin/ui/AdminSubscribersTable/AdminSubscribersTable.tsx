@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Users, UserX } from "lucide-react";
 import type { NewsletterSubscriber } from "@prisma/client";
 import { unsubscribeFromNewsletter } from "@/lib/server/actions/email-actions";
+import { formatAdminDate } from "@/lib/utils";
 
 type Props = {
   subscribers: NewsletterSubscriber[];
@@ -66,7 +67,7 @@ export function AdminSubscribersTable({ subscribers }: Props) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
-                    {new Date(s.subscribedAt).toLocaleDateString()}
+                    {formatAdminDate(s.subscribedAt)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {s.isActive && (

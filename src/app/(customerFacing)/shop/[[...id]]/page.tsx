@@ -4,11 +4,14 @@ import {
   ProductTile,
   ShopSidebar,
   ShopFilterBar,
+  CollectionTile,
 } from "@/components";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { routes } from "@/lib";
 import { getProductsByCategorySlug, getProductsByCollectionSlug, getCollections, getAllCategories } from "@/lib/server/queries";
+import type { ProductQueryFilters } from "@/lib/server/queries/product-queries";
 
 const PRODUCTS_PER_PAGE = 12;
 
@@ -104,23 +107,133 @@ export default async function ShopPage({
 }) {
   // === PARAMS ===
   const { id } = await params;
-  const filters = await searchParams;
-  const currentPage = Math.max(1, parseInt(filters.page ?? "1", 10) || 1);
+  const rawFilters = await searchParams;
+  const currentPage = Math.max(1, parseInt(rawFilters.page ?? "1", 10) || 1);
+
+  // === COLLECTIONS INDEX (/shop/collections) ===
+  // Render a grid of collection cards — mirroring the home page's collections
+  // section — instead of a flat product list. Each card links to its own
+  // /shop/collections/[slug] page, which lists that collection's products.
+  if (id && id.length === 1 && id[0] === "collections") {
+    const collectionsRes = await getCollections();
+    const collections = collectionsRes.success ? collectionsRes.data : [];
+    const { title, description } = getShopPageMeta(id);
+
+    return (
+      <main>
+        <BaseSection id="shop-section" className="pb-6 xl:pb-8">
+          <div className="flex flex-col gap-1 pt-6 md:pt-10 pb-6">
+            <AnimatedHeadingText
+              disableIsInView
+              text={title}
+              variant="page-title"
+              className="pb-1"
+            />
+            <p className="text-neutral-10 text-base">{description}</p>
+          </div>
+        </BaseSection>
+
+        <BaseSection id="collections-grid" className="pb-16 xl:pb-20">
+          {collections.length === 0 ? (
+            <p className="text-neutral-8 text-center">No collections available yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {collections.map((collection) => (
+                <CollectionTile
+                  key={collection.slug}
+                  title={collection.name}
+                  description={collection.tagline}
+                  imageUrl={collection.imageUrl}
+                  href={`${routes.shopCollections}/${collection.slug}`}
+                />
+              ))}
+            </div>
+          )}
+        </BaseSection>
+      </main>
+    );
+  }
+
+  // === CATEGORIES INDEX (/shop/categories) ===
+  // Grid of category cards; each links to /shop/categories/[slug].
+  if (id && id.length === 1 && id[0] === "categories") {
+    const categoriesRes = await getAllCategories();
+    const categoriesList = categoriesRes.success ? categoriesRes.data : [];
+    const { title, description } = getShopPageMeta(id);
+
+    return (
+      <main>
+        <BaseSection id="shop-section" className="pb-6 xl:pb-8">
+          <div className="flex flex-col gap-1 pt-6 md:pt-10 pb-6">
+            <AnimatedHeadingText
+              disableIsInView
+              text={title}
+              variant="page-title"
+              className="pb-1"
+            />
+            <p className="text-neutral-10 text-base">{description}</p>
+          </div>
+        </BaseSection>
+
+        <BaseSection id="categories-grid" className="pb-16 xl:pb-20">
+          {categoriesList.length === 0 ? (
+            <p className="text-neutral-8 text-center">No categories available yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {categoriesList.map((category) =>
+                category.imageUrl ? (
+                  <CollectionTile
+                    key={category.slug}
+                    title={category.name}
+                    description={category.tagline}
+                    imageUrl={category.imageUrl}
+                    href={`${routes.shop}/categories/${category.slug}`}
+                  />
+                ) : (
+                  <Link
+                    key={category.slug}
+                    href={`${routes.shop}/categories/${category.slug}`}
+                    className="group flex aspect-4/3 flex-col items-center justify-center rounded-sm border border-neutral-03 bg-neutral-01 p-6 text-center transition-colors hover:border-neutral-09"
+                  >
+                    <h4 className="text-xl font-medium text-neutral-12">
+                      {category.name}
+                    </h4>
+                    {category.tagline && (
+                      <p className="mt-1 text-sm text-neutral-09">
+                        {category.tagline}
+                      </p>
+                    )}
+                  </Link>
+                ),
+              )}
+            </div>
+          )}
+        </BaseSection>
+      </main>
+    );
+  }
 
   // Determine if this is a collection page (/shop/collections/slug)
   const isCollectionPage = id && id.length === 2 && id[0] === "collections";
   const collectionSlug = isCollectionPage ? id[1] : undefined;
 
+  // Build DB-level filters — search, price, sort all go to the database
+  const filters: ProductQueryFilters = {
+    ...(rawFilters.q ? { q: rawFilters.q } : {}),
+    ...(rawFilters.minPrice ? { minPrice: parseFloat(rawFilters.minPrice) } : {}),
+    ...(rawFilters.maxPrice ? { maxPrice: parseFloat(rawFilters.maxPrice) } : {}),
+    ...(rawFilters.sort ? { sort: rawFilters.sort as ProductQueryFilters["sort"] } : {}),
+  };
+
   // === FETCHES (parallel) ===
   const [productsResult, collectionsRes, categoriesRes] = await Promise.all([
     collectionSlug
-      ? getProductsByCollectionSlug(collectionSlug, currentPage, PRODUCTS_PER_PAGE)
+      ? getProductsByCollectionSlug(collectionSlug, currentPage, PRODUCTS_PER_PAGE, filters)
       : getProductsByCategorySlug(
-          id && id.length === 2 && id[0] === "categories"
-            ? id[1]
-            : undefined,
+          id && id.length === 2 && id[0] === "categories" ? id[1] : undefined,
           currentPage,
           PRODUCTS_PER_PAGE,
+          filters,
         ),
     getCollections(),
     getAllCategories(),
@@ -131,70 +244,17 @@ export default async function ShopPage({
   const { title, description } = getShopPageMeta(id, collections, categories);
 
   // === EXTRACT DATA ===
-  let filteredProducts = productsResult.success ? [...productsResult.data.products] : [];
+  const filteredProducts = productsResult.success ? productsResult.data.products : [];
   const totalProducts = productsResult.success ? productsResult.data.total : 0;
   const totalPages = Math.ceil(totalProducts / PRODUCTS_PER_PAGE);
-
-  // === CLIENT-SIDE FILTER & SORT (on the current page) ===
-  // Search filter
-  if (filters.q) {
-    const query = filters.q.toLowerCase();
-    filteredProducts = filteredProducts.filter(
-      (p) =>
-        p.name.toLowerCase().includes(query) ||
-        p.description.toLowerCase().includes(query),
-    );
-  }
-
-  // Price filters
-  if (filters.minPrice) {
-    const min = parseFloat(filters.minPrice);
-    if (!isNaN(min)) {
-      filteredProducts = filteredProducts.filter(
-        (p) => Number(p.price) >= min,
-      );
-    }
-  }
-  if (filters.maxPrice) {
-    const max = parseFloat(filters.maxPrice);
-    if (!isNaN(max)) {
-      filteredProducts = filteredProducts.filter(
-        (p) => Number(p.price) <= max,
-      );
-    }
-  }
-
-  // Sort
-  if (filters.sort) {
-    switch (filters.sort) {
-      case "price-asc":
-        filteredProducts.sort((a, b) => Number(a.price) - Number(b.price));
-        break;
-      case "price-desc":
-        filteredProducts.sort((a, b) => Number(b.price) - Number(a.price));
-        break;
-      case "name-asc":
-        filteredProducts.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case "name-desc":
-        filteredProducts.sort((a, b) => b.name.localeCompare(a.name));
-        break;
-      case "newest":
-        filteredProducts.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
-        break;
-    }
-  }
 
   // Build pagination href helper
   const buildPageHref = (page: number) => {
     const params = new URLSearchParams();
-    if (filters.q) params.set("q", filters.q);
-    if (filters.minPrice) params.set("minPrice", filters.minPrice);
-    if (filters.maxPrice) params.set("maxPrice", filters.maxPrice);
-    if (filters.sort) params.set("sort", filters.sort);
+    if (rawFilters.q) params.set("q", rawFilters.q);
+    if (rawFilters.minPrice) params.set("minPrice", rawFilters.minPrice);
+    if (rawFilters.maxPrice) params.set("maxPrice", rawFilters.maxPrice);
+    if (rawFilters.sort) params.set("sort", rawFilters.sort);
     if (page > 1) params.set("page", String(page));
     const base = id ? `/shop/${id.join("/")}` : "/shop";
     const qs = params.toString();
@@ -277,7 +337,7 @@ export default async function ShopPage({
                           Math.abs(p - currentPage) <= 1,
                       )
                       .reduce<(number | "...")[]>((acc, p, i, arr) => {
-                        if (i > 0 && p - (arr[i - 1]) > 1) acc.push("...");
+                        if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("...");
                         acc.push(p);
                         return acc;
                       }, [])
@@ -289,7 +349,7 @@ export default async function ShopPage({
                         ) : (
                           <Link
                             key={item}
-                            href={buildPageHref(item)}
+                            href={buildPageHref(item as number)}
                             className={`px-3 py-2 text-sm rounded-md transition-colors ${
                               item === currentPage
                                 ? "bg-neutral-12 text-white"

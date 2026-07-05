@@ -5,7 +5,6 @@ import { CouponItem } from "@/types/client";
 import { Coupon } from "@prisma/client";
 import { wrapServerCall } from "@/lib/server/helpers";
 import { CACHE_TAG_COUPON } from "@/lib/constants/cache-tags";
-import { redisCache } from "@/lib/redis-cache";
 
 const getCouponsCached = unstable_cache(
   async () =>
@@ -19,13 +18,7 @@ const getCouponsCached = unstable_cache(
 export async function getCoupons(): Promise<
   ServerActionResponse<CouponItem[]>
 > {
-  return wrapServerCall(() =>
-    redisCache(
-      () => getCouponsCached(),
-      [CACHE_TAG_COUPON, "all"],
-      { tags: [CACHE_TAG_COUPON], ttl: 600 },
-    ),
-  );
+  return wrapServerCall(() => getCouponsCached());
 }
 
 export async function getCouponById(

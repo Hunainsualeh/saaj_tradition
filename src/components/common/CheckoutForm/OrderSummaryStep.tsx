@@ -49,7 +49,11 @@ export function OrderSummaryStep(props: OrderSummaryStepProps) {
           return;
         }
 
-        window.location.href = `${routes.checkoutSuccess}?orderId=${orderId}`;
+        // Prefer the unguessable tracking token in the success URL.
+        const token = paidResult.data?.trackingToken;
+        window.location.href = token
+          ? `${routes.checkoutSuccess}?token=${encodeURIComponent(token)}`
+          : `${routes.checkoutSuccess}?orderId=${orderId}`;
         return;
       }
 

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/Dialog";
 import { CircleCheckIcon } from "@/components/icons";
 import { getButtonStyles } from "@/components/ui/Button";
-import { SIZE_TYPES } from "@/lib";
+import { ONE_SIZE_LABEL } from "@/lib";
 
 type AddToCartDialogUIProps = {
   open: boolean;
@@ -76,7 +76,7 @@ export function AddToCartDialogUI(props: AddToCartDialogUIProps) {
               )}
               <div className="flex flex-col gap-0.5 text-sm text-neutral-10">
                 {size && (
-                  <p>{`${SIZE_TYPES.ONE_SIZE ? "" : "Size "}${size}`}</p>
+                  <p>{size === ONE_SIZE_LABEL ? size : `Size ${size}`}</p>
                 )}
               </div>
               <p className="mt-auto text-base text-neutral-10">Rs.{price}</p>

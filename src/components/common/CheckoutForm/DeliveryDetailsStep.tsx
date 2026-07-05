@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { DeliveryDetailsData, deliveryDetailsSchema } from "./schema";
 import { Button, Checkbox, Input } from "@/components/ui";
 import { cn } from "@/lib/utils/cn";
+import { ProvinceSelect } from "./ProvinceSelect";
 
 type DeliveryDetailsStepProps = {
   completed: boolean;
@@ -232,16 +233,20 @@ export function DeliveryDetailsStep(props: DeliveryDetailsStepProps) {
 
             <div>
               <label htmlFor="state" className={labelClass}>
-                State
+                Province
               </label>
-              <Input
-                className="w-full"
-                id="state"
-                variant="light"
-                placeholder="England"
-                autoComplete="address-level1"
-                isError={!!errors.state}
-                {...register("state")}
+              <Controller
+                name="state"
+                control={control}
+                render={({ field }) => (
+                  <ProvinceSelect
+                    id="state"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    isError={!!errors.state}
+                  />
+                )}
               />
               {errors.state && (
                 <p className="mt-1 text-sm text-red-600">
@@ -374,16 +379,20 @@ export function DeliveryDetailsStep(props: DeliveryDetailsStepProps) {
 
             <div>
               <label htmlFor="billingState" className={labelClass}>
-                State
+                Province
               </label>
-              <Input
-                className="w-full"
-                id="billingState"
-                variant="light"
-                placeholder="England"
-                autoComplete="billing address-level1"
-                isError={!!errors.billingState}
-                {...register("billingState")}
+              <Controller
+                name="billingState"
+                control={control}
+                render={({ field }) => (
+                  <ProvinceSelect
+                    id="billingState"
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    isError={!!errors.billingState}
+                  />
+                )}
               />
               {errors.billingState && (
                 <p className="mt-1 text-sm text-red-600">

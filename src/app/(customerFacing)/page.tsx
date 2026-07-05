@@ -23,6 +23,10 @@ import {
 import { HomeVideoSectionWrapper } from "@/components/common/HomeVideoSection/HomeVideoSectionClient";
 import { routes, screamingSnakeToTitle } from "@/lib";
 import {
+  DEFAULT_PARTNER_LOGOS_RAW,
+  parsePartnerLogos,
+} from "@/lib/partner-logos";
+import {
   getHomePageBlogs,
   getFeaturedProducts,
   getCollections,
@@ -36,6 +40,11 @@ export const metadata: Metadata = {
     absolute: "Saaj Tradition",
   },
 };
+
+// ISR: serve cached HTML and refresh at most every 5 minutes. Content edits
+// still push through immediately via tag revalidation on the underlying
+// `unstable_cache` queries; this bounds staleness for anything else.
+export const revalidate = 300;
 
 export default async function HomePage() {
   // === QUERIES (parallel) ===
@@ -73,10 +82,9 @@ export default async function HomePage() {
     .map((s: string) => s.trim())
     .filter(Boolean);
 
-  const partnerLogos = (c.partners_logos ?? "LVMH\nKERING\nRICHEMONT\nCAPRI\nTAPESTRY\nPRADA GROUP")
-    .split("\n")
-    .map((s: string) => s.trim())
-    .filter(Boolean);
+  const partnerLogos = parsePartnerLogos(
+    c.partners_logos ?? DEFAULT_PARTNER_LOGOS_RAW,
+  );
 
   const marqueeIds = (c.marquee_product_ids ?? "")
     .split(",")

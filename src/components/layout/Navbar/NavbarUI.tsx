@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { usePathname } from "next/navigation";
 
 import { cn, routes } from "@/lib";
@@ -17,9 +17,10 @@ import { CheckoutIcon, MenuBarIcon, CloseIcon } from "@/components";
 export type NavbarUIProps = {
   itemCount: number;
   collections?: { id: string; name: string; slug: string }[];
+  categories?: { id: string; name: string; slug: string }[];
 };
 
-export function NavbarUI({ itemCount, collections = [] }: NavbarUIProps) {
+export function NavbarUI({ itemCount, collections = [], categories = [] }: NavbarUIProps) {
   const [showSubMenu, setShowSubMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [activeSubMenu, setActiveSubMenu] = useState<string | null>(null);
@@ -27,7 +28,10 @@ export function NavbarUI({ itemCount, collections = [] }: NavbarUIProps) {
   const [lastPath, setLastPath] = useState("");
 
   const pathName = usePathname();
-  const navItems: NavItemType[] = getNavItems(collections);
+  const navItems: NavItemType[] = useMemo(
+    () => getNavItems(collections, categories),
+    [collections, categories],
+  );
   const { openSidebar } = useCartSidebar();
   const hoverTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 

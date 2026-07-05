@@ -101,13 +101,10 @@ export async function GET(req: NextRequest) {
 
     for (const order of pendingOrders) {
       try {
-        // Reconstruct the basket_id that was sent to PayFast.
-        // We stored paymentSessionId as `payfast_${orderId}`, but the actual
-        // basket_id sent to PayFast was `${orderId}_${timestamp}`.
-        // Since we don't store the exact basket_id, query by order_id instead
-        // (PayFast also accepts order_id = orderNumber).
-        // The transaction status API also accepts basket_id prefix matching.
-        const basketId = order.id;
+        // `paymentSessionId` now stores the EXACT basket_id sent to PayFast
+        // (`${orderId}_${timestamp}`), so the status query matches. Fall back to
+        // the bare order id for any legacy orders created before this change.
+        const basketId = order.paymentSessionId ?? order.id;
         const orderDate = formatDate(order.createdAt);
 
         const txnStatus = await getPayFastTransactionStatus(basketId, orderDate);

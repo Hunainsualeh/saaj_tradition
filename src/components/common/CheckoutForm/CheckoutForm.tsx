@@ -145,36 +145,32 @@ export function CheckoutForm(props: CheckoutFormProps) {
   });
 
   // === FUNCTIONS ===
+  // Scroll the newly-active step just below the top of the viewport. We wait for
+  // the collapse/expand animations (~0.35s) to finish first — scrolling while the
+  // surrounding sections are still resizing makes the smooth scroll chase a
+  // moving target, which is what caused the jitter. We also measure the element's
+  // true document position (getBoundingClientRect) instead of offsetTop, which is
+  // only relative to the offset parent.
+  const scrollToStep = (stepId: string) => {
+    const HEADER_OFFSET = 110; // clearance for the sticky navbar
+    setTimeout(() => {
+      const el = document.getElementById(stepId);
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    }, 420);
+  };
+
   const handleConfirmDelivery = (deliveryData: DeliveryDetailsData) => {
     setDeliveryData(deliveryData);
     setCurrentStep(2);
-
-    // Wait for DOM to update, then scroll
-    setTimeout(() => {
-      const el = document.getElementById("2");
-      if (!el) return;
-
-      window.scrollTo({
-        top: el.offsetTop - 500,
-        behavior: "smooth",
-      });
-    }, 100);
+    scrollToStep("2");
   };
 
   const handleConfirmPayment = (method: CheckoutPaymentMethod) => {
     setPaymentMethod(method);
     setCurrentStep(3);
-
-    // Wait for DOM to update, then scroll
-    setTimeout(() => {
-      const el = document.getElementById("3");
-      if (!el) return;
-
-      window.scrollTo({
-        top: el.offsetTop - 500,
-        behavior: "smooth",
-      });
-    }, 100);
+    scrollToStep("3");
   };
 
   const handleEditDelivery = () => {

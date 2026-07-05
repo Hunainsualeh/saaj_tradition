@@ -15,8 +15,9 @@ import { ServerActionResponse } from "@/types/server";
 import { wrapServerCall } from "../helpers";
 import { requireAdmin } from "../helpers/require-admin";
 import { DeliveryDetailsData } from "@/components";
+import { deliveryDetailsSchema } from "@/components/common/CheckoutForm/schema";
 import { cookies } from "next/headers";
-import { COOKIE_CART_ID } from "@/lib/constants";
+import { COOKIE_CART_ID, COOKIE_COUPON_CODE } from "@/lib/constants";
 import { adminRoutes } from "@/lib/routing";
 import { sendOrderConfirmationEmails, sendOrderStatusEmail } from "./email-actions";
 import { buildPayFastPaymentPayload } from "@/lib/server/payments/payfast";
@@ -70,6 +71,17 @@ export async function updateOrderDetails(
   input: DeliveryDetailsData,
 ): Promise<ServerActionResponse<string>> {
   return wrapServerCall(async () => {
+    // Re-validate on the server: the client zod check can be bypassed by a
+    // crafted request, and an order with a bad/empty email breaks fulfilment
+    // and confirmation emails.
+    const parsed = deliveryDetailsSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new Error(
+        parsed.error.issues[0]?.message ?? "Invalid delivery details",
+      );
+    }
+    input = parsed.data;
+
     // Validate order exists
     const existingOrder = await prisma.order.findUnique({
       where: { id: orderId },
@@ -141,9 +153,22 @@ export async function updateOrderDetails(
 /** Mark an order as paid + cart as ORDERED for COD orders. */
 export async function markOrderAsPaid(
   orderId: string,
-): Promise<ServerActionResponse<void>> {
+): Promise<ServerActionResponse<{ trackingToken: string | null }>> {
   return wrapServerCall(async () => {
-    await prisma.$transaction(async (tx) => {
+    // Verify the caller owns this order (cart cookie must match)
+    const cookieStore = await cookies();
+    const cartId = cookieStore.get(COOKIE_CART_ID)?.value;
+
+    const trackingToken = await prisma.$transaction(async (tx) => {
+      // Row-level lock so a double-submit (or COD + a racing PayFast callback)
+      // can't both read PENDING and both decrement stock. The second caller
+      // blocks here until the first commits, then the idempotency check below
+      // short-circuits it.
+      await tx.$executeRawUnsafe(
+        `SELECT "id" FROM "Order" WHERE "id" = $1 FOR UPDATE`,
+        orderId,
+      );
+
       const order = await tx.order.findUnique({
         where: { id: orderId },
         include: {
@@ -157,8 +182,12 @@ export async function markOrderAsPaid(
 
       if (!order) throw new Error("Order not found");
 
+      if (!cartId || order.cartId !== cartId) {
+        throw new Error("Unauthorized");
+      }
+
       // Idempotency: skip if already paid
-      if (order.paymentStatus === PaymentStatus.PAID) return;
+      if (order.paymentStatus === PaymentStatus.PAID) return order.trackingToken;
 
       // Decrement stock for COD orders (not done during checkout, only reserved)
       if (order.cart.items.length > 0) {
@@ -200,14 +229,22 @@ export async function markOrderAsPaid(
           console.error("Failed to increment coupon usage for COD order:", error);
         }
       }
+
+      return order.trackingToken;
     });
 
     revalidatePath(adminRoutes.orders);
+
+    // Clear cart and coupon cookies — order is placed
+    cookieStore.delete(COOKIE_CART_ID);
+    cookieStore.delete(COOKIE_COUPON_CODE);
 
     // Send confirmation emails (non-blocking)
     sendOrderConfirmationEmails(orderId).catch((err) => {
       console.error("[Email] Failed to send order confirmation after markOrderAsPaid:", err);
     });
+
+    return { trackingToken: trackingToken ?? null };
   });
 }
 
@@ -250,12 +287,16 @@ export async function initiatePayFastCheckout(
       orderNumber: order.orderNumber,
     });
 
+    // Persist the EXACT basket_id we sent to PayFast (orderId_timestamp) as the
+    // session marker. The reconciliation cron queries PayFast's transaction
+    // status API by basket_id, so it must match exactly — storing the synthetic
+    // `payfast_${id}` here previously made reconciliation unable to find the txn.
     await prisma.order.update({
       where: { id: orderId },
       data: {
         paymentMethod: PaymentMethod.PAYFAST,
         paymentStatus: PaymentStatus.PENDING,
-        paymentSessionId: `payfast_${order.id}`,
+        paymentSessionId: payload.fields.basket_id,
         updatedAt: new Date(),
       },
     });
@@ -329,7 +370,7 @@ export async function updatePaymentStatus(
   });
 }
 
-/** Recalculate and fix order totalPrice from its cart items (admin correction tool) */
+/** Recalculate and fix order totalPrice from its orderItems snapshot (admin correction tool) */
 export async function recalculateOrderTotal(
   orderId: string,
 ): Promise<ServerActionResponse<number>> {
@@ -338,6 +379,9 @@ export async function recalculateOrderTotal(
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       select: {
+        orderItems: {
+          select: { unitPrice: true, quantity: true },
+        },
         cart: {
           select: {
             items: {
@@ -352,7 +396,9 @@ export async function recalculateOrderTotal(
 
     if (!order) throw new Error("Order not found");
 
-    const subtotal = order.cart.items.reduce(
+    // Prefer the frozen orderItems snapshot; fall back to live cart for legacy orders
+    const items = order.orderItems.length > 0 ? order.orderItems : order.cart.items;
+    const subtotal = items.reduce(
       (sum, item) => sum + item.unitPrice.toNumber() * item.quantity,
       0,
     );

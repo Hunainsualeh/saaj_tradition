@@ -60,7 +60,7 @@ const navGroups = [
   {
     label: "Content",
     items: [
-      { href: adminRoutes. marquee, text: "Marquee", icon: Megaphone },
+      { href: adminRoutes.marquee, text: "Announcement", icon: Megaphone },
       { href: adminRoutes.blogs, text: "Blog", icon: FileText },
       { href: adminRoutes.siteContent, text: "Site Content", icon: PenSquare },
       { href: adminRoutes.testimonials, text: "Testimonials", icon: MessageSquare },

@@ -6,6 +6,7 @@ import { NewsletterForm } from "./NewsletterForm";
 
 type FooterProps = {
   email?: string;
+  phone?: string;
   instagram?: string;
   facebook?: string;
   whatsapp?: string;
@@ -16,6 +17,8 @@ type FooterProps = {
 type SocialLink = { name: string; url: string; renderIcon: () => React.ReactNode };
 
 export function Footer({
+  email = STORE_EMAIL,
+  phone = STORE_PHONE,
   instagram = STORE_INSTAGRAM,
   facebook = STORE_FACEBOOK,
   whatsapp,
@@ -158,7 +161,7 @@ export function Footer({
                 )}
                 {/* Email icon */}
                 <a
-                  href={`mailto:${STORE_EMAIL}`}
+                  href={`mailto:${email}`}
                   aria-label="Email us"
                   className="hover:text-gray-900 transition-colors duration-200"
                 >
@@ -169,7 +172,7 @@ export function Footer({
                 </a>
                 {/* Phone icon */}
                 <a
-                  href={`tel:${STORE_PHONE}`}
+                  href={`tel:${phone.replace(/[^\d+]/g, "")}`}
                   aria-label="Call us"
                   className="hover:text-gray-900 transition-colors duration-200"
                 >

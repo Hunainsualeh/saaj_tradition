@@ -3,11 +3,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminFromRequest } from "@/lib/server/helpers/require-admin";
 
 cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  cloud_name:
+    process.env.CLOUDINARY_CLOUD_NAME ??
+    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// SVG intentionally excluded: SVGs can embed <script>/onload handlers, so we
+// only accept raster formats here (matches the product uploader). Vector logos
+// should be supplied as PNG/WebP or referenced by external URL.
 const ALLOWED_IMAGE_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -44,6 +49,8 @@ export async function POST(req: NextRequest) {
 
     const isImage = ALLOWED_IMAGE_TYPES.has(file.type);
     const isVideo = ALLOWED_VIDEO_TYPES.has(file.type);
+    // SVG is a vector — skip raster resizing/format conversion so it stays crisp.
+    const isSvg = file.type === "image/svg+xml";
 
     if (!isImage && !isVideo) {
       return NextResponse.json(
@@ -69,20 +76,22 @@ export async function POST(req: NextRequest) {
       public_id: publicId,
       resource_type: isVideo ? "video" : "image",
       overwrite: true,
-      ...(isImage && {
-        transformation: [{ width: 3840, height: 2160, crop: "limit" }],
-        quality: "auto:best",
-        fetch_format: "auto",
-      }),
-    });
-
-    const url = isVideo
-      ? result.secure_url
-      : cloudinary.url(result.public_id, {
-          secure: true,
+      ...(isImage &&
+        !isSvg && {
+          transformation: [{ width: 3840, height: 2160, crop: "limit" }],
           quality: "auto:best",
           fetch_format: "auto",
-        });
+        }),
+    });
+
+    const url =
+      isVideo || isSvg
+        ? result.secure_url
+        : cloudinary.url(result.public_id, {
+            secure: true,
+            quality: "auto:best",
+            fetch_format: "auto",
+          });
 
     return NextResponse.json({ url });
   } catch (error) {

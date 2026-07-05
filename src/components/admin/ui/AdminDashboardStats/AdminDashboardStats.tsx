@@ -50,88 +50,63 @@ const PAYMENT_STATUS_COLORS: Record<string, { bg: string; text: string; dot: str
   REFUNDED: { bg: "bg-gray-100",    text: "text-gray-600",   dot: "#9ca3af" },
 };
 
-// ─── Donut chart helper ────────────────────────────────────────────────────
-// Circle r=15.91 → circumference ≈ 100, so strokeDasharray values == percentages
-function DonutChart({
+// ─── Greeting helper ─────────────────────────────────────────────────────────
+function getGreeting() {
+  const hour = new Date().getHours();
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+}
+
+// ─── Breakdown chart (horizontal bars — replaces the old donut) ──────────────
+function BreakdownChart({
   segments,
   sublabel,
 }: {
   segments: { value: number; color: string; name: string }[];
-  label: string;
   sublabel: string;
 }) {
   const total = segments.reduce((s, d) => s + d.value, 0);
-  const [hovered, setHovered] = useState<string | null>(null);
+  const active = segments.filter((s) => s.value > 0);
 
-  const computed = useMemo(() => {
-    if (total === 0) return [];
-    let cumulative = 0;
-    return segments
-      .filter((s) => s.value > 0)
-      .map((s) => {
-        const pct = (s.value / total) * 100;
-        const offset = 25 - cumulative;
-        cumulative += pct;
-        return { ...s, pct, offset };
-      });
-  }, [segments, total]);
+  if (total === 0) {
+    return <p className="text-sm text-neutral-08 py-6 text-center">No data yet</p>;
+  }
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-4">
-      {/* SVG donut */}
-      <div className="relative w-32 h-32 shrink-0">
-        <svg viewBox="0 0 36 36" className="w-full h-full">
-          {total === 0 ? (
-            <circle cx="18" cy="18" r="15.91" fill="transparent" stroke="#e5e7eb" strokeWidth="4" />
-          ) : (
-            computed.map((seg, i) => (
-              <circle
-                key={i}
-                cx="18" cy="18" r="15.91"
-                fill="transparent"
-                stroke={seg.color}
-                strokeWidth={hovered === seg.name ? 5 : 4}
-                strokeDasharray={`${seg.pct} ${100 - seg.pct}`}
-                strokeDashoffset={seg.offset}
-                className="transition-all duration-200 cursor-pointer"
-                onMouseEnter={() => setHovered(seg.name)}
-                onMouseLeave={() => setHovered(null)}
-                style={{ transformOrigin: "50% 50%", transform: "rotate(-90deg)" }}
-              />
-            ))
-          )}
-        </svg>
-        {/* Centre label */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-xl font-bold text-neutral-11 leading-none">{total}</span>
-          <span className="text-[10px] text-neutral-08 mt-0.5">{sublabel}</span>
-        </div>
+    <div className="space-y-4">
+      {/* total */}
+      <div className="flex items-baseline gap-2">
+        <span className="text-3xl font-bold text-neutral-11 leading-none">{total}</span>
+        <span className="text-xs text-neutral-07 uppercase tracking-wide">{sublabel}</span>
       </div>
 
-      {/* Legend */}
-      <ul className="flex flex-col gap-1.5 w-full">
-        {segments.filter((s) => s.value > 0).map((seg) => (
-          <li
-            key={seg.name}
-            className={`flex items-center justify-between gap-2 rounded px-2 py-1 transition-colors cursor-default ${hovered === seg.name ? "bg-neutral-02" : ""}`}
-            onMouseEnter={() => setHovered(seg.name)}
-            onMouseLeave={() => setHovered(null)}
-          >
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: seg.color }} />
-              <span className="text-xs text-neutral-09 truncate">{seg.name}</span>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-xs font-semibold text-neutral-11">{seg.value}</span>
-              <span className="text-[10px] text-neutral-07">
-                ({total > 0 ? ((seg.value / total) * 100).toFixed(0) : 0}%)
-              </span>
-            </div>
-          </li>
+      {/* stacked proportion bar */}
+      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-neutral-02">
+        {active.map((s) => (
+          <div
+            key={s.name}
+            title={`${s.name}: ${s.value}`}
+            style={{ width: `${(s.value / total) * 100}%`, background: s.color }}
+            className="h-full transition-all"
+          />
         ))}
-        {total === 0 && (
-          <li className="text-xs text-neutral-08 px-2">No data yet</li>
-        )}
+      </div>
+
+      {/* per-segment rows */}
+      <ul className="space-y-2.5">
+        {active.map((s) => {
+          const pct = (s.value / total) * 100;
+          return (
+            <li key={s.name} className="flex items-center gap-3">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
+              <span className="text-xs text-neutral-09 w-24 shrink-0 truncate">{s.name}</span>
+              <div className="flex-1 h-1.5 rounded-full bg-neutral-02 overflow-hidden">
+                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: s.color }} />
+              </div>
+              <span className="text-xs font-semibold text-neutral-11 w-7 text-right tabular-nums">{s.value}</span>
+              <span className="text-[10px] text-neutral-07 w-9 text-right tabular-nums">{pct.toFixed(0)}%</span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -147,6 +122,8 @@ function KpiCard({
   href,
   alert,
   alertText,
+  dotColor,
+  wide,
 }: {
   label: string;
   value: string | number;
@@ -156,27 +133,31 @@ function KpiCard({
   href: string;
   alert?: boolean;
   alertText?: string;
+  dotColor: string;
+  wide?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className="group bg-white rounded-xl border border-neutral-03 p-5 hover:border-neutral-05 hover:shadow-md transition-all flex flex-col gap-3"
+      title={alert && alertText ? alertText : undefined}
+      className={`group relative bg-white rounded-xl border border-neutral-03 px-3.5 py-3 hover:border-neutral-05 hover:shadow-sm transition-all flex flex-col gap-2.5 ${wide ? "col-span-2" : ""}`}
     >
       <div className="flex items-start justify-between">
-        <div className={`p-2.5 rounded-lg ${iconBg}`}>
-          <Icon className={`w-5 h-5 ${iconColor}`} />
+        <div className={`inline-flex p-1.5 rounded-lg ${iconBg}`}>
+          <Icon className={`w-4 h-4 ${iconColor}`} />
         </div>
-        <ArrowRight className="w-4 h-4 text-neutral-06 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" />
+        <span
+          className={`w-1.5 h-1.5 rounded-full mt-1 ${alert ? "animate-pulse" : ""}`}
+          style={{ background: alert ? "#f59e0b" : dotColor }}
+        />
       </div>
-      <div>
-        <p className="text-sm text-neutral-08 font-medium">{label}</p>
-        <p className="text-2xl font-bold text-neutral-11 mt-0.5 leading-none">{value}</p>
-        {alert && alertText && (
-          <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" />
-            {alertText}
-          </p>
-        )}
+      <div className="min-w-0">
+        <p className={`font-bold text-neutral-11 leading-none truncate ${wide ? "text-xl" : "text-2xl"}`}>
+          {value}
+        </p>
+        <p className="text-[10px] font-semibold text-neutral-07 uppercase tracking-wider mt-1.5 truncate">
+          {label}
+        </p>
       </div>
     </Link>
   );
@@ -197,12 +178,12 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className={`flex flex-col items-center gap-2 p-4 rounded-xl border border-neutral-03 bg-white hover:shadow-md hover:border-neutral-05 transition-all group`}
+      className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-neutral-03 bg-white hover:shadow-sm hover:border-neutral-05 transition-all group"
     >
-      <div className={`p-2.5 rounded-lg ${color} transition-transform group-hover:scale-110`}>
-        <Icon className="w-5 h-5 text-white" />
+      <div className={`p-1.5 rounded-md ${color} transition-transform group-hover:scale-110 shrink-0`}>
+        <Icon className="w-3.5 h-3.5 text-white" />
       </div>
-      <span className="text-xs font-medium text-neutral-09 text-center leading-tight">{label}</span>
+      <span className="text-xs font-medium text-neutral-09 truncate">{label}</span>
     </Link>
   );
 }
@@ -265,17 +246,15 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
     { name: "Low Stock", value: productStats.lowStockProducts, color: "#f97316" },
   ];
 
-  // Greeting
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
 
       {/* ── Header + Search ─────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-neutral-08">{greeting} 👋 Here&apos;s what&apos;s happening today.</p>
+          <p className="text-sm text-neutral-08" suppressHydrationWarning>
+            {getGreeting()} 👋 Here&apos;s what&apos;s happening today.
+          </p>
         </div>
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-07 pointer-events-none" />
@@ -289,14 +268,16 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
         </div>
       </div>
 
-      {/* ── Order KPI Cards ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* ── KPI Cards (single dense grid) ────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
         <KpiCard
+          wide
           label="Total Revenue"
           value={`Rs.${orderStats.totalRevenue.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={TrendingUp}
           iconBg="bg-emerald-50"
           iconColor="text-emerald-600"
+          dotColor="#10b981"
           href={adminRoutes.orders}
         />
         <KpiCard
@@ -305,6 +286,7 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
           icon={ShoppingBag}
           iconBg="bg-blue-50"
           iconColor="text-blue-600"
+          dotColor="#3b82f6"
           href={adminRoutes.orders}
         />
         <KpiCard
@@ -313,28 +295,28 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
           icon={Clock}
           iconBg="bg-amber-50"
           iconColor="text-amber-600"
+          dotColor="#f59e0b"
           href={adminRoutes.orders}
           alert={orderStats.pendingOrders > 0}
           alertText={`${orderStats.pendingOrders} awaiting action`}
         />
         <KpiCard
+          wide
           label="Avg. Order Value"
           value={`Rs.${orderStats.averageOrderValue.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={BarChart3}
           iconBg="bg-violet-50"
           iconColor="text-violet-600"
+          dotColor="#8b5cf6"
           href={adminRoutes.orders}
         />
-      </div>
-
-      {/* ── Payment KPI Cards ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           label="Pending Payments"
           value={orderStats.pendingPayments}
           icon={CreditCard}
           iconBg="bg-amber-50"
           iconColor="text-amber-600"
+          dotColor="#f59e0b"
           href={adminRoutes.orders}
           alert={orderStats.pendingPayments > 0}
           alertText={`${orderStats.pendingPayments} awaiting payment confirmation`}
@@ -345,6 +327,7 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
           icon={AlertOctagon}
           iconBg="bg-red-50"
           iconColor="text-red-600"
+          dotColor="#ef4444"
           href={adminRoutes.orders}
           alert={orderStats.failedPayments > 0}
           alertText={`${orderStats.failedPayments} payments failed`}
@@ -355,6 +338,7 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
           icon={CreditCard}
           iconBg="bg-blue-50"
           iconColor="text-blue-600"
+          dotColor="#3b82f6"
           href={adminRoutes.orders}
         />
         <KpiCard
@@ -363,18 +347,16 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
           icon={ShoppingBag}
           iconBg="bg-gray-50"
           iconColor="text-gray-600"
+          dotColor="#9ca3af"
           href={adminRoutes.orders}
         />
-      </div>
-
-      {/* ── Product KPI Cards ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           label="Total Products"
           value={productStats.totalProducts}
           icon={Package}
           iconBg="bg-indigo-50"
           iconColor="text-indigo-600"
+          dotColor="#6366f1"
           href={adminRoutes.products}
         />
         <KpiCard
@@ -383,6 +365,7 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
           icon={CheckCircle2}
           iconBg="bg-emerald-50"
           iconColor="text-emerald-600"
+          dotColor="#10b981"
           href={adminRoutes.products}
         />
         <KpiCard
@@ -391,6 +374,7 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
           icon={AlertTriangle}
           iconBg="bg-orange-50"
           iconColor="text-orange-600"
+          dotColor="#f97316"
           href={adminRoutes.products}
           alert={productStats.lowStockProducts > 0}
           alertText={`${productStats.lowStockProducts} items below 5 units`}
@@ -401,6 +385,7 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
           icon={XCircle}
           iconBg="bg-gray-50"
           iconColor="text-gray-500"
+          dotColor="#9ca3af"
           href={adminRoutes.products}
         />
       </div>
@@ -415,7 +400,7 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
               View all <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
-          <DonutChart segments={orderDonutSegments} label="Orders" sublabel="total" />
+          <BreakdownChart segments={orderDonutSegments} sublabel="orders" />
         </div>
 
         {/* Product status chart */}
@@ -426,14 +411,14 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
               View all <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
-          <DonutChart segments={productDonutSegments} label="Products" sublabel="total" />
+          <BreakdownChart segments={productDonutSegments} sublabel="products" />
         </div>
       </div>
 
       {/* ── Quick Actions ─────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-neutral-03 p-5">
-        <h3 className="text-sm font-semibold text-neutral-11 mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+        <h3 className="text-sm font-semibold text-neutral-11 mb-3">Quick Actions</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
           <QuickAction href={adminRoutes.productsCreate} icon={Plus}      label="New Product"    color="bg-emerald-500" />
           <QuickAction href={adminRoutes.orders}         icon={ShoppingBag} label="View Orders"  color="bg-blue-500"   />
           <QuickAction href={adminRoutes.couponsCreate}  icon={Tag}        label="New Coupon"     color="bg-orange-500" />

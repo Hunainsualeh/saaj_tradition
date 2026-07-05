@@ -4,6 +4,22 @@ export const SIZE_TYPES = {
   ONE_SIZE: "OneSize",
 } as const;
 
+// Label used for a product that comes in a single, non-sized variant.
+export const ONE_SIZE_LABEL = "One Size";
+
+// Common ready-to-wear clothing sizes offered as quick-add chips in the admin
+// product form. Admins can also type any custom label (e.g. "38", "Free Size").
+export const COMMON_CLOTHING_SIZES = [
+  "XS", "S", "M", "L", "XL", "XXL", "3XL",
+] as const;
+
+// Reseller "availability" stock model — we don't track real unit counts.
+// An available size gets a high sentinel so cart reservations never block a
+// sale; an out-of-stock size gets 0. The product page derives availability from
+// `stockTotal - stockReserved`.
+export const IN_STOCK_QTY = 999999;
+export const OUT_OF_STOCK_QTY = 0;
+
 export const SIZE_TEMPLATES = {
   [SIZE_TYPES.STANDARD]: [
     "XXS", "XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL",

@@ -18,6 +18,7 @@ import {
   sendThankYouEmailAction,
 } from "@/lib/server/actions/email-actions";
 import type { OrderCustomer } from "@/lib/server/actions/email-actions";
+import { formatAdminDate } from "@/lib/utils";
 
 type Props = {
   subscribers: NewsletterSubscriber[];
@@ -202,7 +203,7 @@ export function AdminCustomersView({ subscribers: initialSubs, orderCustomers }:
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-400 text-xs">
-                        {new Date(s.subscribedAt).toLocaleDateString()}
+                        {formatAdminDate(s.subscribedAt)}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -282,7 +283,7 @@ export function AdminCustomersView({ subscribers: initialSubs, orderCustomers }:
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-400 text-xs">
-                        {new Date(c.lastOrderAt).toLocaleDateString()}
+                        {formatAdminDate(c.lastOrderAt)}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <button

@@ -3,7 +3,7 @@ import { revalidateTag } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { CartStatus, OrderStatus } from "@prisma/client";
-import { CACHE_TAG_CART } from "@/lib/constants";
+import { CACHE_TAG_CART, CACHE_TAG_PRODUCT } from "@/lib/constants";
 
 /*
 
@@ -56,7 +56,25 @@ export async function GET(req: NextRequest) {
 
     let abandonedCount = 0;
     for (const cart of cartsToAbandon) {
-      await prisma.$transaction(async (tx) => {
+      const released = await prisma.$transaction(async (tx) => {
+        // Atomically claim the release (idempotent + race-safe): only proceed
+        // if the cart is still CHECKOUT with a live reservation. This prevents
+        // double-releasing stock when the in-request cleanup and this cron race.
+        const claimed = await tx.cart.updateMany({
+          where: {
+            id: cart.id,
+            status: CartStatus.CHECKOUT,
+            reservedAt: { not: null },
+          },
+          data: {
+            status: CartStatus.ABANDONED,
+            abandonedAt: new Date(),
+            reservedAt: null,
+          },
+        });
+
+        if (claimed.count === 0) return false;
+
         if (cart.items.length > 0) {
           await Promise.all(
             cart.items.map((item) =>
@@ -68,18 +86,10 @@ export async function GET(req: NextRequest) {
             ),
           );
         }
-
-        await tx.cart.update({
-          where: { id: cart.id },
-          data: {
-            status: CartStatus.ABANDONED,
-            abandonedAt: new Date(),
-            reservedAt: null,
-          },
-        });
+        return true;
       });
 
-      abandonedCount += 1;
+      if (released) abandonedCount += 1;
     }
 
     // 2) Delete stale carts (active/abandoned) older than 2 months
@@ -90,16 +100,23 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // 3) Delete pending orders whose carts are abandoned
+    // 3) Delete pending orders whose carts are abandoned.
+    // Exclude orders with a paymentSessionId — those are in-flight PayFast
+    // transactions whose ITN may still arrive.
     const staleOrdersResult = await prisma.order.deleteMany({
       where: {
         status: OrderStatus.PENDING,
         cart: { status: CartStatus.ABANDONED },
+        paymentSessionId: null,
       },
     });
 
     if (abandonedCount > 0 || staleCartsResult.count > 0) {
       revalidateTag(CACHE_TAG_CART, "max");
+    }
+    // Releasing reservations changes stock — refresh product caches too.
+    if (abandonedCount > 0) {
+      revalidateTag(CACHE_TAG_PRODUCT, "max");
     }
 
     return NextResponse.json(

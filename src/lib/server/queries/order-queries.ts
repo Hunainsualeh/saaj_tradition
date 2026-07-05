@@ -11,7 +11,6 @@ import {
 } from "@/types/client";
 import { wrapServerCall } from "../helpers";
 import { CACHE_TAG_CART } from "@/lib/constants/cache-tags";
-import { redisCache } from "@/lib/redis-cache";
 
 export async function getCurrentOrderById(
   orderId: string,
@@ -61,11 +60,13 @@ export type OrderSuccessData = {
 };
 
 export async function getOrderForSuccessPage(
-  orderId: string,
+  // Accepts either the order's `trackingToken` (preferred — unguessable, this is
+  // what post-checkout redirects now pass) or its raw `id` (legacy links).
+  identifier: string,
 ): Promise<ServerActionResponse<OrderSuccessData | null>> {
   return wrapServerCall(async () => {
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
+    const order = await prisma.order.findFirst({
+      where: { OR: [{ trackingToken: identifier }, { id: identifier }] },
       include: {
         orderItems: {
           select: {
@@ -217,11 +218,19 @@ export async function getAdminOrderById(
   });
 }
 
+// Safety cap for the admin orders table, which loads its data client-side and
+// filters/searches in the browser. Without a bound this query would eventually
+// load the entire Order table into memory and time out / OOM as volume grows.
+// TODO(scale): replace with true server-side pagination + filtering when the
+// admin table is reworked; 1000 recent orders is a safe interim ceiling.
+const ADMIN_ORDERS_LIMIT = 1000;
+
 const getOrderedOrdersCached = unstable_cache(
   async () => {
     // Fetch orders with only the fields the admin table needs.
     // Use orderItems snapshot (stored on order) — avoid loading all cart items.
     const orders = await prisma.order.findMany({
+      take: ADMIN_ORDERS_LIMIT,
       select: {
         id: true,
         orderNumber: true,
@@ -259,6 +268,8 @@ const getOrderedOrdersCached = unstable_cache(
             id: true,
             title: true,
             quantity: true,
+            unitPrice: true,
+            image: true,
           },
         },
         cart: {
@@ -271,19 +282,17 @@ const getOrderedOrdersCached = unstable_cache(
             reservedAt: true,
             checkoutAt: true,
             abandonedAt: true,
-            // Only fetch cart items if orderItems snapshot is absent (legacy orders)
+            // Minimal legacy fallback: only used for old orders that predate the
+            // `orderItems` snapshot. Modern orders read from `orderItems` and
+            // ignore this entirely, so we fetch only the fields the table needs
+            // (count + title search). Missing columns are filled from the order.
             items: {
               select: {
                 id: true,
-                cartId: true,
-                productId: true,
-                sizeId: true,
                 quantity: true,
                 unitPrice: true,
                 title: true,
                 image: true,
-                createdAt: true,
-                updatedAt: true,
               },
             },
           },
@@ -297,6 +306,10 @@ const getOrderedOrdersCached = unstable_cache(
       totalPrice: Number(order.totalPrice),
       shippingAmount: order.shippingAmount ? Number(order.shippingAmount) : null,
       discountAmount: order.discountAmount ? Number(order.discountAmount) : null,
+      orderItems: order.orderItems.map((oi) => ({
+        ...oi,
+        unitPrice: Number(oi.unitPrice),
+      })),
       cart: {
         ...order.cart,
         // Merge orderItems titles into cart.items for search, using snapshot when available
@@ -308,15 +321,23 @@ const getOrderedOrdersCached = unstable_cache(
                 productId: "",
                 sizeId: "",
                 quantity: oi.quantity,
-                unitPrice: 0,
+                unitPrice: Number(oi.unitPrice),
                 title: oi.title,
-                image: "",
+                image: oi.image,
                 createdAt: order.createdAt,
                 updatedAt: order.updatedAt,
               }))
             : order.cart.items.map((item) => ({
-                ...item,
+                id: item.id,
+                cartId: order.cartId,
+                productId: "",
+                sizeId: "",
+                quantity: item.quantity,
                 unitPrice: Number(item.unitPrice),
+                title: item.title,
+                image: item.image,
+                createdAt: order.createdAt,
+                updatedAt: order.updatedAt,
               })),
       },
     }));
@@ -328,19 +349,11 @@ const getOrderedOrdersCached = unstable_cache(
 export async function getOrderedOrders(): Promise<
   ServerActionResponse<OrderWithCart[]>
 > {
-  return wrapServerCall(() =>
-    redisCache(
-      () => getOrderedOrdersCached(),
-      [CACHE_TAG_CART, "ordered-orders"],
-      { tags: [CACHE_TAG_CART], ttl: 60 },
-    ),
-  );
+  return wrapServerCall(() => getOrderedOrdersCached());
 }
 
-export async function getDashboardStats(): Promise<
-  ServerActionResponse<OrderDashboardStats>
-> {
-  return wrapServerCall(async () => {
+const getDashboardStatsCached = unstable_cache(
+  async (): Promise<OrderDashboardStats> => {
     const REVENUE_STATUSES = [
       OrderStatus.PAID,
       OrderStatus.PROCESSING,
@@ -401,19 +414,13 @@ export async function getDashboardStats(): Promise<
     const averageOrderValue = paidCount > 0 ? totalRevenue / paidCount : 0;
 
     const statusBreakdown: Record<string, number> = {};
-    statusGroups.forEach((g) => {
-      statusBreakdown[g.status] = g._count._all;
-    });
+    statusGroups.forEach((g) => { statusBreakdown[g.status] = g._count._all; });
 
     const paymentStatusBreakdown: Record<string, number> = {};
-    paymentStatusGroups.forEach((g) => {
-      paymentStatusBreakdown[g.paymentStatus] = g._count._all;
-    });
+    paymentStatusGroups.forEach((g) => { paymentStatusBreakdown[g.paymentStatus] = g._count._all; });
 
     const paymentMethodBreakdown: Record<string, number> = {};
-    paymentMethodGroups.forEach((g) => {
-      paymentMethodBreakdown[g.paymentMethod] = g._count._all;
-    });
+    paymentMethodGroups.forEach((g) => { paymentMethodBreakdown[g.paymentMethod] = g._count._all; });
 
     const recentOrders: DashboardRecentOrder[] = recentRaw.map((o) => ({
       ...o,
@@ -432,5 +439,13 @@ export async function getDashboardStats(): Promise<
       pendingPayments: pendingPaymentsCount,
       recentOrders,
     };
-  });
+  },
+  [CACHE_TAG_CART, "dashboard-stats"],
+  { tags: [CACHE_TAG_CART], revalidate: 60 },
+);
+
+export async function getDashboardStats(): Promise<
+  ServerActionResponse<OrderDashboardStats>
+> {
+  return wrapServerCall(() => getDashboardStatsCached());
 }

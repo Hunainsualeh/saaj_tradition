@@ -15,11 +15,28 @@ const STATUS_STYLES: Record<string, string> = {
   REFUNDED:   "bg-gray-100 text-gray-700",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  PENDING:    "Pending",
+  PAID:       "Paid",
+  PROCESSING: "Processing",
+  SHIPPED:    "Shipped",
+  DELIVERED:  "Delivered",
+  CANCELLED:  "Cancelled",
+  REFUNDED:   "Refunded",
+};
+
 const PAYMENT_STATUS_STYLES: Record<string, string> = {
   PENDING:  "bg-yellow-100 text-yellow-800",
   PAID:     "bg-green-100 text-green-800",
   FAILED:   "bg-red-100 text-red-800",
   REFUNDED: "bg-gray-100 text-gray-700",
+};
+
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING:  "Pending",
+  PAID:     "Paid",
+  FAILED:   "Failed",
+  REFUNDED: "Refunded",
 };
 
 import {
@@ -81,7 +98,7 @@ export function AdminOrdersTable(props: AdminOrdersTableProps) {
           o.id === orderId ? { ...o, status: result.data.status as OrderWithCart["status"] } : o,
         ),
       );
-      toast.success(`Order status updated to ${newStatus}`);
+      toast.success(`Order status updated to ${STATUS_LABELS[newStatus] ?? newStatus}`);
       router.refresh();
     } else {
       toast.error("Failed to update order status");
@@ -186,7 +203,7 @@ export function AdminOrdersTable(props: AdminOrdersTableProps) {
                     const ps = cell.row.original.paymentStatus;
                     return (
                       <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap ${PAYMENT_STATUS_STYLES[ps] ?? "bg-neutral-100 text-neutral-700"}`}>
-                        {ps}
+                        {PAYMENT_STATUS_LABELS[ps] ?? ps}
                       </span>
                     );
                   },
@@ -205,7 +222,7 @@ export function AdminOrdersTable(props: AdminOrdersTableProps) {
                   {/* Status badge + change dropdown */}
                   <div className="flex items-center gap-1.5">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap ${STATUS_STYLES[order.status] ?? "bg-neutral-100 text-neutral-700"}`}>
-                      {order.status}
+                      {STATUS_LABELS[order.status] ?? order.status}
                     </span>
                     <AdminSelect
                       value={order.status}
@@ -218,7 +235,7 @@ export function AdminOrdersTable(props: AdminOrdersTableProps) {
                         {ORDER_STATUSES.map((s) => (
                           <AdminSelectItem key={s} value={s}>
                             <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_STYLES[s] ?? ""}`}>
-                              {s}
+                              {STATUS_LABELS[s] ?? s}
                             </span>
                           </AdminSelectItem>
                         ))}

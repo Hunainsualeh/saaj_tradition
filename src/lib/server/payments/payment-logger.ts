@@ -19,7 +19,9 @@ export type PaymentEventType =
   | "MARKED_PAID"
   | "MARKED_FAILED"
   | "DUPLICATE_BLOCKED"
-  | "ADMIN_STATUS_CHANGE";
+  | "ADMIN_STATUS_CHANGE"
+  | "RETURN_SUCCESS_REDIRECT"
+  | "RETURN_FAILED_REDIRECT";
 
 export type PaymentEventSource =
   | "checkout"

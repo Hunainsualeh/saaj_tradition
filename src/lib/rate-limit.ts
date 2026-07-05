@@ -6,6 +6,44 @@ export type RateLimitResult = {
   retryAfter: number; // seconds until the window resets
 };
 
+// === In-memory fallback limiter ===
+// Used only when Redis is unavailable. Per-process (so weaker than the Redis
+// limiter in a multi-instance deployment), but it still throttles brute-force
+// attempts on each instance rather than failing fully open. Bounded in size to
+// avoid unbounded memory growth from unique identifiers.
+type MemoryEntry = { count: number; resetAt: number };
+const memoryStore = new Map<string, MemoryEntry>();
+const MEMORY_STORE_MAX_KEYS = 10_000;
+
+function memoryRateLimit(
+  key: string,
+  limit: number,
+  windowSeconds: number,
+): RateLimitResult {
+  const now = Date.now();
+  let entry = memoryStore.get(key);
+
+  if (!entry || entry.resetAt <= now) {
+    // Opportunistically evict expired / overflow keys to bound memory.
+    if (memoryStore.size >= MEMORY_STORE_MAX_KEYS) {
+      for (const [k, v] of memoryStore) {
+        if (v.resetAt <= now) memoryStore.delete(k);
+      }
+      if (memoryStore.size >= MEMORY_STORE_MAX_KEYS) memoryStore.clear();
+    }
+    entry = { count: 0, resetAt: now + windowSeconds * 1000 };
+    memoryStore.set(key, entry);
+  }
+
+  entry.count += 1;
+  const retryAfter = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+  return {
+    allowed: entry.count <= limit,
+    remaining: Math.max(limit - entry.count, 0),
+    retryAfter,
+  };
+}
+
 /**
  * Sliding-window rate limiter backed by Redis.
  *
@@ -24,7 +62,9 @@ export async function rateLimit(
   const r = redis;
   const available = r ? await isRedisAvailable() : false;
   if (!available || !r) {
-    return { allowed: true, remaining: limit, retryAfter: 0 };
+    // Redis down/unconfigured — degrade to a per-instance in-memory limiter
+    // instead of allowing every request through.
+    return memoryRateLimit(identifier, limit, windowSeconds);
   }
 
   const key = `rl:${identifier}`;
@@ -36,7 +76,7 @@ export async function rateLimit(
     const results = await pipeline.exec();
 
     if (!results) {
-      return { allowed: true, remaining: limit, retryAfter: 0 };
+      return memoryRateLimit(identifier, limit, windowSeconds);
     }
 
     const count = (results[0]?.[1] as number) ?? 1;
@@ -56,8 +96,8 @@ export async function rateLimit(
       retryAfter,
     };
   } catch {
-    // Redis error — allow the request through
-    return { allowed: true, remaining: limit, retryAfter: 0 };
+    // Redis error mid-request — degrade to the in-memory limiter.
+    return memoryRateLimit(identifier, limit, windowSeconds);
   }
 }
 
@@ -103,4 +143,34 @@ export function rateLimitNewsletter(ip: string) {
  */
 export function rateLimitCoupon(cartId: string) {
   return rateLimit(`coupon:${cartId}`, 10, 60);
+}
+
+/**
+ * Order-tracking lookup rate limit: 30 per minute per IP.
+ * Tracking tokens are unguessable (32-char nanoid) but the endpoint returns
+ * order PII, so we still throttle enumeration/abuse.
+ */
+export function rateLimitTracking(ip: string) {
+  return rateLimit(`track:${ip}`, 30, 60);
+}
+
+/**
+ * Transactional-email send rate limit: 10 per 10 minutes per order.
+ * The order-confirmation / status-update senders are exposed server actions
+ * that are also driven by the system (queue/ITN). This bounds abuse (an
+ * attacker spamming a known order's customer) while comfortably clearing
+ * legitimate usage (one confirmation + a few status updates, plus retries).
+ */
+export function rateLimitOrderEmail(orderId: string) {
+  return rateLimit(`ordermail:${orderId}`, 10, 600);
+}
+
+/**
+ * Newsletter unsubscribe rate limit: 20 per minute per IP.
+ * Unsubscribe is intentionally public (email footer links carry no token), so
+ * we throttle mass/abusive unsubscribes without impeding one-at-a-time admin
+ * or customer use.
+ */
+export function rateLimitUnsubscribe(ip: string) {
+  return rateLimit(`unsub:${ip}`, 20, 60);
 }

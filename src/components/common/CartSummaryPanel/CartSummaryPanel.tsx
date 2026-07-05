@@ -26,10 +26,12 @@ export async function CartSummaryPanel(props: CartSummaryPanelProps) {
     const validation = await validateCouponCode(couponCode);
     if (validation.success && validation.data?.valid && validation.data.discountPercent) {
       const percent = validation.data.discountPercent;
-      // Parse subtotal to calculate discount
       const subtotalNum = parseFloat(summary.subtotal.replace(/[^0-9.]/g, ""));
+      const shippingNum = summary.shipping === "Free"
+        ? 0
+        : parseFloat(summary.shipping.replace(/[^0-9.]/g, ""));
       const discountAmount = (subtotalNum * percent) / 100;
-      const discountedTotal = subtotalNum - discountAmount;
+      const discountedTotal = Math.max(subtotalNum - discountAmount + shippingNum, 0);
 
       appliedCoupon = { code: couponCode, discountPercent: percent };
       discount = {

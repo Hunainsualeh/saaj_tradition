@@ -1,0 +1,9 @@
+-- Hot-path indexes for Product listing / featured / price filtering.
+-- CreateIndex
+CREATE INDEX "Product_isActive_createdAt_idx" ON "Product"("isActive", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "Product_isActive_isFeatured_idx" ON "Product"("isActive", "isFeatured");
+
+-- CreateIndex
+CREATE INDEX "Product_price_idx" ON "Product"("price");

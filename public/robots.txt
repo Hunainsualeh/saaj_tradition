@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+# Block admin and transactional pages
+Disallow: /admin/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /api/
+
+# Block tracking pages (sensitive order data)
+Disallow: /track/
+
+Sitemap: https://saajtradition.com/sitemap.xml

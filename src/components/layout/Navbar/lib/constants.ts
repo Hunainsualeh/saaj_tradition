@@ -17,6 +17,7 @@ type CollectionNavItem = {
 // Main navigation structure
 export function getNavItems(
   collections: CollectionNavItem[] = [],
+  categories: CollectionNavItem[] = [],
 ): NavItemType[] {
   return [
     {
@@ -30,12 +31,12 @@ export function getNavItems(
       href: routes.shop,
       subItems: [
         {
-          id: "shop-categories",
-          text: "Shop",
+          id: "shop-browse",
+          text: "Browse",
           items: [
             {
               id: "shop-category-all",
-              text: "Shop",
+              text: "Shop All",
               href: routes.shop,
             },
             {
@@ -45,6 +46,19 @@ export function getNavItems(
             },
           ],
         },
+        ...(categories.length > 0
+          ? [
+              {
+                id: "shop-categories-list",
+                text: "Categories",
+                items: categories.map((category) => ({
+                  id: `shop-category-${category.id}`,
+                  text: category.name,
+                  href: `${routes.shop}/categories/${category.slug}`,
+                })),
+              },
+            ]
+          : []),
         ...(collections.length > 0
           ? [
               {

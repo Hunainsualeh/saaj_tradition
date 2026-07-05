@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSiteContentMap } from "@/lib/server/queries";
+import { rateLimitTracking } from "@/lib/rate-limit";
 
 const FALLBACK_DELIVERY: Record<string, string> = {
   PENDING:    "7–10 business days",
@@ -13,6 +14,16 @@ const FALLBACK_DELIVERY: Record<string, string> = {
 };
 
 export async function GET(req: NextRequest) {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "127.0.0.1";
+  const rl = await rateLimitTracking(ip);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+    );
+  }
+
   const token = req.nextUrl.searchParams.get("token");
 
   if (!token || typeof token !== "string" || token.length < 10 || token.length > 64) {
@@ -38,6 +49,15 @@ export async function GET(req: NextRequest) {
         discountAmount: true,
         couponCode: true,
         totalPrice: true,
+        orderItems: {
+          select: {
+            title: true,
+            quantity: true,
+            unitPrice: true,
+            image: true,
+            sizeLabel: true,
+          },
+        },
         cart: {
           select: {
             items: {
@@ -64,6 +84,26 @@ export async function GET(req: NextRequest) {
   }
 
   const siteContent = siteContentResult.success ? siteContentResult.data : {};
+
+  // Prefer the immutable order-time snapshot; fall back to live cart items for
+  // legacy orders. Keeps this endpoint consistent with the /track/[token] page.
+  const items =
+    order.orderItems.length > 0
+      ? order.orderItems.map((item) => ({
+          title: item.title,
+          quantity: item.quantity,
+          unitPrice: Number(item.unitPrice),
+          image: item.image,
+          size: item.sizeLabel ?? "—",
+        }))
+      : order.cart.items.map((item) => ({
+          title: item.title,
+          quantity: item.quantity,
+          unitPrice: Number(item.unitPrice),
+          image: item.image,
+          size: item.size.label,
+        }));
+
   const status = order.status;
   let estimatedDelivery = "—";
   if (status === "DELIVERED") estimatedDelivery = "Delivered";
@@ -86,12 +126,6 @@ export async function GET(req: NextRequest) {
     couponCode: order.couponCode,
     totalPrice: Number(order.totalPrice),
     estimatedDelivery,
-    items: order.cart.items.map((item) => ({
-      title: item.title,
-      quantity: item.quantity,
-      unitPrice: Number(item.unitPrice),
-      image: item.image,
-      size: item.size.label,
-    })),
+    items,
   });
 }

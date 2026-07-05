@@ -2,6 +2,7 @@
 
 import { useMemo, useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useForm, FieldError } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,16 +26,25 @@ import {
   AdminSelectGroup,
   AdminSelectItem,
   AdminCheckbox,
-  ImageCropDialog,
 } from "@/components/admin";
+
+// Code-split the crop dialog (pulls in the heavy `cropperjs` lib) so it loads
+// only when the admin actually crops an image, not on initial form render.
+const ImageCropDialog = dynamic(
+  () =>
+    import("@/components/admin/ui/ImageCropDialog").then(
+      (m) => m.ImageCropDialog,
+    ),
+  { ssr: false },
+);
 
 import { AdminProductsFormData, AdminProductsFormSchema } from "./schema";
 
 import {
   roundToTwoDecimals,
   API_ROUTES,
-  SIZE_TEMPLATES,
-  SIZE_TYPES,
+  COMMON_CLOTHING_SIZES,
+  ONE_SIZE_LABEL,
 } from "@/lib";
 import {
   createProduct,
@@ -43,10 +53,11 @@ import {
 } from "@/lib/server/actions";
 import { usePreviewUrls } from "@/hooks";
 import { CloseIcon } from "@/components/icons";
-import { SizeTypeEnum } from "@/types/client";
 
 type CategoryOption = { id: string; name: string };
 type CollectionOption = { id: string; name: string };
+
+type ProductSize = { label: string; inStock: boolean };
 
 type ProductFormData = {
   id: string;
@@ -61,13 +72,13 @@ type ProductFormData = {
   images: string[];
   slug: string;
   categoryIds?: string[];
-  sizeType: SizeTypeEnum | null;
   collectionIds?: string[];
-  /** Labels of existing sizes (for edit mode pre-selection) */
-  existingSizeLabels?: string[];
+  /** Existing sizes with availability (for edit mode pre-fill) */
+  existingSizes?: ProductSize[];
   stockStatus?: "AVAILABLE" | "LOW_STOCK" | "OUT_OF_STOCK";
   lowStockThreshold?: number | null;
   showLowStockWarning?: boolean;
+  shippingCharge?: number | null;
 };
 
 type AdminProductsFormProps = {
@@ -91,6 +102,7 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isActionLocked, setIsActionLocked] = useState(false);
+  const [customSize, setCustomSize] = useState("");
   /** Queue of object URLs waiting to be cropped (for multi-file selection) */
   const [cropQueue, setCropQueue] = useState<{ src: string; name: string }[]>([]);
   const [activeCrop, setActiveCrop] = useState<{ src: string; name: string } | null>(null);
@@ -134,9 +146,7 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
         : "",
       categoryIds: productData?.categoryIds ?? [],
       slug: productData?.slug,
-      sizeType:
-        isEditMode && productData?.sizeType ? productData?.sizeType : undefined,
-      selectedSizes: productData?.existingSizeLabels ?? [],
+      sizes: productData?.existingSizes ?? [],
       isActive: productData?.isActive ?? true,
       isFeatured: productData?.isFeatured ?? false,
       imageUrls: productData?.images || [],
@@ -144,13 +154,15 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
       stockStatus: productData?.stockStatus ?? "AVAILABLE",
       lowStockThreshold: productData?.lowStockThreshold ?? undefined,
       showLowStockWarning: productData?.showLowStockWarning ?? false,
+      shippingCharge: productData?.shippingCharge != null
+        ? Number(productData.shippingCharge).toFixed(2)
+        : "",
     },
   });
 
   // === WATCHERS ===
   const categoryIdsValue = watch("categoryIds") || [];
-  const sizeTypeValue = watch("sizeType");
-  const selectedSizesValue = watch("selectedSizes") ?? [];
+  const sizesValue = watch("sizes") ?? [];
   const isActiveValue = watch("isActive");
   const isFeaturedValue = watch("isFeatured");
   const imageUrlsValue = watch("imageUrls");
@@ -182,6 +194,59 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
     }
     return [...savedImageUrls, ...newImagePreviews];
   }, [newImagePreviews, savedImageUrls, productData]);
+
+  // === SIZE HELPERS ===
+  const isOneSize =
+    sizesValue.length === 1 && sizesValue[0].label === ONE_SIZE_LABEL;
+
+  const hasSizeLabel = (label: string) =>
+    sizesValue.some(
+      (s) => s.label.trim().toLowerCase() === label.trim().toLowerCase(),
+    );
+
+  const setSizes = (next: ProductSize[]) =>
+    setValue("sizes", next, { shouldValidate: true });
+
+  const toggleCommonSize = (label: string) => {
+    if (hasSizeLabel(label)) {
+      setSizes(
+        sizesValue.filter(
+          (s) => s.label.toLowerCase() !== label.toLowerCase(),
+        ),
+      );
+    } else {
+      setSizes([...sizesValue, { label, inStock: true }]);
+    }
+  };
+
+  const handleAddCustomSize = () => {
+    const label = customSize.trim();
+    if (!label) return;
+    if (hasSizeLabel(label)) {
+      toast.error(`"${label}" is already added`);
+      return;
+    }
+    setSizes([...sizesValue, { label, inStock: true }]);
+    setCustomSize("");
+  };
+
+  const removeSizeAt = (index: number) =>
+    setSizes(sizesValue.filter((_, i) => i !== index));
+
+  const toggleSizeStockAt = (index: number) =>
+    setSizes(
+      sizesValue.map((s, i) =>
+        i === index ? { ...s, inStock: !s.inStock } : s,
+      ),
+    );
+
+  const toggleOneSize = () => {
+    if (isOneSize) {
+      setSizes([]);
+    } else {
+      setSizes([{ label: ONE_SIZE_LABEL, inStock: true }]);
+    }
+  };
 
   // === FUNCTIONS ===
   const compressImage = async (file: File): Promise<File | null> => {
@@ -437,15 +502,16 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
   const isBusy = isActionLocked || isDeleting;
 
   return (
-    <div className="w-full max-w-2xl">
+    <div className="w-full max-w-6xl">
       <form
         onSubmit={
           isEditMode ? handleSubmit(onEditSubmit) : handleSubmit(onAddSubmit)
         }
         className="pt-3"
       >
-        <AdminFieldGroup>
-          <AdminFieldSet>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+          {/* MAIN COLUMN — core details */}
+          <AdminFieldSet className="xl:col-span-2">
             <AdminFieldDescription>
               {isEditMode
                 ? "Edit the product details below."
@@ -525,6 +591,38 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
                   })}
                 />
                 <AdminFieldError errors={[errors.compareAtPrice]} />
+              </AdminField>
+
+              {/* SHIPPING CHARGE OVERRIDE */}
+              <AdminField>
+                <AdminFieldLabel htmlFor="shippingCharge">
+                  Shipping Cost (Rs.)
+                </AdminFieldLabel>
+                <AdminFieldDescription>
+                  Per-product shipping charge. Leave empty to use the global rate set in Shipping Settings.
+                </AdminFieldDescription>
+                <AdminInput
+                  id="shippingCharge"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="e.g., 200.00"
+                  {...register("shippingCharge", {
+                    setValueAs: (v) =>
+                      v === "" ? undefined : parseFloat(v),
+                    onBlur: (e) => {
+                      const v = e.target.value;
+                      if (!v) return;
+                      const rounded = roundToTwoDecimals(parseFloat(v));
+                      setValue("shippingCharge", rounded, {
+                        shouldValidate: true,
+                      });
+                      e.target.value = rounded.toFixed(2);
+                    },
+                  })}
+                />
+                <AdminFieldError errors={[errors.shippingCharge]} />
               </AdminField>
 
               {/* IMAGES */}
@@ -701,76 +799,132 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
             {/* SIZES */}
             <AdminField>
               <AdminFieldLabel htmlFor="productSizes">Sizes</AdminFieldLabel>
-              {isEditMode && (
-                <AdminFieldDescription>
-                  Changing the size type will delete all existing sizes and recreate them with default stock.
-                </AdminFieldDescription>
-              )}
-              <AdminSelect
-                value={sizeTypeValue ?? ""}
-                onValueChange={(val) => {
-                  setValue("sizeType", val as SizeTypeEnum, {
-                    shouldValidate: true,
-                  });
-                  // Auto-select all sizes for the new type
-                  const template = SIZE_TEMPLATES[val as keyof typeof SIZE_TEMPLATES] ?? [];
-                  setValue("selectedSizes", [...template], { shouldValidate: true });
-                }}
-              >
-                <AdminSelectTrigger id="productSizes" className="w-[220px]">
-                  <AdminSelectValue />
-                </AdminSelectTrigger>
-                <AdminSelectContent>
-                  <AdminSelectGroup>
-                    {Object.entries(SIZE_TEMPLATES).map(([key, labels]) => (
-                        <AdminSelectItem key={key} value={key}>
-                          {key} ({labels.slice(0, 3).join(", ")}{labels.length > 3 ? "…" : ""})
-                        </AdminSelectItem>
-                      ))}
-                  </AdminSelectGroup>
-                </AdminSelectContent>
-              </AdminSelect>
-              <AdminFieldError errors={[errors.sizeType]} />
+              <AdminFieldDescription>
+                Add the sizes this product is available in. Toggle a size to
+                &ldquo;Out of stock&rdquo; to keep it listed but unselectable for
+                customers.
+              </AdminFieldDescription>
 
-              {/* Individual size checkboxes */}
-              {sizeTypeValue && sizeTypeValue !== SIZE_TYPES.ONE_SIZE && (
-                <div className="mt-2">
-                  <AdminFieldDescription>
-                    Check the sizes you have in stock. Unchecked sizes won&apos;t be available.
-                  </AdminFieldDescription>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {(SIZE_TEMPLATES[sizeTypeValue as keyof typeof SIZE_TEMPLATES] ?? []).map(
-                      (label) => {
-                        const checked = selectedSizesValue.includes(label);
+              {/* One Size toggle */}
+              <div className="flex items-center gap-3 mt-1">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isOneSize}
+                  onClick={toggleOneSize}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                    isOneSize ? "bg-neutral-900" : "bg-neutral-200"
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition duration-200 ease-in-out ${
+                      isOneSize ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+                <span className="text-sm font-medium text-neutral-700">
+                  One Size (no size options)
+                </span>
+              </div>
+
+              {!isOneSize && (
+                <>
+                  {/* Quick add common sizes */}
+                  <div className="mt-3">
+                    <AdminFieldDescription>Quick add</AdminFieldDescription>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {COMMON_CLOTHING_SIZES.map((label) => {
+                        const added = hasSizeLabel(label);
                         return (
                           <button
                             key={label}
                             type="button"
-                            onClick={() => {
-                              const updated = checked
-                                ? selectedSizesValue.filter((s) => s !== label)
-                                : [...selectedSizesValue, label];
-                              setValue("selectedSizes", updated, {
-                                shouldValidate: true,
-                              });
-                            }}
+                            onClick={() => toggleCommonSize(label)}
                             className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                              checked
+                              added
                                 ? "bg-black text-white border-black"
-                                : "bg-white text-neutral-500 border-neutral-300 hover:border-black"
+                                : "bg-white text-neutral-600 border-neutral-300 hover:border-black"
                             }`}
                           >
+                            {added ? "✓ " : "+ "}
                             {label}
                           </button>
                         );
-                      },
-                    )}
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
-              <AdminFieldError errors={[errors.selectedSizes]} />
-            </AdminField>
 
+                  {/* Custom size input */}
+                  <div className="mt-3 flex items-center gap-2">
+                    <AdminInput
+                      id="productSizes"
+                      value={customSize}
+                      onChange={(e) => setCustomSize(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddCustomSize();
+                        }
+                      }}
+                      placeholder="Add custom size (e.g. 38, Free Size)"
+                      className="max-w-xs"
+                    />
+                    <AdminButton
+                      type="button"
+                      variant="outline"
+                      className="w-fit!"
+                      onClick={handleAddCustomSize}
+                    >
+                      Add
+                    </AdminButton>
+                  </div>
+
+                  {/* Selected sizes with per-size availability */}
+                  {sizesValue.length > 0 && (
+                    <div className="mt-4">
+                      <AdminFieldDescription>Your sizes</AdminFieldDescription>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {sizesValue.map((size, index) => (
+                          <div
+                            key={size.label}
+                            className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white py-1 pl-3 pr-1.5"
+                          >
+                            <span className="text-sm font-medium text-neutral-800">
+                              {size.label}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => toggleSizeStockAt(index)}
+                              className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
+                                size.inStock
+                                  ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                  : "bg-red-50 text-red-600 hover:bg-red-100"
+                              }`}
+                            >
+                              {size.inStock ? "In stock" : "Out of stock"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeSizeAt(index)}
+                              aria-label={`Remove ${size.label}`}
+                              className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+                            >
+                              <CloseIcon className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+              <AdminFieldError errors={[errors.sizes as FieldError | undefined]} />
+            </AdminField>
+          </AdminFieldSet>
+
+          {/* SIDE COLUMN — visibility & availability */}
+          <div className="flex flex-col gap-6">
+            <AdminFieldSet>
             {/* NEW ARRIVALS (isFeatured) */}
             <AdminField>
               <AdminFieldLabel>New Arrivals</AdminFieldLabel>
@@ -816,11 +970,13 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
               <AdminFieldError errors={[errors.isActive]} />
             </AdminField>
 
-            {/* STOCK STATUS */}
+            {/* AVAILABILITY */}
             <AdminField>
-              <AdminFieldLabel htmlFor="stockStatus">Stock Status</AdminFieldLabel>
+              <AdminFieldLabel htmlFor="stockStatus">Availability</AdminFieldLabel>
               <AdminFieldDescription>
-                Set how you want to manage the stock availability of this product.
+                Master availability for the whole product. Use the Sizes section
+                above to mark individual sizes out of stock. &ldquo;Out of
+                Stock&rdquo; hides the buy button entirely.
               </AdminFieldDescription>
               <AdminSelect
                 value={stockStatusValue ?? "AVAILABLE"}
@@ -835,8 +991,8 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
                 </AdminSelectTrigger>
                 <AdminSelectContent>
                   <AdminSelectGroup>
-                    <AdminSelectItem value="AVAILABLE">Available</AdminSelectItem>
-                    <AdminSelectItem value="LOW_STOCK">Low Stock</AdminSelectItem>
+                    <AdminSelectItem value="AVAILABLE">In Stock</AdminSelectItem>
+                    <AdminSelectItem value="LOW_STOCK">Low Stock (running low)</AdminSelectItem>
                     <AdminSelectItem value="OUT_OF_STOCK">Out of Stock</AdminSelectItem>
                   </AdminSelectGroup>
                 </AdminSelectContent>
@@ -896,6 +1052,7 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
                 <AdminFieldError errors={[errors.showLowStockWarning]} />
               </AdminField>
             )}
+            </AdminFieldSet>
 
             {/* SUBMIT */}
             <div className="flex flex-col gap-3">
@@ -924,8 +1081,8 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
                 </AdminButton>
               )}
             </div>
-          </AdminFieldSet>
-        </AdminFieldGroup>
+          </div>
+        </div>
       </form>
 
       {/* Image crop dialog — opens automatically for each selected file */}
