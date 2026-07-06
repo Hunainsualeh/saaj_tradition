@@ -1,6 +1,9 @@
+import { redirect } from "next/navigation";
+
 import { BaseSection, BreadCrumb } from "@/components";
 import type { Metadata } from "next";
 import { getCart } from "@/lib/server/queries";
+import { getCompletedOrderSuccessPath } from "@/lib/server/queries/order-queries";
 import { EmptyCart } from "@/components";
 import { CartItemCard } from "@/components/common/CartItemCard/CartItemCard";
 import { CartSummaryPanel } from "@/components/common/CartSummaryPanel/CartSummaryPanel";
@@ -12,6 +15,13 @@ export const metadata: Metadata = {
 };
 
 export default async function CartPage() {
+  // A just-completed order (cart cookie still present, order already PAID) is
+  // sent to its confirmation instead of showing an empty cart.
+  const completedPath = await getCompletedOrderSuccessPath();
+  if (completedPath) {
+    redirect(completedPath);
+  }
+
   // === FETCHES ===
   const cartData = await getCart();
 

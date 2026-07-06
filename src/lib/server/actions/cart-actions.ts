@@ -194,7 +194,6 @@ export async function addToCart({
     const cookieStore = await cookies();
 
     const existingCartId = cookieStore.get(COOKIE_CART_ID)?.value;
-    const cartId = existingCartId ?? nanoid();
 
     // Validate input quantity
     if (quantity < 1 || quantity > MAX_CART_ITEM_QUANTITY) {
@@ -203,95 +202,109 @@ export async function addToCart({
       );
     }
 
-    const cartQuantity = await prisma.$transaction(async (tx) => {
-      const [size, cart] = await Promise.all([
-        tx.size.findUnique({
-          where: { id: sizeId },
-          include: { product: true },
-        }),
-        // Fetch cart with all items in one query
-        existingCartId
-          ? tx.cart.findUnique({
-              where: { id: existingCartId },
-              include: {
-                items: {
-                  select: {
-                    id: true,
-                    productId: true,
-                    sizeId: true,
-                    quantity: true,
+    const { quantity: cartQuantity, cartId } = await prisma.$transaction(
+      async (tx) => {
+        const [size, existingCart] = await Promise.all([
+          tx.size.findUnique({
+            where: { id: sizeId },
+            include: { product: true },
+          }),
+          // Fetch cart with all items in one query
+          existingCartId
+            ? tx.cart.findUnique({
+                where: { id: existingCartId },
+                include: {
+                  items: {
+                    select: {
+                      id: true,
+                      productId: true,
+                      sizeId: true,
+                      quantity: true,
+                    },
                   },
                 },
-              },
-            })
-          : null,
-      ]);
+              })
+            : null,
+        ]);
 
-      if (!size) {
-        throw new Error("Size not found");
-      }
+        if (!size) {
+          throw new Error("Size not found");
+        }
 
-      const product = size.product;
+        const product = size.product;
 
-      if (!product.isActive) {
-        throw new Error("This product is no longer available");
-      }
+        if (!product.isActive) {
+          throw new Error("This product is no longer available");
+        }
 
-      const existingItem = cart?.items.find(
-        (item) => item.productId === productId && item.sizeId === sizeId,
-      );
-      const currentQuantity = existingItem?.quantity ?? 0;
+        // A cart that has already been ORDERED must never receive new items:
+        // getCart() reports ORDERED carts as empty, so anything added would
+        // silently vanish and the customer would see an empty cart. Start a
+        // brand-new cart (and re-point the cookie below) in that case.
+        const reuseCart =
+          existingCart && existingCart.status !== CartStatus.ORDERED
+            ? existingCart
+            : null;
+        const cartId = reuseCart ? reuseCart.id : nanoid();
 
-      const otherItemsTotal =
-        cart?.items
-          .filter(
-            (item) => !(item.productId === productId && item.sizeId === sizeId),
-          )
-          .reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+        const existingItem = reuseCart?.items.find(
+          (item) => item.productId === productId && item.sizeId === sizeId,
+        );
+        const currentQuantity = existingItem?.quantity ?? 0;
 
-      const newItemQuantity = validateItemQuantityLimit(
-        currentQuantity,
-        quantity,
-        product.name,
-      );
+        const otherItemsTotal =
+          reuseCart?.items
+            .filter(
+              (item) =>
+                !(item.productId === productId && item.sizeId === sizeId),
+            )
+            .reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 
-      // Validate cart total
-      const newCartTotal = validateCartTotalLimit(
-        otherItemsTotal,
-        newItemQuantity,
-      );
-
-      if (!cart) {
-        await tx.cart.create({
-          data: { id: cartId },
-        });
-      }
-
-      // Update or create cart item
-      await tx.cartItem.upsert({
-        where: {
-          cartId_productId_sizeId: {
-            cartId: cartId,
-            productId,
-            sizeId: sizeId,
-          },
-        },
-        update: {
-          quantity: newItemQuantity,
-        },
-        create: {
-          cartId: cartId,
-          productId: product.id,
-          sizeId,
+        const newItemQuantity = validateItemQuantityLimit(
+          currentQuantity,
           quantity,
-          unitPrice: new Decimal(product.price),
-          title: product.name,
-          image: product.images[0],
-        },
-      });
+          product.name,
+        );
 
-      return newCartTotal;
-    }, { timeout: 15000, maxWait: 5000 });
+        // Validate cart total
+        const newCartTotal = validateCartTotalLimit(
+          otherItemsTotal,
+          newItemQuantity,
+        );
+
+        if (!reuseCart) {
+          await tx.cart.create({
+            data: { id: cartId },
+          });
+        }
+
+        // Update or create cart item
+        await tx.cartItem.upsert({
+          where: {
+            cartId_productId_sizeId: {
+              cartId: cartId,
+              productId,
+              sizeId: sizeId,
+            },
+          },
+          update: {
+            quantity: newItemQuantity,
+          },
+          create: {
+            cartId: cartId,
+            productId: product.id,
+            sizeId,
+            quantity,
+            unitPrice: new Decimal(product.price),
+            title: product.name,
+            image: product.images[0],
+          },
+        });
+
+        return { quantity: newCartTotal, cartId };
+      },
+      { timeout: 15000, maxWait: 5000 },
+    );
 
     refreshCartCookie(cookieStore, cartId);
 

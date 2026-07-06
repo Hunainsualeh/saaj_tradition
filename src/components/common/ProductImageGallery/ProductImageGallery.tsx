@@ -166,7 +166,9 @@ export function ProductImageGallery({
           alt={`${productName} - Image ${effectiveIndex + 1}`}
           fill
           priority
-          quality={85}
+          // No explicit quality → Cloudinary q_auto (adaptive, much smaller than
+          // a fixed q_85, visually equivalent for photos). Keeps the gallery
+          // fast to load, especially on mobile data.
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 45vw, 38vw"
           className="object-cover object-center"
           onError={() => handleImageError(activeOriginalIndex)}

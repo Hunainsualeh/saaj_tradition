@@ -6,6 +6,7 @@ import { BaseSection } from "@/components";
 import { getCart } from "@/lib/server/queries/cart-queries";
 import { CheckoutCartSidebar } from "@/components";
 import { getCurrentOrder } from "@/lib/server/actions";
+import { getCompletedOrderSuccessPath } from "@/lib/server/queries/order-queries";
 import { CheckoutForm } from "@/components/common/CheckoutForm/CheckoutForm";
 import { computeCartShipping } from "@/lib/server/actions/shipping-actions";
 import { prisma } from "@/lib/prisma";
@@ -23,6 +24,18 @@ export default async function CheckoutPage({
 }) {
   const { payment } = await searchParams;
   const paymentFailed = payment === "failed";
+
+  // === REDIRECT A JUST-COMPLETED ORDER TO ITS SUCCESS PAGE ===
+  // getCurrentOrder() intentionally returns null once an order is PAID, so
+  // without this a customer who placed a COD order but didn't complete the
+  // client-side hop to /checkout/success (slow/dropped response, refresh, back)
+  // would fall through to the "empty cart" redirect below and re-order. Send
+  // them to their confirmation instead. Must run before the /cart redirect.
+  const completedPath = await getCompletedOrderSuccessPath();
+  if (completedPath) {
+    redirect(completedPath);
+  }
+
   // === FETCH DATA ===
   const cartResult = await getCart();
   const orderResult = await getCurrentOrder();
@@ -37,13 +50,7 @@ export default async function CheckoutPage({
     redirect("/cart");
   }
 
-  // === REDIRECT IF ALREADY PAID ===
-  // Handles the edge case where the order was paid but the cart cookie wasn't
-  // cleared (e.g. a previous bug), so the user lands back on checkout.
   const order = orderResult.data;
-  if (order.paymentStatus === "PAID") {
-    redirect(`/checkout/success?orderId=${order.id}`);
-  }
 
   // === PREPARE DATA ===
   const { items, summary } = cartResult.data;

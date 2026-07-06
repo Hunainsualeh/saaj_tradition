@@ -1,6 +1,51 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import {
+  STORE_EMAIL,
+  STORE_PHONE,
+  STORE_INSTAGRAM,
+  STORE_FACEBOOK,
+} from "@/lib/constants/store-information";
+
+const SITE_URL = "https://saajtradition.com";
+
+// Site-wide structured data. The ClothingStore node is the brand "entity"
+// Google uses to recognise Saaj Tradition in search (Knowledge Panel / brand
+// results); the WebSite node ties the domain to that entity. Product pages add
+// their own Product JSON-LD on top of this.
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "ClothingStore",
+      "@id": `${SITE_URL}/#store`,
+      name: "Saaj Tradition",
+      url: SITE_URL,
+      logo: `${SITE_URL}/assets/logo/Saaj%20Tradition%20Golden.png`,
+      image: `${SITE_URL}/assets/og-image.jpg`,
+      description:
+        "Traditional Bahawalpuri dresses — curated fashion, premium essentials and designer-inspired collections.",
+      email: STORE_EMAIL,
+      telephone: STORE_PHONE,
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "47PF+R29, Ahmedpur East",
+        addressLocality: "Ahmedpur East",
+        addressRegion: "Punjab",
+        addressCountry: "PK",
+      },
+      sameAs: [STORE_INSTAGRAM, STORE_FACEBOOK],
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: "Saaj Tradition",
+      publisher: { "@id": `${SITE_URL}/#store` },
+    },
+  ],
+};
 
 const inter = Inter({
   subsets: ["latin"],
@@ -25,6 +70,27 @@ export const metadata: Metadata = {
     "saaj tradition",
   ],
   metadataBase: new URL("https://saajtradition.com"),
+  // NOTE: no site-wide `alternates.canonical` here — in the App Router it would
+  // cascade "/" onto every page that doesn't override it, flagging them as
+  // duplicates of the homepage. Canonicals are set per-page instead.
+  // Explicitly invite indexing and allow large image/text previews in results
+  // (better for an image-led fashion catalogue).
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  // Set NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION once the property is claimed in
+  // Google Search Console (Settings → Ownership → HTML tag) to verify the site.
+  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
+    : undefined,
   openGraph: {
     title: "Saaj Tradition",
     description:
@@ -73,6 +139,14 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>
       <body className={`${inter.variable} antialiased relative`}>
+        {/* Site-wide brand + website structured data (helps Google recognise
+            "Saaj Tradition" as a brand entity in search results). */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd).replace(/</g, "\\u003c"),
+          }}
+        />
         {children}
       </body>
     </html>

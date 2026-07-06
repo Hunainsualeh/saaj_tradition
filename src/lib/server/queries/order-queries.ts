@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { cookies } from "next/headers";
 
 import { Order, OrderStatus, PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +12,37 @@ import {
 } from "@/types/client";
 import { wrapServerCall } from "../helpers";
 import { CACHE_TAG_CART } from "@/lib/constants/cache-tags";
+import { COOKIE_CART_ID } from "@/lib/constants";
+
+/**
+ * If the current cart cookie points at an order that has already been PAID,
+ * return the URL of that order's success page (preferring the unguessable
+ * tracking token).
+ *
+ * The cart and checkout pages call this FIRST so that a customer who placed an
+ * order but never completed the client-side hop to `/checkout/success` — a
+ * slow/dropped response on a fresh device, a page refresh, or the back button —
+ * is sent to their confirmation instead of being bounced to an empty cart.
+ * Previously that bounce made people think the order failed and re-order,
+ * creating duplicate orders. Returns null when there is nothing to redirect to,
+ * so the normal cart/checkout flow proceeds untouched.
+ */
+export async function getCompletedOrderSuccessPath(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const cartId = cookieStore.get(COOKIE_CART_ID)?.value;
+  if (!cartId) return null;
+
+  const order = await prisma.order.findUnique({
+    where: { cartId },
+    select: { id: true, paymentStatus: true, trackingToken: true },
+  });
+
+  if (!order || order.paymentStatus !== PaymentStatus.PAID) return null;
+
+  return order.trackingToken
+    ? `/checkout/success?token=${encodeURIComponent(order.trackingToken)}`
+    : `/checkout/success?orderId=${order.id}`;
+}
 
 export async function getCurrentOrderById(
   orderId: string,
