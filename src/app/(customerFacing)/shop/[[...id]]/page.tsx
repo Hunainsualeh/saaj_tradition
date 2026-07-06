@@ -266,7 +266,6 @@ export default async function ShopPage({
       <BaseSection id="products-section" className="pt-6 md:pt-10 pb-16 xl:pb-20">
         <ShopToolbar
           title={title}
-          totalProducts={totalProducts}
           collections={collections}
           categories={categories}
         />

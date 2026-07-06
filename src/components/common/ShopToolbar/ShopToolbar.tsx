@@ -23,7 +23,6 @@ type NavItem = { name: string; slug: string };
 
 type ShopToolbarProps = {
   title: string;
-  totalProducts: number;
   collections: NavItem[];
   categories: NavItem[];
 };
@@ -61,7 +60,6 @@ function useDismiss<T extends HTMLElement>(
 
 export function ShopToolbar({
   title,
-  totalProducts,
   collections,
   categories,
 }: ShopToolbarProps) {
@@ -209,17 +207,17 @@ export function ShopToolbar({
 
   return (
     <div className="w-full mb-6">
-      {/* Screen-reader / SEO heading (visible copy is intentionally minimal). */}
-      <h1 className="sr-only">{title}</h1>
-
-      {/* Toolbar row */}
-      <div className="flex items-center gap-2.5">
-        {/* Compact page title — desktop only, so mobile is all product space. */}
-        <h2 className="hidden md:block text-xl font-medium text-neutral-11 mr-auto truncate">
+      {/* Header: responsive title + controls. On mobile the title sits on its
+          own compact line above the search/filter row; on desktop it moves
+          inline to the left with the controls pushed to the right. */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+        <h1 className="text-2xl leading-tight md:text-3xl font-medium tracking-tight text-neutral-11 md:mr-auto md:truncate">
           {title}
-        </h2>
+        </h1>
 
-        {searchField}
+        {/* Search + filter controls */}
+        <div className="flex items-center gap-2.5">
+          {searchField}
 
         {/* Desktop: inline Sort + Price */}
         <div className="relative hidden md:block" ref={sortRef}>
@@ -346,24 +344,15 @@ export function ShopToolbar({
             </span>
           )}
         </button>
+        </div>
       </div>
 
-      {/* Count + clear */}
-      <div className="mt-3 flex items-center justify-between min-h-5">
-        <span className="text-xs text-neutral-10">
-          {isPending ? (
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full border-2 border-neutral-04 border-t-neutral-11 animate-spin inline-block" />
-              Loading...
-            </span>
-          ) : (
-            <>
-              <span className="font-medium text-neutral-11">{totalProducts}</span>{" "}
-              {totalProducts === 1 ? "product" : "products"}
-            </>
-          )}
-        </span>
-        {hasActiveFilters && (
+      {/* The result count is intentionally NOT shown to customers (a small
+          catalogue reads better without "8 products"); the grid itself surfaces
+          a "No products found" empty state when a search/filter matches nothing.
+          Only an active-filter reset is offered here. */}
+      {hasActiveFilters && (
+        <div className="mt-3 flex justify-end">
           <button
             type="button"
             onClick={handleClearAll}
@@ -372,8 +361,8 @@ export function ShopToolbar({
             <X className="w-3.5 h-3.5" />
             Clear all
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ===== Mobile bottom sheet: browse + sort + price ===== */}
       {/* Backdrop */}
@@ -527,7 +516,7 @@ export function ShopToolbar({
             }}
             className="h-11 flex-[1.4] rounded-full bg-neutral-11 text-sm font-medium text-white transition-colors hover:bg-neutral-12"
           >
-            Show {totalProducts} {totalProducts === 1 ? "result" : "results"}
+            Show results
           </button>
         </div>
       </div>
