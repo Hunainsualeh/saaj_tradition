@@ -206,6 +206,10 @@ function CartSidebarItem({
       if (result.success) {
         await onMutate(result.data.quantity);
       }
+    } catch (err) {
+      // Network-level failure: the item simply stays in the cart. `finally`
+      // re-enables the row so the user can retry; log for observability.
+      console.error("[CartSidebar] Failed to remove item:", err);
     } finally {
       setIsBusy(false);
     }

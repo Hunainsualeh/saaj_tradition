@@ -33,10 +33,10 @@ export const metadata: Metadata = {
     siteName: "Saaj Tradition",
     images: [
       {
-        url: "/assets/logo.png",
+        url: "/assets/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "Saaj Tradition",
+        alt: "Saaj Tradition — Traditional Bahawalpuri Dresses",
       },
     ],
   },
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     title: "Saaj Tradition",
     description:
       "Traditional Bahawalpuri dresses — curated fashion and premium essentials.",
-    images: ["/assets/logo.png"],
+    images: ["/assets/og-image.jpg"],
   },
   icons: {
     icon: [
@@ -63,6 +63,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Every product/category/blog image is now delivered directly from
+            Cloudinary's CDN (see src/lib/image-loader.ts). Warming the DNS + TLS
+            connection early removes it from the image critical path. No
+            crossOrigin: <img> requests are not CORS, so a plain preconnect is
+            what the browser reuses. */}
+        <link rel="preconnect" href="https://res.cloudinary.com" />
+        <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+      </head>
       <body className={`${inter.variable} antialiased relative`}>
         {children}
       </body>

@@ -9,26 +9,28 @@ const globalForRedis = globalThis as unknown as {
 
 function createRedisClient(): Redis | null {
   if (!REDIS_URL) {
-    // Redis is REQUIRED in production: it backs rate limiting (brute-force
-    // protection), the durable email queue, and admin session revocation.
-    // Running production without it silently disables those guarantees, so we
-    // fail fast at boot instead. In dev/test we allow the graceful fallback.
+    // Redis backs rate limiting (brute-force protection) and admin session
+    // revocation. Both have SAFE fallbacks: rate limiting degrades to a
+    // per-instance in-memory limiter (see rate-limit.ts), and session
+    // revocation fails open (see redis-session.ts). A missing or unreachable
+    // Redis must therefore DEGRADE the site, never take it down.
     //
-    // IMPORTANT: skip this throw during `next build`. Next.js evaluates route
-    // modules while "collecting page data" with NODE_ENV=production but WITHOUT
-    // runtime secrets (REDIS_URL is typically injected at runtime, not build
-    // time — e.g. Docker/CI). Throwing here would break the production build.
-    // The guard still fires at runtime (serverless cold start / `next start`),
-    // which is where we actually want to fail fast.
+    // This code runs at module-evaluation time, so throwing here would 500
+    // every route that transitively imports Redis (the whole storefront) and
+    // even crash the serverless function — a catastrophic failure mode for a
+    // non-fatal, recoverable condition. So in production we log LOUDLY (so the
+    // misconfiguration is visible in the platform logs) but return null and let
+    // the fallbacks take over. Set REDIS_URL to restore full protection.
     const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
     if (
       process.env.NODE_ENV === "production" &&
       process.env.ALLOW_NO_REDIS !== "true" &&
       !isBuildPhase
     ) {
-      throw new Error(
-        "REDIS_URL is required in production (rate limiting, email queue, session revocation). " +
-          "Set REDIS_URL, or explicitly opt out with ALLOW_NO_REDIS=true.",
+      console.error(
+        "[Redis] REDIS_URL is not set in production — running DEGRADED: rate " +
+          "limiting is now per-instance (in-memory) and admin session " +
+          "revocation is disabled. Set REDIS_URL to restore full protection.",
       );
     }
     return null;

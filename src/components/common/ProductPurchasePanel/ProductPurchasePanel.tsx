@@ -52,6 +52,11 @@ export function ProductPurchasePanel(props: ProductPurchasePanelProps) {
         quantity: result.data.quantity,
       });
       setIsError(false);
+    } catch {
+      // Network-level failure: the server action never resolved (e.g. the
+      // request dropped on a weak connection). Without this catch the button
+      // would just stop spinning with no feedback. Surface the retry message.
+      setIsError(true);
     } finally {
       setIsLoading(false);
     }

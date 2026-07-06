@@ -127,6 +127,32 @@ footer {
   --animate-y: 500px;
 }
 
+/*
+ * CSS-only entrance animation. Runs on load from the render-blocking stylesheet,
+ * so content is never hidden waiting for JS hydration + IntersectionObserver
+ * (the cause of above-the-fold sections appearing to "load late"). Content is
+ * server-rendered and simply animates in; if animations are disabled it is
+ * fully visible.
+ */
+@keyframes saaj-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-in-load {
+  animation: saaj-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-in-load {
+    animation: none;
+  }
+}
+
 /* Typography Base Classes */
 .text-body-large {
   font-size: var(--font-size-lg);

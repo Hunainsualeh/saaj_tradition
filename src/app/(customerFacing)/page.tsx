@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import {
   SectionHeading,
   BaseSection,
-  AnimateFadeIn,
   AnimateStagger,
   HeroSection,
   ProductTile,
@@ -126,7 +125,7 @@ export default async function HomePage() {
             <ViewAllProductsButton className="ms-auto h-fit hidden md:block" />
           </div>
 
-          <AnimateFadeIn className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+          <div className="animate-in-load grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {productsList.map((product) => (
               <ProductTile
                 key={product.id}
@@ -139,7 +138,7 @@ export default async function HomePage() {
                 hoverImageUrl={product.images[1]}
               />
             ))}
-          </AnimateFadeIn>
+          </div>
 
           <ViewAllProductsButton className="w-full md:hidden" />
         </div>
