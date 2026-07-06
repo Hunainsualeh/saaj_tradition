@@ -30,7 +30,7 @@ const sampleOrder = {
     {
       id: "item-1",
       title: "Timeless Beauty",
-      image: "/assets/prodcut/Dress1/1.jpg",
+      image: "/assets/clothes-model.jpg",
       quantity: 1,
       unitPrice: 4799,
       size: { label: "M" },

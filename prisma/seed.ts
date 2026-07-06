@@ -18,14 +18,14 @@ const COLLECTIONS = [
     name: "Eid Collection",
     tagline: "Celebrate in elegance with our curated Eid designs",
     slug: "eid-collection",
-    imageUrl: "/assets/prodcut/eid-collection.jpg",
+    imageUrl: "/assets/store-collection-tops-bottoms.jpg",
     sortOrder: 1,
   },
   {
     name: "Summer Collection",
     tagline: "Light, breathable fabrics for the warm season",
     slug: "summer-collection",
-    imageUrl: "/assets/prodcut/summer-collection.jpg",
+    imageUrl: "/assets/store-collection-outerwear.jpg",
     sortOrder: 2,
   },
 ];
@@ -308,12 +308,11 @@ const SIZE_TEMPLATES: Record<string, string[]> = {
   OneSize: ["One Size"],
 };
 
-// Placeholder images (uses the existing public assets path)
-function getPlaceholderImages(slug: string): string[] {
-  return [
-    `/assets/prodcut/${slug}-1.jpg`,
-    `/assets/prodcut/${slug}-2.jpg`,
-  ];
+// Placeholder images for seeded demo products. Point at existing lightweight
+// /assets shots (the large /assets/prodcut set was removed) so `npm run seed`
+// still produces working thumbnails with no external dependency.
+function getPlaceholderImages(_slug: string): string[] {
+  return ["/assets/clothes-model.jpg", "/assets/clothes-model-hover.jpg"];
 }
 
 // ==========================================
