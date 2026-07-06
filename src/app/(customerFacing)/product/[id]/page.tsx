@@ -145,9 +145,10 @@ export default async function ProductPage(props: ProductPageProps) {
             />
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-10 lg:gap-16 xl:gap-24 relative justify-center">
-            {/* Image Gallery */}
-            <div className="w-full lg:w-1/2">
+          <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 xl:gap-20 relative">
+            {/* Image Gallery — held to a compact share of the row so the photo
+                stays elegant (not oversized) on wide screens. */}
+            <div className="w-full lg:w-[44%] xl:w-[42%] lg:shrink-0">
               <ProductImageGallery
                 images={product.images}
                 productName={product.name}

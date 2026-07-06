@@ -57,7 +57,7 @@ export function ProductPurchasePanelUI(props: ProductPurchasePanelUIProps) {
   };
 
   return (
-    <div className="w-full lg:w-1/2 flex flex-col gap-8 lg:gap-10 lg:sticky lg:top-22 self-start">
+    <div className="w-full lg:flex-1 lg:max-w-xl flex flex-col gap-8 lg:gap-10 lg:sticky lg:top-22 self-start">
       {/* Product title, price, description */}
       <div className="flex flex-col gap-2">
         <AnimatedHeadingText text={product.name} variant="product-page-title" />
@@ -93,15 +93,24 @@ export function ProductPurchasePanelUI(props: ProductPurchasePanelUIProps) {
         {/* Size selector */}
         {product.sizes && product.sizes.length > 1 && (
           <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <label
                 htmlFor="size-select"
-                className="text-sm font-medium text-neutral-10"
+                className="text-sm font-medium text-neutral-11"
               >
-                Size
+                Select size
+                {selectedSize && (
+                  <span className="ml-2 font-normal text-neutral-9">
+                    {product.sizes
+                      .find((s) => s.id === selectedSize)
+                      ?.label?.toUpperCase()}
+                  </span>
+                )}
               </label>
               {showSizeError && (
-                <span className="text-xs text-neutral-8">Please select a size</span>
+                <span className="text-xs font-medium text-red-600">
+                  Please select a size
+                </span>
               )}
             </div>
 
@@ -109,6 +118,9 @@ export function ProductPurchasePanelUI(props: ProductPurchasePanelUIProps) {
               id="size-select"
               type="single"
               onValueChange={(value) => {
+                // Radix emits "" when the active item is toggled off; ignore
+                // that so a selected size can't be accidentally cleared.
+                if (!value) return;
                 setSelectedSize(value);
                 setShowSizeError(false);
               }}
@@ -122,7 +134,9 @@ export function ProductPurchasePanelUI(props: ProductPurchasePanelUIProps) {
                     key={size.id}
                     value={size.id}
                     disabled={isOutOfStock}
-                    className={isOutOfStock ? "opacity-35 line-through cursor-not-allowed" : ""}
+                    className={
+                      isOutOfStock ? "line-through text-neutral-8" : ""
+                    }
                   >
                     {size.label?.toUpperCase()}
                   </ToggleGroupItem>

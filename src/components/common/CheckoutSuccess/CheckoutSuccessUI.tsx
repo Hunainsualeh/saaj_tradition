@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getButtonStyles } from "@/components";
 import { routes } from "@/lib/routing/routes";
 import { OrderSuccessData } from "@/lib/server/queries/order-queries";
+import { SaveOrderImageButton } from "./SaveOrderImageButton";
 
 type CheckoutSuccessUIProps = {
   order: OrderSuccessData;
@@ -73,6 +74,20 @@ export function CheckoutSuccessUI({ order }: CheckoutSuccessUIProps) {
             <div className="mx-3 w-2 h-2 rotate-45 border border-neutral-11 opacity-40 -mt-[3px]" />
             <div className="w-12 h-px bg-neutral-11 opacity-30" />
           </div>
+
+          {/* Compact save-to-phone action, placed high so it needs no scroll */}
+          {order.trackingToken && (
+            <div className="mt-6 flex justify-center">
+              <SaveOrderImageButton
+                orderNumber={order.orderNumber}
+                trackingToken={order.trackingToken}
+                createdAt={order.createdAt}
+                totalPrice={order.totalPrice}
+                paymentMethod={order.paymentMethod}
+                customerName={order.delieveryName}
+              />
+            </div>
+          )}
         </div>
 
         {/* ── Order Meta ── */}
