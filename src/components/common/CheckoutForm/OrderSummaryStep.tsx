@@ -1,14 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { DeliveryDetailsData } from "./schema";
-import {
-  markOrderAsPaid,
-  updateOrderDetails,
-} from "@/lib/server/actions";
-import { routes } from "@/lib";
 import { OrderSummaryStepUI } from "./OrderSummaryStepUI";
 import { CheckoutPaymentMethod } from "./PaymentStep";
 
@@ -23,53 +17,20 @@ export function OrderSummaryStep(props: OrderSummaryStepProps) {
   const { deliveryData, orderId, paymentMethod } = props;
 
   // === STATE ===
+  // Only used to show the button spinner; the actual placement is a native form
+  // POST to /api/checkout/place-order (see OrderSummaryStepUI) which the server
+  // completes and 303-redirects. Doing the navigation server-side is what makes
+  // checkout work on iOS Safari, where a scripted redirect after an awaited
+  // server call is dropped once the tap's transient activation expires.
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // === FUNCTIONS ===
-  const handleConfirmPayment = async () => {
-    if (!deliveryData) return;
-
-    setIsSubmitting(true);
-
-    try {
-      // Save delivery details
-      const updateResult = await updateOrderDetails(orderId, deliveryData);
-      if (!updateResult.success) {
-        toast.error(updateResult.error ?? "Failed to save delivery details");
-        setIsSubmitting(false);
-        return;
-      }
-
-      if (paymentMethod === "COD") {
-        // Keep existing COD flow in this project.
-        const paidResult = await markOrderAsPaid(orderId);
-        if (!paidResult.success) {
-          toast.error(paidResult.error ?? "Failed to place order");
-          setIsSubmitting(false);
-          return;
-        }
-
-        // Prefer the unguessable tracking token in the success URL.
-        const token = paidResult.data?.trackingToken;
-        window.location.href = token
-          ? `${routes.checkoutSuccess}?token=${encodeURIComponent(token)}`
-          : `${routes.checkoutSuccess}?orderId=${orderId}`;
-        return;
-      }
-
-      // Use a server route that returns an auto-submitting PayFast form.
-      window.location.href = `/api/payment/payfast/checkout?orderId=${encodeURIComponent(orderId)}`;
-    } catch (err) {
-      console.error("Error placing order:", err);
-      toast.error("Unable to continue to payment. Please try again.");
-      setIsSubmitting(false);
-    }
-  };
 
   return (
     <OrderSummaryStepUI
       isSubmitting={isSubmitting}
-      onConfirmPayment={handleConfirmPayment}
+      onSubmit={() => setIsSubmitting(true)}
+      orderId={orderId}
+      paymentMethod={paymentMethod}
+      delivery={deliveryData}
       buttonText={paymentMethod === "PAYFAST" ? "Pay via PayFast" : "Place Order"}
     />
   );

@@ -103,11 +103,11 @@ export function NavbarUI({ itemCount, collections = [], categories = [] }: Navba
             <div className="flex flex-col items-start">
               <span
                 className="text-[17px] md:text-[19px] font-semibold tracking-[0.02em] text-neutral-12 transition-colors duration-200 group-hover:text-[#c9a84c]"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
               >
                 SAAJ
               </span>
-              <span className="text-[8px] md:text-[9px] font-medium tracking-[0.28em] uppercase text-neutral-08 -mt-0.5">
+              <span className="text-[8px] md:text-[9px] font-medium tracking-[0.28em] uppercase text-neutral-10 -mt-0.5">
                 Tradition
               </span>
             </div>
@@ -185,7 +185,7 @@ export function NavbarUI({ itemCount, collections = [], categories = [] }: Navba
             >
               <CheckoutIcon />
               {itemCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-[#c9a84c] text-white text-[9px] font-bold leading-none shadow-sm">
+                <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-[#c9a84c] text-neutral-12 text-[9px] font-bold leading-none shadow-sm">
                   {itemCount < 99 ? itemCount : "99+"}
                 </span>
               )}

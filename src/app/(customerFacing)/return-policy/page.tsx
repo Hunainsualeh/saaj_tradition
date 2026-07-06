@@ -27,7 +27,7 @@ export default function ReturnPolicyPage() {
           </p>
           <h1
             className="text-3xl sm:text-4xl font-semibold text-stone-800 tracking-tight"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+            style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
           >
             Return Policy
           </h1>
@@ -154,7 +154,7 @@ function Section({
     <section className="space-y-4">
       <h2
         className="text-lg font-semibold text-stone-800 tracking-tight border-b border-stone-200 pb-2"
-        style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+        style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
       >
         {title}
       </h2>

@@ -9,7 +9,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Order summary step UI for the checkout flow. Includes terms text and submit payment button.",
+          "Order summary step UI for the checkout flow. Includes terms text and a native form that POSTs to /api/checkout/place-order.",
       },
     },
   },
@@ -17,11 +17,11 @@ const meta = {
   argTypes: {
     isSubmitting: {
       control: "boolean",
-      description: "Whether the payment submission is in progress",
+      description: "Whether the placement is in progress (shows the spinner)",
     },
-    onConfirmPayment: {
-      action: "confirmPayment",
-      description: "Callback when submit payment is clicked",
+    onSubmit: {
+      action: "submit",
+      description: "Fired on form submit (used to show the spinner)",
     },
   },
 } satisfies Meta<typeof OrderSummaryStepUI>;
@@ -29,16 +29,37 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const sampleDelivery = {
+  fullName: "Amelia Clarke",
+  email: "amelia@example.com",
+  phone: "03001234567",
+  address: "123 Main Street",
+  city: "Bahawalpur",
+  state: "Punjab",
+  zipCode: "63100",
+  country: "Pakistan",
+  useSameBillingAddress: true,
+  orderNote: "",
+};
+
 export const Default: Story = {
   args: {
     isSubmitting: false,
-    onConfirmPayment: () => {},
+    onSubmit: () => {},
+    orderId: "order_123",
+    paymentMethod: "COD",
+    delivery: sampleDelivery,
+    buttonText: "Place Order",
   },
 };
 
 export const Submitting: Story = {
   args: {
     isSubmitting: true,
-    onConfirmPayment: () => {},
+    onSubmit: () => {},
+    orderId: "order_123",
+    paymentMethod: "COD",
+    delivery: sampleDelivery,
+    buttonText: "Place Order",
   },
 };

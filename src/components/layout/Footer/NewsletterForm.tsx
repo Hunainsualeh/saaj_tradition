@@ -115,7 +115,7 @@ export function NewsletterForm() {
         <button
           type="submit"
           disabled={isPending}
-          className="shrink-0 h-full px-5 bg-[#c9a84c] text-white text-[11px] font-bold uppercase tracking-[0.12em] hover:bg-[#b8960c] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="shrink-0 h-full px-5 bg-[#c9a84c] text-neutral-12 text-[11px] font-bold uppercase tracking-[0.12em] hover:bg-[#b8960c] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isPending ? "…" : "Subscribe"}
         </button>

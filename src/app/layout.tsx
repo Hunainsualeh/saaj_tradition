@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import {
   STORE_EMAIL,
@@ -50,6 +50,20 @@ const organizationJsonLd = {
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  display: "swap",
+});
+
+// Playfair Display is the brand display serif — used for the "SAAJ" wordmark and
+// section/policy headings. It was previously referenced by inline
+// `font-family: 'Playfair Display', …` styles but never actually loaded on the
+// storefront (only Inter was), so those elements silently fell back to Georgia.
+// Self-hosting it here via next/font (subset + swap, no render-blocking external
+// stylesheet) makes the intended brand type render. Exposed as `--font-playfair`
+// so the inline styles resolve to the real self-hosted family.
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -138,7 +152,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://res.cloudinary.com" />
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>
-      <body className={`${inter.variable} antialiased relative`}>
+      <body
+        className={`${inter.variable} ${playfair.variable} antialiased relative`}
+      >
         {/* Site-wide brand + website structured data (helps Google recognise
             "Saaj Tradition" as a brand entity in search results). */}
         <script

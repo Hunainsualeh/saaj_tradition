@@ -116,7 +116,7 @@ export function Footer({
                 <div className="flex flex-col items-center">
                   <span
                     className="text-[22px] font-semibold tracking-[0.02em] text-gray-900"
-                    style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                    style={{ fontFamily: "var(--font-playfair), Georgia, serif" }}
                   >
                     SAAJ
                   </span>
