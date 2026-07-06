@@ -94,15 +94,18 @@ export function ProductImageGallery({
 
   return (
     <div className="flex flex-col gap-3 w-full">
-      {/* Main Image */}
-      <div className="relative aspect-[3/4] w-full max-h-[75vh] overflow-hidden rounded-sm bg-neutral-100 group">
+      {/* Main Image — rendered at its natural aspect ratio (width fills the
+          column, height follows the image) so it is never cropped AND never
+          letterboxed with empty space, whatever the photo's dimensions are. */}
+      <div className="relative w-full overflow-hidden rounded-sm bg-neutral-100 group">
         <Image
           src={activeImage}
           alt={`${productName} - Image ${effectiveIndex + 1}`}
-          fill
+          width={0}
+          height={0}
           priority
           sizes="(max-width: 768px) 100vw, (max-width: 1280px) 60vw, 55vw"
-          className="object-cover"
+          className="h-auto w-full"
           onError={() => handleImageError(activeOriginalIndex)}
         />
 

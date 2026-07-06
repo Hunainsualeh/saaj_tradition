@@ -26,6 +26,8 @@
 type ImageLoaderArgs = {
   src: string;
   width: number;
+  // `quality` is intentionally unused: Cloudinary images use q_auto (best
+  // bytes/quality trade-off) and local images are served as-is.
   quality?: number;
 };
 
@@ -36,7 +38,6 @@ const MAX_CLOUDINARY_WIDTH = 3840;
 export default function imageLoader({
   src,
   width,
-  quality,
 }: ImageLoaderArgs): string {
   // --- Cloudinary: deliver straight from Cloudinary's CDN ---
   if (src.includes("res.cloudinary.com") && src.includes("/upload/")) {
@@ -62,8 +63,15 @@ export default function imageLoader({
   }
 
   // --- Everything else (local /assets, legacy Vercel Blob) ---
-  // Route through Next's built-in optimizer so these still get responsive,
-  // modern-format delivery. `/_next/image` is Next's default optimizer path.
-  const q = quality || 75;
-  return `/_next/image?url=${encodeURIComponent(src)}&w=${width}&q=${q}`;
+  // Configuring a global `loaderFile` DISABLES Next's built-in `/_next/image`
+  // optimizer route (it 404s), so we cannot route through it. Return the source
+  // directly and let the browser load it. Local `/assets` are already
+  // hand-compressed (see the recompression pass), so serving them as-is — no
+  // per-viewport resize — is an acceptable trade-off for reliable loading.
+  //
+  // encodeURI is important: a local path may contain spaces (e.g. the logo file
+  // "Saaj Tradition Golden.png"). next/image emits the loader's return value
+  // inside a `srcset`, where a literal space separates the URL from its width
+  // descriptor and would break parsing. Encoding spaces to %20 keeps it valid.
+  return src.startsWith("/") ? encodeURI(src) : src;
 }
