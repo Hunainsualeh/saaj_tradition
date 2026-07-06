@@ -3,7 +3,7 @@ import {
   BaseSection,
   ProductTile,
   ShopSidebar,
-  ShopFilterBar,
+  ShopToolbar,
   CollectionTile,
 } from "@/components";
 import type { Metadata } from "next";
@@ -241,7 +241,7 @@ export default async function ShopPage({
   const collections = collectionsRes.success ? collectionsRes.data : [];
   const categories = categoriesRes.success ? categoriesRes.data : [];
 
-  const { title, description } = getShopPageMeta(id, collections, categories);
+  const { title } = getShopPageMeta(id, collections, categories);
 
   // === EXTRACT DATA ===
   const filteredProducts = productsResult.success ? productsResult.data.products : [];
@@ -263,20 +263,17 @@ export default async function ShopPage({
 
   return (
     <main>
-      <BaseSection id="shop-section" className="pb-16 xl:pb-20">
-        <div className="flex flex-col gap-1 pt-6 md:pt-10 pb-6">
-          <AnimatedHeadingText
-            disableIsInView
-            text={title}
-            variant="page-title"
-            className="pb-1"
-          />
-          <p className="text-neutral-10 text-base">{description}</p>
-        </div>
-      </BaseSection>
+      <BaseSection id="products-section" className="pt-6 md:pt-10 pb-16 xl:pb-20">
+        <ShopToolbar
+          title={title}
+          totalProducts={totalProducts}
+          collections={collections}
+          categories={categories}
+        />
 
-      <BaseSection id="products-section" className="pb-16 xl:pb-20">
         <div className="relative flex flex-col md:flex-row gap-8 md:gap-12">
+          {/* Desktop-only sidebar nav — on mobile this lives in the toolbar's
+              bottom sheet so the product grid isn't pushed down the page. */}
           <ShopSidebar
             collections={collections}
             categories={categories}
@@ -284,8 +281,6 @@ export default async function ShopPage({
           />
 
           <div className="flex-1">
-            <ShopFilterBar totalProducts={totalProducts} />
-
             {/* ERROR LOADING PRODUCTS */}
             {productsResult.success === false && (
               <p className="text-neutral-8 text-center col-span-full">

@@ -26,7 +26,7 @@ export function ShopSidebar(props: ShopSideBarProps) {
   const { collections = [], categories = [], collectionsOpenByDefault = false } = props;
 
   return (
-    <aside className="flex flex-col w-full md:w-64 shrink-0 divide-y divide-neutral-6 md:sticky md:top-30 self-start">
+    <aside className="hidden md:flex flex-col w-full md:w-64 shrink-0 divide-y divide-neutral-6 md:sticky md:top-30 self-start">
       <Link href={routes.shop} className={cn(linkClasses, "pb-3")}>
         All
       </Link>
