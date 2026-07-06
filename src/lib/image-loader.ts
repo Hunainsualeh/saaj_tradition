@@ -26,8 +26,9 @@
 type ImageLoaderArgs = {
   src: string;
   width: number;
-  // `quality` is intentionally unused: Cloudinary images use q_auto (best
-  // bytes/quality trade-off) and local images are served as-is.
+  // Cloudinary images default to q_auto. Focal images (hero, main product
+  // photo) can opt into a fixed high quality by passing next/image `quality`
+  // >= 80 — see the quality handling below. Local images are served as-is.
   quality?: number;
 };
 
@@ -38,14 +39,21 @@ const MAX_CLOUDINARY_WIDTH = 3840;
 export default function imageLoader({
   src,
   width,
+  quality,
 }: ImageLoaderArgs): string {
   // --- Cloudinary: deliver straight from Cloudinary's CDN ---
   if (src.includes("res.cloudinary.com") && src.includes("/upload/")) {
     const w = Math.min(width, MAX_CLOUDINARY_WIDTH);
     // c_limit: scale down to the requested width, never upscale past the source.
     // f_auto:  serve AVIF/WebP based on the requesting browser.
-    // q_auto:  let Cloudinary pick the smallest bytes at good perceptual quality.
-    const params = `f_auto,q_auto,c_limit,w_${w}`;
+    // Quality: q_auto (smallest bytes at good perceptual quality) is right for
+    // the many secondary images. Focal images opt into a fixed high quality by
+    // passing `quality` >= 80; they also get a light sharpen (e_sharpen:60) to
+    // counter the softness that full-bleed downscaling introduces — this is
+    // what makes a large hero look "dull" — while staying AVIF/WebP + capped.
+    const q =
+      quality && quality >= 80 ? `q_${quality},e_sharpen:60` : "q_auto";
+    const params = `f_auto,${q},c_limit,w_${w}`;
 
     // Stored URLs often bake in a transformation right after `/upload/`
     // (e.g. `f_auto,q_auto:best` — the largest quality tier, at full size).

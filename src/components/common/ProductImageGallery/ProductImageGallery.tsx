@@ -166,6 +166,7 @@ export function ProductImageGallery({
           alt={`${productName} - Image ${effectiveIndex + 1}`}
           fill
           priority
+          quality={85}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 45vw, 38vw"
           className="object-cover object-center"
           onError={() => handleImageError(activeOriginalIndex)}

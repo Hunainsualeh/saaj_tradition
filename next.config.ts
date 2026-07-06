@@ -67,8 +67,9 @@ const nextConfig: NextConfig = {
     // WebP-only; the extra cold-encode cost is paid once, then cached 31 days.
     // (Applies to the local /assets images still served by the built-in loader.)
     formats: ["image/avif", "image/webp"],
-    // Dropped 95 — no component requests it; default quality is 75.
-    qualities: [50, 60, 75],
+    // 50/60/75 cover the bulk of the UI (default is 75). 85/90 are reserved for
+    // focal images (main product photo / hero) that opt into a crisper render.
+    qualities: [50, 60, 75, 85, 90],
     // Cache optimized images for 31 days instead of the 60s default.
     minimumCacheTTL: 2678400,
     remotePatterns: [
