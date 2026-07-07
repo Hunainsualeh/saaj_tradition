@@ -4,7 +4,7 @@ import { STORE_EMAIL } from "./store-information";
 export const supportContactInfo = [
   {
     title: "Visit Us",
-    description: "47PF+R29, Ahmedpur East, Pakistan",
+    description: "1/2 km KLP Road, near Hotel Pearl Resort, Ahmedpur East, District Bahawalpur, Pakistan 63350",
     icon: <HomeIcon />,
   },
   {

@@ -435,7 +435,7 @@ const SITE_CONTENT_DEFAULTS: SiteContentDefault[] = [
   },
   {
     key: "location_address",
-    value: "47PF+R29, Ahmedpur East, Punjab, Pakistan",
+    value: "1/2 km KLP Road, near Hotel Pearl Resort, Ahmedpur East, District Bahawalpur, Pakistan 63350",
     label: "Store Address",
     group: "location",
   },

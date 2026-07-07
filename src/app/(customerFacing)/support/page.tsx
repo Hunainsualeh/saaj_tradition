@@ -48,7 +48,8 @@ export default async function SupportPage() {
   const faqQuestions = parsedFaq.length > 0 ? parsedFaq : supportFaqQuestions;
 
   const contactAddress =
-    c.location_address || "47PF+R29, Ahmedpur East, Pakistan";
+    c.location_address ||
+    "1/2 km KLP Road, near Hotel Pearl Resort, Ahmedpur East, District Bahawalpur, Pakistan 63350";
   const contactPhone = c.social_phone || STORE_PHONE;
   const contactEmail = c.social_email || STORE_EMAIL;
 

@@ -30,9 +30,10 @@ const organizationJsonLd = {
       telephone: STORE_PHONE,
       address: {
         "@type": "PostalAddress",
-        streetAddress: "47PF+R29, Ahmedpur East",
+        streetAddress: "1/2 km KLP Road, near Hotel Pearl Resort",
         addressLocality: "Ahmedpur East",
         addressRegion: "Punjab",
+        postalCode: "63350",
         addressCountry: "PK",
       },
       sameAs: [STORE_INSTAGRAM, STORE_FACEBOOK],

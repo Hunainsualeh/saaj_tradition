@@ -32,7 +32,7 @@ function CopyButton({ text }: { text: string }) {
 
 export function LocationCard({
   storeName = "Saaj Tradition",
-  address = "47PF+R29, Ahmedpur East, Punjab, Pakistan",
+  address = "1/2 km KLP Road, near Hotel Pearl Resort, Ahmedpur East, District Bahawalpur, Pakistan 63350",
   hoursDays = "Mon – Sat",
   hoursTime = "10:00 AM – 8:00 PM",
   hoursNote = "Closed Sundays",
