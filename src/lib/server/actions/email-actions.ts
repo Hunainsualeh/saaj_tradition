@@ -16,6 +16,7 @@ import { ServerActionResponse } from "@/types/server";
 import { getCurrentAdmin } from "./admin-auth-actions";
 import { CACHE_TAG_CART } from "@/lib/constants/cache-tags";
 import { rateLimitOrderEmail, rateLimitUnsubscribe } from "@/lib/rate-limit";
+import { getSiteUrl } from "@/lib/site-url";
 
 
 /** Verify the caller is an authenticated admin; throws if not */
@@ -39,13 +40,7 @@ async function getAdminNotificationEmail(): Promise<string> {
   return process.env.EMAIL_USER ?? "";
 }
 
-const STORE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000");
+const STORE_URL = getSiteUrl();
 
 /** Fetch full order data and send confirmation emails to both customer & admin */
 export async function sendOrderConfirmationEmails(

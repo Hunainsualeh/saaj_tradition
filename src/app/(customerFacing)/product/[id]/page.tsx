@@ -12,6 +12,7 @@ import {
 } from "@/components/layout/Navbar/lib";
 import { routes } from "@/lib";
 import { getProductBySlug, getThreeRandomProducts } from "@/lib/server/queries";
+import { getSiteUrl } from "@/lib/site-url";
 import Script from "next/script";
 
 // ISR: product pages are cached and refreshed at most every 5 minutes; product
@@ -37,7 +38,7 @@ export async function generateMetadata(
   }
 
   const p = product.data;
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://saajtradition.com";
+  const siteUrl = getSiteUrl();
   const url = `${siteUrl}/product/${p.slug}`;
   // Trim to a clean meta-description length; strip newlines from the DB text.
   const description =
@@ -101,7 +102,7 @@ export default async function ProductPage(props: ProductPageProps) {
     ? threeRandomProductsData.data
     : [];
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://saajtradition.com";
+  const siteUrl = getSiteUrl();
   const isAvailable = product.stockStatus !== "OUT_OF_STOCK";
 
   const jsonLd = {

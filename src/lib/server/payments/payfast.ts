@@ -1,3 +1,5 @@
+import { getSiteUrl } from "@/lib/site-url";
+
 // Shape per PayFast API guide: POST /token response
 type PayFastTokenResponse = {
   token?: string;
@@ -26,29 +28,10 @@ function getRequiredEnv(name: string): string {
 }
 
 function getStoreUrl(): string {
-  // Priority:
-  // 1. NEXT_PUBLIC_SITE_URL — explicit custom domain set by the user (most reliable)
-  // 2. VERCEL_PROJECT_PRODUCTION_URL — stable Vercel production URL, never changes per deploy
-  // 3. VERCEL_URL — deployment-specific URL (e.g. project-abc123.vercel.app), changes per deploy
-  // 4. localhost fallback for local dev
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL;
-  if (explicit) {
-    return explicit.endsWith("/") ? explicit.slice(0, -1) : explicit;
-  }
-
-  const productionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  if (productionUrl) {
-    const url = `https://${productionUrl}`;
-    return url.endsWith("/") ? url.slice(0, -1) : url;
-  }
-
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) {
-    const url = /^https?:\/\//i.test(vercelUrl) ? vercelUrl : `https://${vercelUrl}`;
-    return url.endsWith("/") ? url.slice(0, -1) : url;
-  }
-
-  return "http://localhost:3000";
+  // Single source of truth for the site origin (see src/lib/site-url.ts). It
+  // guarantees the production domain is used for PayFast return/notify callbacks
+  // and never a stale localhost value.
+  return getSiteUrl();
 }
 
 function parseExtraFields(raw: string | undefined): Record<string, string> {

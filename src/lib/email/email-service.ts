@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { EmailTemplateType } from "@prisma/client";
+import { getSiteUrl } from "@/lib/site-url";
 import { transporter, EMAIL_FROM, ADMIN_EMAIL } from "./transporter";
 import {
   ORDER_CONFIRMATION_TEMPLATE,
@@ -36,7 +37,7 @@ function buildOrderItemsHtml(items: OrderItem[]): string {
     <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #f0ece8;border-radius:8px;margin-bottom:12px;">
       <tr>
         <td class="item-image" style="padding:12px;width:70px;vertical-align:top;">
-          <img src="${safeImage}" alt="${safeTitle}" width="58" height="58" style="width:58px;height:58px;object-fit:cover;border-radius:6px;" />
+          <img src="${safeImage}" alt="${safeTitle}" width="58" height="58" style="width:58px;height:58px;object-fit:cover;border-radius:6px;display:block;border:0;outline:none;text-decoration:none;background:#f0ece8;" />
         </td>
         <td style="padding:12px;vertical-align:middle;">
           <p style="font-weight:600;color:#1a1a2e;font-size:14px;margin-bottom:4px;">${safeTitle}</p>
@@ -99,14 +100,66 @@ function applyVariables(template: string, vars: Record<string, string>): string 
   });
 }
 
-const STORE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000");
+const STORE_URL = getSiteUrl();
 const STORE_EMAIL = process.env.EMAIL_USER ?? "saajtraditionbahawalpur@gmail.com";
+
+// ─── DELIVERY WRAPPER (deliverability hardening) ─────────────────────────────
+// Every message goes through deliver() so we consistently attach the things
+// that keep mail OUT of spam / the Promotions tab and make images auto-load:
+//   • a plain-text alternative  → HTML-only mail is a strong spam signal
+//   • Reply-To                  → replies reach the store; looks legitimate
+//   • List-Unsubscribe (+ RFC 8058 one-click) on bulk/marketing mail → now
+//     REQUIRED by Gmail & Yahoo for bulk senders; big inbox-placement win.
+
+/** Best-effort HTML → plain-text for the multipart/alternative text part. */
+function htmlToText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<head[\s\S]*?<\/head>/gi, "")
+    .replace(/<(?:br|\/p|\/div|\/tr|\/h[1-6]|\/li)[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&middot;/gi, "·")
+    .replace(/&amp;/gi, "&")
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/&[a-z0-9#]+;/gi, "")
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+type DeliverArgs = {
+  to: string;
+  subject: string;
+  html: string;
+  /** true for newsletters / promotional broadcasts (adds unsubscribe headers). */
+  bulk?: boolean;
+  unsubscribeUrl?: string;
+};
+
+async function deliver({ to, subject, html, bulk, unsubscribeUrl }: DeliverArgs) {
+  const headers: Record<string, string> = {};
+
+  if (bulk) {
+    const url = unsubscribeUrl ?? `${STORE_URL}/unsubscribe`;
+    headers["List-Unsubscribe"] = `<${url}>, <mailto:${STORE_EMAIL}?subject=unsubscribe>`;
+    headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+    headers["Precedence"] = "bulk";
+  }
+
+  await transporter.sendMail({
+    from: EMAIL_FROM,
+    to,
+    replyTo: STORE_EMAIL,
+    subject,
+    html,
+    text: htmlToText(html),
+    headers,
+  });
+}
 
 async function getCustomTemplate(type: EmailTemplateType) {
   return prisma.emailTemplate.findFirst({
@@ -216,8 +269,7 @@ export async function sendOrderConfirmationEmail(input: SendOrderConfirmationInp
     trackingIdRow: buildTrackingIdRow(input.trackingToken),
   };
 
-  await transporter.sendMail({
-    from: EMAIL_FROM,
+  await deliver({
     to: input.to,
     subject: applyVariables(subject, vars),
     html: applyVariables(html, vars),
@@ -280,8 +332,7 @@ export async function sendAdminOrderNotificationEmail(input: SendOrderConfirmati
     trackingIdRow: buildTrackingIdRow(input.trackingToken),
   };
 
-  await transporter.sendMail({
-    from: EMAIL_FROM,
+  await deliver({
     to: ADMIN_EMAIL,
     subject: applyVariables(subject, vars),
     html: applyVariables(html, vars),
@@ -326,8 +377,7 @@ export async function sendOrderStatusUpdateEmail(input: {
     trackingUrl: input.trackingUrl ?? STORE_URL,
   };
 
-  await transporter.sendMail({
-    from: EMAIL_FROM,
+  await deliver({
     to: input.to,
     subject: applyVariables(subject, vars),
     html: applyVariables(html, vars),
@@ -390,7 +440,7 @@ export async function sendNewsletterEmail(input: {
   );
 
   const imageSection = input.imageUrl
-    ? `<div style="margin:24px 0;border-radius:8px;overflow:hidden;"><img src="${input.imageUrl}" alt="" style="width:100%;height:auto;max-height:320px;object-fit:cover;" /></div>`
+    ? `<div style="margin:24px 0;border-radius:8px;overflow:hidden;background:#f0ece8;"><img src="${input.imageUrl}" alt="Saaj Tradition" style="width:100%;height:auto;max-height:320px;object-fit:cover;display:block;border:0;outline:none;text-decoration:none;" /></div>`
     : "";
 
   const vars: Record<string, string> = {
@@ -405,11 +455,12 @@ export async function sendNewsletterEmail(input: {
     unsubscribeUrl: `${STORE_URL}/unsubscribe`,
   };
 
-  await transporter.sendMail({
-    from: EMAIL_FROM,
+  await deliver({
     to: input.to,
     subject: applyVariables(subjectTpl, vars),
     html: applyVariables(html, vars),
+    bulk: true,
+    unsubscribeUrl: vars.unsubscribeUrl,
   });
 }
 
@@ -429,7 +480,7 @@ export async function sendProductUpdateEmail(input: {
   );
 
   const productImageSection = input.productImageUrl
-    ? `<img src="${input.productImageUrl}" alt="${input.productName}" style="width:100%;height:220px;object-fit:cover;" />`
+    ? `<img src="${input.productImageUrl}" alt="${sanitizeForHtml(input.productName)}" style="width:100%;height:220px;object-fit:cover;display:block;border:0;outline:none;text-decoration:none;background:#f0ece8;" />`
     : "";
 
   const vars: Record<string, string> = {
@@ -442,11 +493,12 @@ export async function sendProductUpdateEmail(input: {
     unsubscribeUrl: `${STORE_URL}/unsubscribe`,
   };
 
-  await transporter.sendMail({
-    from: EMAIL_FROM,
+  await deliver({
     to: input.to,
     subject: applyVariables(subject, vars),
     html: applyVariables(html, vars),
+    bulk: true,
+    unsubscribeUrl: vars.unsubscribeUrl,
   });
 }
 
@@ -465,7 +517,7 @@ export async function sendCollectionUpdateEmail(input: {
   );
 
   const collectionImageSection = input.collectionImageUrl
-    ? `<img src="${input.collectionImageUrl}" alt="${input.collectionName}" style="width:100%;height:240px;object-fit:cover;" />`
+    ? `<img src="${input.collectionImageUrl}" alt="${sanitizeForHtml(input.collectionName)}" style="width:100%;height:240px;object-fit:cover;display:block;border:0;outline:none;text-decoration:none;background:#f0ece8;" />`
     : "";
 
   const vars: Record<string, string> = {
@@ -477,11 +529,12 @@ export async function sendCollectionUpdateEmail(input: {
     unsubscribeUrl: `${STORE_URL}/unsubscribe`,
   };
 
-  await transporter.sendMail({
-    from: EMAIL_FROM,
+  await deliver({
     to: input.to,
     subject: applyVariables(subject, vars),
     html: applyVariables(html, vars),
+    bulk: true,
+    unsubscribeUrl: vars.unsubscribeUrl,
   });
 }
 
@@ -583,8 +636,7 @@ export async function sendCustomEmail(input: {
 }) {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return;
 
-  await transporter.sendMail({
-    from: EMAIL_FROM,
+  await deliver({
     to: input.to,
     subject: input.subject,
     html: input.html,
@@ -606,7 +658,13 @@ export async function sendWelcomeEmail(input: {
     .replace(/\{\{unsubscribeUrl\}\}/g, `${STORE_URL}/unsubscribe`);
   const subject = WELCOME_EMAIL_TEMPLATE.subject;
 
-  await transporter.sendMail({ from: EMAIL_FROM, to: input.to, subject, html });
+  await deliver({
+    to: input.to,
+    subject,
+    html,
+    bulk: true,
+    unsubscribeUrl: `${STORE_URL}/unsubscribe`,
+  });
 }
 
 // ─── THANK-YOU EMAIL (to an existing order customer) ────────────────────────
@@ -624,5 +682,5 @@ export async function sendThankYouEmail(input: {
     .replace(/\{\{storeUrl\}\}/g, STORE_URL);
   const subject = THANK_YOU_EMAIL_TEMPLATE.subject;
 
-  await transporter.sendMail({ from: EMAIL_FROM, to: input.to, subject, html });
+  await deliver({ to: input.to, subject, html });
 }

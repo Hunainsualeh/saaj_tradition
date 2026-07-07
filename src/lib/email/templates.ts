@@ -20,7 +20,7 @@ const TEXT_MUTED = "#737373";
 
 const LOGO_URL = "https://res.cloudinary.com/db5uillhc/image/upload/v1773048715/saaj-tradition/logo-golden.png";
 
-const emailBase = (content: string) => `
+const emailBase = (content: string, preheader = "") => `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -76,19 +76,24 @@ const emailBase = (content: string) => `
       .info-grid { display: block !important; }
       .info-grid td { display: block !important; width: 100% !important; border-right: none !important; border-bottom: 1px solid rgba(0,0,0,0.05) !important; padding: 16px 0 !important; }
       .info-grid td:last-child { border-bottom: none !important; }
-      .item-image { display: none !important; }
+      /* Keep the product thumbnail visible on mobile (previously hidden) — just
+         tighten it so the row still fits a narrow screen. */
+      .item-image { padding: 10px !important; width: 56px !important; }
+      .item-image img { width: 48px !important; height: 48px !important; }
       h2 { font-size: 20px !important; }
     }
   </style>
 </head>
 <body style="background-color: ${BG_BODY}; margin: 0; padding: 0;">
+<!-- Preheader: the preview snippet shown in the inbox list, hidden in the body. -->
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:${BG_BODY};opacity:0;">${preheader}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
 <table width="100%" cellpadding="0" cellspacing="0" style="background-color: ${BG_BODY}; min-height: 100vh;">
   <tr><td align="center" class="email-wrapper" style="padding: 60px 24px;">
     <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 800px; margin: 0 auto;">
       <tr>
         <td style="text-align: center; padding-bottom: 40px;">
           <a href="{{storeUrl}}" style="display: inline-block;">
-            <img src="${LOGO_URL}" alt="Saaj Tradition" width="90" height="90" style="width: 90px; height: 90px; object-fit: contain; display: inline-block;" />
+            <img src="${LOGO_URL}" alt="Saaj Tradition" width="90" height="90" style="width: 90px; height: 90px; object-fit: contain; display: inline-block; border: 0; outline: none; text-decoration: none;" />
           </a>
           <div style="font-family: 'Playfair Display', Georgia, serif; font-size: 26px; font-weight: 500; color: ${TEXT_DARK}; letter-spacing: 3px; line-height: 1.2; margin-top: 16px; text-transform: uppercase;">
             Saaj Tradition
@@ -127,6 +132,15 @@ const emailBase = (content: string) => `
 const sectionHeading = (text: string) => `
   <h2 style="font-family: 'Playfair Display', Georgia, serif; font-size: 20px; font-weight: 600; color: ${TEXT_DARK}; margin-bottom: 24px; text-transform: capitalize; letter-spacing: 0.5px;">${text}</h2>
 `;
+
+// Bulletproof buttons: the .btn/.btn-outline classes only exist in the <head>
+// <style>, which Gmail's mobile app and several webmail clients strip. Repeating
+// the full styling INLINE guarantees the CTA still looks like a button there.
+const btnPrimary = (href: string, label: string) => `
+  <a href="${href}" class="btn" style="display:inline-block;background-color:${PASTEL_HIGHLIGHT};color:${TEXT_DARK};text-decoration:none;padding:16px 42px;border-radius:50px;font-family:'Lato',Arial,sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;mso-padding-alt:16px 42px;">${label}</a>`;
+
+const btnOutline = (href: string, label: string) => `
+  <a href="${href}" class="btn-outline" style="display:inline-block;background-color:transparent;border:1px solid ${TEXT_DARK};color:${TEXT_DARK};text-decoration:none;padding:15px 42px;border-radius:50px;font-family:'Lato',Arial,sans-serif;font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;mso-padding-alt:15px 42px;">${label}</a>`;
 
 // ─── ORDER CONFIRMATION (Customer) ───────────────────────────────────────────
 export const ORDER_CONFIRMATION_TEMPLATE = {
@@ -183,12 +197,8 @@ export const ORDER_CONFIRMATION_TEMPLATE = {
     </div>
 
     <div style="text-align: center; margin-top: 56px;">
-      <a href="{{trackingUrl}}" class="btn" style="margin-bottom: 16px; margin-right: 12px;">
-        Track My Order
-      </a>
-      <a href="{{storeUrl}}" class="btn-outline">
-        Continue Shopping
-      </a>
+      <span style="display:inline-block; margin: 0 6px 16px;">${btnPrimary("{{trackingUrl}}", "Track My Order")}</span>
+      <span style="display:inline-block; margin: 0 6px 16px;">${btnOutline("{{storeUrl}}", "Continue Shopping")}</span>
     </div>
 
     <div style="margin-top: 48px; text-align: center;">
@@ -197,7 +207,7 @@ export const ORDER_CONFIRMATION_TEMPLATE = {
         <a href="mailto:{{storeEmail}}" style="color: ${TEXT_DARK}; font-weight: 600;">{{storeEmail}}</a>
       </p>
     </div>
-  `),
+  `, "Thank you — your order #{{orderNumber}} is confirmed and being prepared with care."),
 };
 
 // ─── ORDER ADMIN NOTIFICATION ─────────────────────────────────────────────────
@@ -254,11 +264,9 @@ export const ORDER_ADMIN_NOTIFICATION_TEMPLATE = {
     </div>
 
     <div style="text-align: center; margin-top: 56px;">
-      <a href="{{adminOrderUrl}}" class="btn">
-        View In Dashboard
-      </a>
+      ${btnPrimary("{{adminOrderUrl}}", "View In Dashboard")}
     </div>
-  `),
+  `, "New order #{{orderNumber}} — Rs. {{total}} from {{customerName}}."),
 };
 
 // ─── ORDER STATUS UPDATE ──────────────────────────────────────────────────────
@@ -282,14 +290,10 @@ export const ORDER_STATUS_UPDATE_TEMPLATE = {
     {{customMessage}}
 
     <div style="text-align: center; margin-top: 56px;">
-      <a href="{{trackingUrl}}" class="btn" style="margin-bottom: 16px; margin-right: 12px;">
-        Track My Order
-      </a>
-      <a href="{{storeUrl}}" class="btn-outline">
-        Visit Store
-      </a>
+      <span style="display:inline-block; margin: 0 6px 16px;">${btnPrimary("{{trackingUrl}}", "Track My Order")}</span>
+      <span style="display:inline-block; margin: 0 6px 16px;">${btnOutline("{{storeUrl}}", "Visit Store")}</span>
     </div>
-  `),
+  `, "An update on your order #{{orderNumber}} — {{orderStatus}}."),
 };
 
 // ─── NEWSLETTER ───────────────────────────────────────────────────────────────
@@ -310,9 +314,7 @@ export const NEWSLETTER_TEMPLATE = {
     </div>
 
     <div style="text-align: center; margin-top: 56px;">
-      <a href="{{ctaUrl}}" class="btn">
-        {{ctaText}}
-      </a>
+      ${btnPrimary("{{ctaUrl}}", "{{ctaText}}")}
     </div>
 
     <div style="margin-top: 56px; padding-top: 32px; border-top: 1px solid ${PASTEL_ACCENT}; text-align: center;">
@@ -321,7 +323,7 @@ export const NEWSLETTER_TEMPLATE = {
         <a href="{{unsubscribeUrl}}" style="color: ${TEXT_DARK}; text-decoration: underline;">Unsubscribe</a>
       </p>
     </div>
-  `),
+  `, "{{emailHeading}} — a note from Saaj Tradition."),
 };
 
 // ─── PRODUCT UPDATE ───────────────────────────────────────────────────────────
@@ -345,9 +347,7 @@ export const PRODUCT_UPDATE_TEMPLATE = {
     </div>
 
     <div style="text-align: center;">
-      <a href="{{productUrl}}" class="btn">
-        Shop Now
-      </a>
+      ${btnPrimary("{{productUrl}}", "Shop Now")}
     </div>
 
     <div style="margin-top: 56px; padding-top: 32px; border-top: 1px solid ${PASTEL_ACCENT}; text-align: center;">
@@ -355,7 +355,7 @@ export const PRODUCT_UPDATE_TEMPLATE = {
         <a href="{{unsubscribeUrl}}" style="color: ${TEXT_DARK}; text-decoration: underline;">Unsubscribe</a>
       </p>
     </div>
-  `),
+  `, "Just arrived: {{productName}} — now at Saaj Tradition."),
 };
 
 // ─── COLLECTION UPDATE ────────────────────────────────────────────────────────
@@ -378,9 +378,7 @@ export const COLLECTION_UPDATE_TEMPLATE = {
     </div>
 
     <div style="text-align: center;">
-      <a href="{{collectionUrl}}" class="btn">
-        Explore Collection
-      </a>
+      ${btnPrimary("{{collectionUrl}}", "Explore Collection")}
     </div>
 
     <div style="margin-top: 56px; padding-top: 32px; border-top: 1px solid ${PASTEL_ACCENT}; text-align: center;">
@@ -388,7 +386,7 @@ export const COLLECTION_UPDATE_TEMPLATE = {
         <a href="{{unsubscribeUrl}}" style="color: ${TEXT_DARK}; text-decoration: underline;">Unsubscribe</a>
       </p>
     </div>
-  `),
+  `, "A new collection has arrived: {{collectionName}}."),
 };
 
 // ─── WELCOME EMAIL (new subscriber) ─────────────────────────────────────────
@@ -427,9 +425,7 @@ export const WELCOME_EMAIL_TEMPLATE = {
     </div>
 
     <div style="text-align: center; margin-bottom: 48px;">
-      <a href="{{storeUrl}}" class="btn">
-        Step Inside
-      </a>
+      ${btnPrimary("{{storeUrl}}", "Step Inside")}
     </div>
 
     <p style="color: ${TEXT_MUTED}; font-size: 15px; line-height: 1.8; text-align: center; font-style: italic;">
@@ -442,7 +438,7 @@ export const WELCOME_EMAIL_TEMPLATE = {
         <a href="{{unsubscribeUrl}}" style="color: ${TEXT_DARK}; text-decoration: underline;">Unsubscribe</a>
       </p>
     </div>
-  `),
+  `, "Welcome to Saaj Tradition — elegance, heritage, and craftsmanship await."),
 };
 
 // ─── THANK-YOU EMAIL (order customer) ───────────────────────────────────────
@@ -473,14 +469,12 @@ export const THANK_YOU_EMAIL_TEMPLATE = {
     </p>
 
     <div style="text-align: center; margin-bottom: 48px;">
-      <a href="{{storeUrl}}" class="btn">
-        Return to Store
-      </a>
+      ${btnPrimary("{{storeUrl}}", "Return to Store")}
     </div>
 
     <p style="color: ${TEXT_MUTED}; font-size: 15px; line-height: 1.8; text-align: center; font-style: italic;">
       With sincere gratitude,<br/>
       <strong style="color: ${TEXT_DARK}; font-style: normal;">The Saaj Tradition Team</strong>
     </p>
-  `),
+  `, "A heartfelt thank you for your order #{{orderNumber}} from Saaj Tradition."),
 };

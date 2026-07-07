@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Send, Loader2, Users } from "lucide-react";
 import { AdminButton } from "../AdminButton";
+import { BroadcastImageField } from "./BroadcastImageField";
 import {
   sendBroadcastNewsletter,
   sendProductUpdateBroadcast,
@@ -147,9 +148,7 @@ export function AdminBroadcastForm({ subscriberCount }: Props) {
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none font-mono"
               />
             </Field>
-            <Field label="Image URL (optional)">
-              <Input value={imageUrl} onChange={setImageUrl} placeholder="https://..." />
-            </Field>
+            <BroadcastImageField label="Banner Image (optional)" value={imageUrl} onChange={setImageUrl} />
             <div className="grid grid-cols-2 gap-4">
               <Field label="CTA Button Text">
                 <Input value={ctaText} onChange={setCtaText} placeholder="Shop Now" />
@@ -174,14 +173,10 @@ export function AdminBroadcastForm({ subscriberCount }: Props) {
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none"
               />
             </Field>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Price (Rs.)" required>
-                <Input type="number" value={productPrice} onChange={setProductPrice} placeholder="2500" />
-              </Field>
-              <Field label="Product Image URL">
-                <Input value={productImage} onChange={setProductImage} placeholder="https://..." />
-              </Field>
-            </div>
+            <Field label="Price (Rs.)" required>
+              <Input type="number" value={productPrice} onChange={setProductPrice} placeholder="2500" />
+            </Field>
+            <BroadcastImageField label="Product Image" value={productImage} onChange={setProductImage} />
             <Field label="Product Page URL" required>
               <Input value={productUrl} onChange={setProductUrl} placeholder="https://..." />
             </Field>
@@ -201,9 +196,7 @@ export function AdminBroadcastForm({ subscriberCount }: Props) {
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none"
               />
             </Field>
-            <Field label="Collection Image URL">
-              <Input value={collectionImage} onChange={setCollectionImage} placeholder="https://..." />
-            </Field>
+            <BroadcastImageField label="Collection Image" value={collectionImage} onChange={setCollectionImage} />
             <Field label="Collection Page URL" required>
               <Input value={collectionUrl} onChange={setCollectionUrl} placeholder="https://..." />
             </Field>
