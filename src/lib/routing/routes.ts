@@ -12,6 +12,7 @@ export const routes = {
   checkoutSuccess: "/checkout/success",
   track: "/track",
   returnPolicy: "/return-policy",
+  shippingPolicy: "/shipping-policy",
   privacyPolicy: "/privacy-policy",
   termsOfUse: "/terms-of-use",
   termsOfSale: "/terms-of-sale",

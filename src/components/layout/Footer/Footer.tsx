@@ -240,6 +240,7 @@ export function Footer({
             {/* Legal links */}
             <div className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 text-gray-400">
               <Link href={routes.returnPolicy} className="hover:text-gray-600 transition-colors duration-200">Returns</Link>
+              <Link href={routes.shippingPolicy} className="hover:text-gray-600 transition-colors duration-200">Shipping</Link>
               <Link href={routes.privacyPolicy} className="hover:text-gray-600 transition-colors duration-200">Privacy</Link>
               <Link href={routes.termsOfUse} className="hover:text-gray-600 transition-colors duration-200">Terms of Use</Link>
               <Link href={routes.termsOfSale} className="hover:text-gray-600 transition-colors duration-200">Terms of Sale</Link>

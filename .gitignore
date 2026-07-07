@@ -44,3 +44,9 @@ next-env.d.ts
 storybook-static
 
 /src/generated/prisma
+
+# local dev artifacts (screenshots, audit reports)
+/reports/
+/footer.png
+/shop.png
+/shopp.jpeg

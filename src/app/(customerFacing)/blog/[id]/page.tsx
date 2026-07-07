@@ -50,7 +50,7 @@ export default async function BlogIdPage({ params }: BlogIdPageProps) {
 
   return (
     <main>
-      <section className="flex flex-col gap-10 mx-auto pt-4 xl:pt-10 pb-16 md:pb-25 px-5 md:px-0 w-full md:w-3/4 xl:w-3/5">
+      <section className="flex flex-col gap-10 mx-auto pt-4 xl:pt-10 pb-16 md:pb-25 px-5 md:px-0 w-full max-w-2xl">
         <div className="flex flex-col gap-6">
           <BreadCrumb
             items={[
