@@ -32,7 +32,7 @@ export function NewsletterCard({
           alt="Newsletter"
           fill
           className="object-cover rounded-sm"
-          sizes="(max-width: 1280px) 50vw, 100vw"
+          sizes="(min-width: 1280px) 50vw, 100vw"
         />
       </AnimateFadeIn>
     </div>

@@ -157,7 +157,7 @@ export function CheckoutSuccessUI({ order }: CheckoutSuccessUIProps) {
                 {/* Product */}
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="relative w-14 h-14 shrink-0 rounded overflow-hidden border border-neutral-04">
-                    <Image src={item.image} alt={item.title} fill className="object-cover" />
+                    <Image src={item.image} alt={item.title} fill sizes="56px" quality={60} className="object-cover" />
                   </div>
                   <div className="min-w-0">
                     <p className="font-semibold text-sm text-neutral-11 truncate">{item.title}</p>

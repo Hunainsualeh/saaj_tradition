@@ -18,7 +18,15 @@ const PASTEL_HIGHLIGHT = "#E6DAC3";
 const TEXT_DARK = "#2C2C2C";
 const TEXT_MUTED = "#737373";
 
-const LOGO_URL = "https://res.cloudinary.com/db5uillhc/image/upload/v1773048715/saaj-tradition/logo-golden.png";
+// Serve the brand mark through a Cloudinary transform sized for the email
+// header rather than the raw 1563×1563 / 117 KB original. Why this matters:
+//   • w_240,c_fit → crisp at 2× retina for the ~100 px display slot, no aliasing.
+//   • f_png       → keeps universal email-client support + transparency (f_auto
+//                   could hand Outlook a WebP it can't render).
+//   • q_auto      → drops the payload to ~5 KB, so the header paints instantly
+//                   and is never deferred/blocked by clients as a "heavy" image.
+const LOGO_URL =
+  "https://res.cloudinary.com/db5uillhc/image/upload/f_png,q_auto,w_240,h_240,c_fit/v1773048715/saaj-tradition/logo-golden.png";
 
 const emailBase = (content: string, preheader = "") => `
 <!DOCTYPE html>
@@ -93,7 +101,7 @@ const emailBase = (content: string, preheader = "") => `
       <tr>
         <td style="text-align: center; padding-bottom: 40px;">
           <a href="{{storeUrl}}" style="display: inline-block;">
-            <img src="${LOGO_URL}" alt="Saaj Tradition" width="90" height="90" style="width: 90px; height: 90px; object-fit: contain; display: inline-block; border: 0; outline: none; text-decoration: none;" />
+            <img src="${LOGO_URL}" alt="Saaj Tradition" width="100" height="100" style="width: 100px; height: 100px; max-width: 100px; object-fit: contain; display: inline-block; border: 0; outline: none; text-decoration: none;" />
           </a>
           <div style="font-family: 'Playfair Display', Georgia, serif; font-size: 26px; font-weight: 500; color: ${TEXT_DARK}; letter-spacing: 3px; line-height: 1.2; margin-top: 16px; text-transform: uppercase;">
             Saaj Tradition

@@ -59,13 +59,15 @@ const nextConfig: NextConfig = {
     // through the Vercel Image Optimization API. This removes a redundant cold
     // transform per size and, critically, stops burning the Vercel Hobby-plan
     // optimization quota — the cause of product images rendering inconsistently
-    // in production. Local /assets still use the built-in optimizer.
-    // See src/lib/image-loader.ts.
+    // in production. See src/lib/image-loader.ts.
+    // NOTE: configuring a loaderFile disables the built-in /_next/image route
+    // entirely, so local /assets images are served RAW at their on-disk size —
+    // they must be pre-resized/compressed to their display size (see the
+    // asset-recompression passes).
     loader: "custom",
     loaderFile: "./src/lib/image-loader.ts",
-    // Serve AVIF (best compression) with a WebP fallback. ~20-30% smaller than
-    // WebP-only; the extra cold-encode cost is paid once, then cached 31 days.
-    // (Applies to the local /assets images still served by the built-in loader.)
+    // Inert while the custom loaderFile is set (no built-in optimizer runs).
+    // Kept so the AVIF-first intent survives if the loader strategy changes.
     formats: ["image/avif", "image/webp"],
     // 50/60/75 cover the bulk of the UI (default is 75). 85/90 are reserved for
     // focal images (main product photo / hero) that opt into a crisper render.

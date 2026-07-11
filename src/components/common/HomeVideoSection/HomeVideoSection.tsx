@@ -25,6 +25,16 @@ function optimizeCloudinaryVideo(url: string): string {
   return url;
 }
 
+/**
+ * Derive the `<source type>` from the file actually being served instead of
+ * assuming the slot's container. The admin can (and currently does) save an
+ * .mp4 URL into the "webm" slot; declaring `type="video/webm"` for it makes
+ * the browser commit to a source based on a false capability check.
+ */
+function videoMime(url: string): string {
+  return /\.webm(\?|#|$)/i.test(url) ? "video/webm" : "video/mp4";
+}
+
 type CachedVideo = {
   mp4: string;
   webm: string;
@@ -73,7 +83,7 @@ export function HomeVideoSection({
   const videoMp4 = mp4Prop || cached?.mp4 || "/assets/video-home-com.mp4";
   const videoWebm = webmProp || cached?.webm || "/assets/video-home.webm";
   const poster =
-    posterProp || cached?.poster || "/assets/video-home-poster.png";
+    posterProp || cached?.poster || "/assets/video-home-poster.jpg";
 
   // Persist to localStorage whenever the resolved values change
   useEffect(() => {
@@ -113,8 +123,8 @@ export function HomeVideoSection({
             playsInline
             preload="auto"
           >
-            {videoWebm && <source src={videoWebmSrc} type="video/webm" />}
-            {videoMp4 && <source src={videoMp4Src} type="video/mp4" />}
+            {videoWebm && <source src={videoWebmSrc} type={videoMime(videoWebmSrc)} />}
+            {videoMp4 && <source src={videoMp4Src} type={videoMime(videoMp4Src)} />}
             Your browser does not support the video tag.
           </video>
         )}

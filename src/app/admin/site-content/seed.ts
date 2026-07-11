@@ -220,7 +220,7 @@ const SITE_CONTENT_DEFAULTS: SiteContentDefault[] = [
   },
   {
     key: "hero_video_poster",
-    value: "/assets/video-home-poster.png",
+    value: "/assets/video-home-poster.jpg",
     label: "Home Video Poster Image (shown while video loads)",
     group: "video-section",
   },

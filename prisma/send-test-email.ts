@@ -20,7 +20,7 @@ const STORE_URL =
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000");
+    : "https://saajtradition.com");
 
 const TO = "alijanali0091@gmail.com";
 
