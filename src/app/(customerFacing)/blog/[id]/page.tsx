@@ -7,6 +7,7 @@ import { routes } from "@/lib";
 import { getBlogBySlug } from "@/lib/server/queries";
 import { formatBlogDate } from "@/lib/utils";
 import { convertStringToBlog } from "@/lib/parsers";
+import { notFound } from "next/navigation";
 
 type BlogIdPageProps = {
   params: { id: string };
@@ -18,10 +19,10 @@ export async function generateMetadata(
   const { id } = await props.params;
   const blog = await getBlogBySlug(id);
 
+  // Thrown here (not only in the page body) so the response carries a REAL
+  // 404 status — the page body streams behind loading.tsx after a 200 shell.
   if (!blog.success || !blog.data) {
-    return {
-      title: "Blog Post",
-    };
+    notFound();
   }
 
   return {
@@ -36,16 +37,10 @@ export default async function BlogIdPage({ params }: BlogIdPageProps) {
   // === QUERIES ===
   const blog = await getBlogBySlug(id);
 
+  // A real 404 (not an empty 200 page) so unknown blog URLs aren't indexed
+  // as thin duplicate pages.
   if (!blog.success || !blog.data) {
-    return (
-      <main>
-        <section className="pb-16 md:pb-25 px-5 md:px-0 w-100 md:w-75 xl:w-60">
-          <BreadCrumb
-            items={[{ label: BLOG_NAVBAR_TEXT, href: routes.blog }]}
-          />
-        </section>
-      </main>
-    );
+    notFound();
   }
 
   return (

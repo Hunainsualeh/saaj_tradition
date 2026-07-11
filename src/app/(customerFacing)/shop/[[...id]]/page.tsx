@@ -12,8 +12,14 @@ import Link from "next/link";
 import { routes } from "@/lib";
 import { getProductsByCategorySlug, getProductsByCollectionSlug, getCollections, getAllCategories } from "@/lib/server/queries";
 import type { ProductQueryFilters } from "@/lib/server/queries/product-queries";
+import { notFound } from "next/navigation";
 
 const PRODUCTS_PER_PAGE = 12;
+
+// The only single-segment shop sub-pages that exist. Anything else
+// (/shop/whatever) must 404 instead of rendering the full catalogue at a
+// duplicate URL — an unbounded soft-404/duplicate-content space otherwise.
+const VALID_SHOP_SUBPAGES = ["collections", "categories", "new-arrivals"];
 
 const getShopPageMeta = (
   id?: string[],
@@ -81,9 +87,34 @@ export async function generateMetadata({
   params: Promise<{ id?: string[] }>;
 }): Promise<Metadata> {
   const { id } = await params;
+
+  // 404s thrown here (in addition to the page body) carry a REAL 404 status:
+  // generateMetadata resolves before streaming, whereas the page body renders
+  // behind loading.tsx after a 200 shell has already flushed.
+  if (id && id.length === 1 && !VALID_SHOP_SUBPAGES.includes(id[0])) {
+    notFound();
+  }
+  if (id && id.length === 2 && id[0] !== "categories" && id[0] !== "collections") {
+    notFound();
+  }
+  if (id && id.length > 2) {
+    notFound();
+  }
+
   const [collectionsRes, categoriesRes] = await Promise.all([getCollections(), getAllCategories()]);
   const collections = collectionsRes.success ? collectionsRes.data : [];
   const categories = categoriesRes.success ? categoriesRes.data : [];
+
+  if (id && id.length === 2) {
+    const [type, slug] = id;
+    if (type === "categories" && categoriesRes.success && !categories.some((c) => c.slug === slug)) {
+      notFound();
+    }
+    if (type === "collections" && collectionsRes.success && !collections.some((c) => c.slug === slug)) {
+      notFound();
+    }
+  }
+
   const { title } = getShopPageMeta(id, collections, categories);
 
   return {
@@ -109,6 +140,19 @@ export default async function ShopPage({
   const { id } = await params;
   const rawFilters = await searchParams;
   const currentPage = Math.max(1, parseInt(rawFilters.page ?? "1", 10) || 1);
+
+  // Reject URL shapes that can never resolve to a real page (see
+  // VALID_SHOP_SUBPAGES). Unknown category/collection SLUGS are validated
+  // further down, after the lists have been fetched.
+  if (id && id.length === 1 && !VALID_SHOP_SUBPAGES.includes(id[0])) {
+    notFound();
+  }
+  if (id && id.length === 2 && id[0] !== "categories" && id[0] !== "collections") {
+    notFound();
+  }
+  if (id && id.length > 2) {
+    notFound();
+  }
 
   // === COLLECTIONS INDEX (/shop/collections) ===
   // Render a grid of collection cards — mirroring the home page's collections
@@ -240,6 +284,18 @@ export default async function ShopPage({
   ]);
   const collections = collectionsRes.success ? collectionsRes.data : [];
   const categories = categoriesRes.success ? categoriesRes.data : [];
+
+  // Unknown category/collection slug → real 404. Only when the lookup list
+  // actually loaded (success) — a transient DB error must not 404 a real page.
+  if (id && id.length === 2) {
+    const [type, slug] = id;
+    if (type === "categories" && categoriesRes.success && !categories.some((c) => c.slug === slug)) {
+      notFound();
+    }
+    if (type === "collections" && collectionsRes.success && !collections.some((c) => c.slug === slug)) {
+      notFound();
+    }
+  }
 
   const { title } = getShopPageMeta(id, collections, categories);
 

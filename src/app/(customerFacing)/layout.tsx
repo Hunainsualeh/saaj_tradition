@@ -59,8 +59,16 @@ export default async function CustomerLayout({
       <CartSidebarProvider fetchCart={getCartAction}>
         <CartDialogProvider>
           <div className="min-h-screen flex flex-col">
+            {/* WCAG 2.4.1: lets keyboard/screen-reader users jump past the
+                navbar. Visually hidden until focused. */}
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-sm focus:bg-neutral-12 focus:px-4 focus:py-2 focus:text-white"
+            >
+              Skip to main content
+            </a>
             <Navbar collections={collections} categories={categories} />
-            <div className="flex-1">{children}</div>
+            <div id="main-content" className="flex-1">{children}</div>
             <Footer
               email={footerEmail}
               phone={footerPhone}

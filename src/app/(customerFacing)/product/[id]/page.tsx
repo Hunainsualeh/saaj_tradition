@@ -13,7 +13,7 @@ import {
 import { routes } from "@/lib";
 import { getProductBySlug, getThreeRandomProducts } from "@/lib/server/queries";
 import { getSiteUrl } from "@/lib/site-url";
-import Script from "next/script";
+import { notFound } from "next/navigation";
 
 // ISR: product pages are cached and refreshed at most every 5 minutes; product
 // edits invalidate the CACHE_TAG_PRODUCT tag for immediate updates.
@@ -31,10 +31,11 @@ export async function generateMetadata(
   const { id } = await props.params;
   const product = await getProductBySlug(id);
 
+  // Thrown here (not only in the page body) so the response carries a REAL
+  // 404 status: generateMetadata resolves before streaming starts, whereas
+  // the page body renders behind loading.tsx after a 200 shell has flushed.
   if (!product.success || !product.data) {
-    return {
-      title: "Product",
-    };
+    notFound();
   }
 
   const p = product.data;
@@ -84,16 +85,10 @@ export default async function ProductPage(props: ProductPageProps) {
     getThreeRandomProducts(id),
   ]);
 
+  // A real 404 (not an empty 200 page): search engines were indexing unknown
+  // product URLs as thin duplicate pages ("soft 404s").
   if (!productData.success || !productData.data) {
-    return (
-      <main>
-        <section className="pb-16 md:pb-25 px-5 md:px-0 w-100 md:w-75 xl:w-60">
-          <BreadCrumb
-            items={[{ label: SHOP_NAVBAR_TEXT, href: routes.shop }]}
-          />
-        </section>
-      </main>
-    );
+    notFound();
   }
 
   // === PREPARE DATA ===
@@ -112,8 +107,13 @@ export default async function ProductPage(props: ProductPageProps) {
     description: product.description,
     image: product.images,
     url: `${siteUrl}/product/${product.slug}`,
+    brand: {
+      "@type": "Brand",
+      name: "Saaj Tradition",
+    },
     offers: {
       "@type": "Offer",
+      url: `${siteUrl}/product/${product.slug}`,
       priceCurrency: "PKR",
       price: product.price,
       availability: isAvailable
@@ -126,13 +126,33 @@ export default async function ProductPage(props: ProductPageProps) {
     },
   };
 
+  // Mirrors the visual breadcrumb so search results can show the site
+  // hierarchy (Home › Shop › Product) instead of a raw URL.
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+      { "@type": "ListItem", position: 2, name: "Shop", item: `${siteUrl}${routes.shop}` },
+      { "@type": "ListItem", position: 3, name: product.name },
+    ],
+  };
+
   return (
     <main>
-      <Script
-        id="product-jsonld"
+      {/* Plain <script>, NOT next/script: next/script injects afterInteractive
+          (client-side), so the schema never reached the server HTML and raw-HTML
+          crawlers/validators couldn't see it. Matches the layout's pattern. */}
+      <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c"),
         }}
       />
       <BaseSection id="support-section" className="pb-16 xl:pb-20">
