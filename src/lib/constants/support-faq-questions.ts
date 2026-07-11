@@ -7,7 +7,7 @@ export const supportFaqQuestions = [
   {
     question: "What is your return policy?",
     answer:
-      "We offer a 10-day return policy. Items must be in original condition with tags attached.",
+      "We offer a 7-day return policy. Items must be in original condition with tags attached.",
   },
   {
     question: "Do you offer international shipping?",
