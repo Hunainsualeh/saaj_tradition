@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Order Confirmed",
+  robots: { index: false, follow: false },
 };
 
 type CheckoutSuccessPageProps = {

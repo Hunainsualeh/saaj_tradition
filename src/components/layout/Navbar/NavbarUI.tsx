@@ -67,6 +67,18 @@ export function NavbarUI({ itemCount, collections = [], categories = [] }: Navba
     return () => { document.body.style.overflow = ""; };
   }, [showMobileMenu]);
 
+  useEffect(() => {
+    if (!showMobileMenu && !showSubMenu) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setShowMobileMenu(false);
+      setActiveSubMenu(null);
+      setShowSubMenu(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showMobileMenu, showSubMenu]);
+
   const isActive = useCallback(
     (href: string) => {
       if (href === routes.home) return pathName === href;
@@ -99,7 +111,7 @@ export function NavbarUI({ itemCount, collections = [], categories = [] }: Navba
 
         <nav className="mx-auto max-w-[1440px] px-5 md:px-8 lg:px-12 flex items-center justify-between h-[52px] md:h-[58px]">
           {/* Logo */}
-          <Link href={routes.home} className="flex items-center shrink-0 group select-none">
+          <Link href={routes.home} aria-label="Saaj Tradition home" className="flex items-center shrink-0 group select-none">
             <div className="flex flex-col items-start">
               <span
                 className="text-[17px] md:text-[19px] font-semibold tracking-[0.02em] text-neutral-12 transition-colors duration-200 group-hover:text-[#c9a84c]"
@@ -125,6 +137,9 @@ export function NavbarUI({ itemCount, collections = [], categories = [] }: Navba
                     onMouseLeave={handleSubMenuLeave}
                   >
                     <button
+                      type="button"
+                      aria-expanded={showSubMenu}
+                      aria-haspopup="true"
                       onClick={() => setShowSubMenu((s) => !s)}
                       className={cn(
                         "relative px-3 lg:px-3.5 py-1.5 text-[12.5px] lg:text-[13px] tracking-[0.01em] rounded-md transition-all duration-200 cursor-pointer flex items-center gap-1",
@@ -176,8 +191,9 @@ export function NavbarUI({ itemCount, collections = [], categories = [] }: Navba
           {/* Right: Cart + Mobile Toggle */}
           <div className="flex items-center gap-1 shrink-0">
             <button
+              type="button"
               onClick={openSidebar}
-              aria-label="Cart"
+              aria-label={itemCount > 0 ? `Open cart, ${itemCount} items` : "Open cart"}
               className={cn(
                 "relative p-2 rounded-lg transition-all duration-200 hover:bg-neutral-02 cursor-pointer",
                 showMobileMenu && "opacity-0 pointer-events-none md:opacity-100 md:pointer-events-auto",
@@ -192,6 +208,9 @@ export function NavbarUI({ itemCount, collections = [], categories = [] }: Navba
             </button>
 
             <button
+              type="button"
+              aria-expanded={showMobileMenu}
+              aria-controls="mobile-menu"
               aria-label={showMobileMenu ? "Close menu" : "Open menu"}
               onClick={() => { setShowMobileMenu(!showMobileMenu); setActiveSubMenu(null); }}
               className="p-2 rounded-lg transition-all duration-200 hover:bg-neutral-02 cursor-pointer md:hidden"

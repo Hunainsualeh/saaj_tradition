@@ -216,10 +216,12 @@ export function AdminEmailTemplateForm({ template }: Props) {
       if (result.success) {
         toast.success(template ? "Template saved!" : "Template created!");
         router.push(adminRoutes.emails);
-      } else {
-        toast.error("Failed to save template");
+        return;
       }
-    } finally {
+      toast.error(result.error || "Failed to save template");
+      setSaving(false);
+    } catch {
+      toast.error("Failed to save template");
       setSaving(false);
     }
   };

@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
 import { PolicyLayout, PolicyCard } from "@/components/common/PolicyPage";
 import { STORE_EMAIL } from "@/lib/constants/store-information";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Privacy Policy",
   description:
-    "How Saaj Tradition collects, uses, and protects your personal information.",
-};
+    "How Saaj Tradition collects, uses and protects your personal information when you shop online or in our Ahmedpur East boutique.",
+  path: "/privacy-policy",
+});
 
 const mailto = `mailto:${STORE_EMAIL}`;
 

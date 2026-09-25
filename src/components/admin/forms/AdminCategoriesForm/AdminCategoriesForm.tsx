@@ -27,6 +27,7 @@ import {
   updateCategoryById,
 } from "@/lib/server/actions";
 import { usePreviewUrl } from "@/hooks";
+import { adminRoutes } from "@/lib";
 
 type AdminCategoriesFormProps = {
   isEditMode?: boolean;
@@ -125,7 +126,8 @@ export function AdminCategoriesForm(props: AdminCategoriesFormProps) {
     if (!res.success) {
       setIsActionLocked(false);
       toast.error(
-        isEditMode ? "Error updating category" : "Error creating category",
+        res.error ||
+          (isEditMode ? "Error updating category" : "Error creating category"),
       );
       return;
     }
@@ -134,22 +136,23 @@ export function AdminCategoriesForm(props: AdminCategoriesFormProps) {
         ? "Category updated successfully!"
         : "Category created successfully!",
     );
-    router.back();
+    router.push(adminRoutes.categories);
   };
 
   const onDelete = async () => {
     if (!categoryData?.id) return;
+    if (!window.confirm("Delete this category? This action cannot be undone.")) return;
     setIsDeleting(true);
     setIsActionLocked(true);
     const res = await deleteCategoryById(categoryData?.id);
     if (!res.success) {
       setIsDeleting(false);
       setIsActionLocked(false);
-      toast.error("Error deleting category");
+      toast.error(res.error || "Error deleting category");
       return;
     }
     toast.success("Category deleted successfully!");
-    router.back();
+    router.push(adminRoutes.categories);
   };
 
   const isBusy = isActionLocked || isDeleting;

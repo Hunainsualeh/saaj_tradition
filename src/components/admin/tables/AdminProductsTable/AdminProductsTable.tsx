@@ -59,11 +59,12 @@ export function AdminProductsTable({
   );
   const [productsState, setProductsState] = useState(products);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [requestedPage, setCurrentPage] = useState(1);
 
   // === FUNCTIONS ===
   const deleteProduct = async (id: string) => {
     const deleted = await deleteProductById(id);
+    setDeletingId(null);
 
     if (!deleted.success) {
       console.error("Error deleting product:", deleted.error);
@@ -77,7 +78,9 @@ export function AdminProductsTable({
   };
 
   const deleteProducts = async (ids: string[]) => {
+    setDeletingIds(true);
     const deleted = await deleteProductsByIds(ids);
+    setDeletingIds(false);
 
     if (!deleted.success) {
       console.error("Error deleting products:", deleted.error);
@@ -138,6 +141,7 @@ export function AdminProductsTable({
   );
 
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  const currentPage = Math.min(requestedPage, Math.max(totalPages, 1));
   const paginatedProducts = filteredProducts.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
@@ -147,7 +151,7 @@ export function AdminProductsTable({
 
   return (
     <>
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-y-2">
         <AdminInput
           type="text"
           placeholder="Search by name, category, slug or description…"
@@ -171,6 +175,7 @@ export function AdminProductsTable({
           <AdminButton
             variant="destructive"
             onClick={() => setPendingDeleteIds(Array.from(selectedIds))}
+            disabled={deletingIds}
             className="me-3"
           >
             Delete Selected ({selectedIds.size})
@@ -321,17 +326,17 @@ export function AdminProductsTable({
 
       {/* === PAGINATION === */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 mt-4 text-sm">
           <span className="text-muted-foreground">
             Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
             {Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)} of{" "}
             {filteredProducts.length} products
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <AdminButton
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -349,7 +354,7 @@ export function AdminProductsTable({
             <AdminButton
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
             >
               <ChevronRight className="h-4 w-4" />
@@ -416,10 +421,8 @@ export function AdminProductsTable({
             <AdminAlertDialogAction
               disabled={deletingIds}
               onClick={() => {
-                setDeletingIds(true);
                 if (pendingDeleteIds) {
                   deleteProducts(pendingDeleteIds);
-                  setDeletingIds(false);
                 }
               }}
             >

@@ -34,7 +34,7 @@ export function HeroSection({
       <div className="h-[75dvh] w-full relative mt-auto overflow-hidden rounded-sm bg-neutral-11">
         <Image
           src={imageUrl}
-          alt="Hero Image"
+          alt=""
           fill
           sizes="100vw"
           quality={85}
@@ -57,9 +57,9 @@ export function HeroSection({
           <HeroSectionButton className="order-2 xl:order-1 mt-6 xl:mt-0" />
           <div className="flex flex-col xl:text-end gap-4 xl:ms-auto order-1 xl:order-2">
             <h1 className={cn("text-[clamp(2.5rem,8vw,5rem)]!")}>{heading}</h1>
-            <h5 className="text-white md:text-neutral-04 font-medium">
+            <p className="text-white md:text-neutral-04 font-medium">
               {subheading}
-            </h5>
+            </p>
           </div>
         </div>
       </div>

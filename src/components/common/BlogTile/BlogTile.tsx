@@ -52,7 +52,7 @@ export function BlogTile(props: BlogTileProps) {
           isBlogPage ? "flex flex-col gap-3" : "flex flex-col gap-3 md:gap-6"
         }
       >
-        <h5 className="text-lg xl:text-xl">{title}</h5>
+        <h3 className="text-lg xl:text-xl">{title}</h3>
         <p className="text-neutral-10 text-base">{description}</p>
       </div>
     </Link>

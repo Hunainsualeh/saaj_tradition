@@ -45,6 +45,7 @@ import {
   API_ROUTES,
   COMMON_CLOTHING_SIZES,
   ONE_SIZE_LABEL,
+  adminRoutes,
 } from "@/lib";
 import {
   createProduct,
@@ -446,7 +447,8 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
 
       if (!result.success) {
         throw new Error(
-          isEdit ? "Failed to update product" : "Failed to create product",
+          result.error ||
+            (isEdit ? "Failed to update product" : "Failed to create product"),
         );
       }
 
@@ -456,12 +458,16 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
           ? "Product updated successfully!"
           : "Product created successfully!",
       );
-      router.back();
+      router.push(adminRoutes.products);
     } catch (err) {
       console.error(err);
       if (isMounted.current) {
         setIsActionLocked(false);
-        toast.error("An unexpected error occurred");
+        toast.error(
+          err instanceof Error && err.message
+            ? err.message
+            : "An unexpected error occurred",
+        );
       }
     }
   };
@@ -482,6 +488,7 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
 
   const onDelete = async () => {
     if (!productData?.id) return;
+    if (!window.confirm("Delete this product? This action cannot be undone.")) return;
 
     setIsDeleting(true);
     setIsActionLocked(true);
@@ -491,12 +498,12 @@ export function AdminProductsForm(props: AdminProductsFormProps) {
     if (!res.success) {
       setIsDeleting(false);
       setIsActionLocked(false);
-      toast.error("Error deleting product");
+      toast.error(res.error || "Error deleting product");
       return;
     }
 
     toast.success("Product deleted successfully!");
-    router.back();
+    router.push(adminRoutes.products);
   };
 
   const isBusy = isActionLocked || isDeleting;

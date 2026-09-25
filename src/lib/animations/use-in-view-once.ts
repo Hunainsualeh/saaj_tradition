@@ -7,8 +7,10 @@ import { useEffect, useRef, useState } from "react";
  * Fires once when the element scrolls into view, then disconnects.
  * Falls back to "visible" when IntersectionObserver is unavailable (SSR/old).
  */
-export function useInViewOnce(rootMargin = "-150px") {
-  const ref = useRef<HTMLDivElement>(null);
+export function useInViewOnce<T extends Element = HTMLDivElement>(
+  rootMargin = "-150px",
+) {
+  const ref = useRef<T>(null);
   const [inView, setInView] = useState(false);
 
   useEffect(() => {

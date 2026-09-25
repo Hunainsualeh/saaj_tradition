@@ -39,9 +39,9 @@ export function PasswordUpdateForm() {
           id="newPassword"
           name="newPassword"
           type="password"
-          placeholder="Min 6 characters"
+          placeholder="Min 10 characters"
           required
-          minLength={6}
+          minLength={10}
           className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
         />
       </div>
@@ -59,7 +59,7 @@ export function PasswordUpdateForm() {
           type="password"
           placeholder="Re-enter new password"
           required
-          minLength={6}
+          minLength={10}
           className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
         />
       </div>

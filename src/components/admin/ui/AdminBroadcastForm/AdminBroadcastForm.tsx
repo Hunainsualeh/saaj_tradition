@@ -42,6 +42,11 @@ export function AdminBroadcastForm({ subscriberCount }: Props) {
   const [collectionImage, setCollectionImage] = useState("");
   const [collectionUrl, setCollectionUrl] = useState("");
 
+  const confirmSend = () =>
+    window.confirm(
+      `Send this broadcast to ${subscriberCount} subscriber${subscriberCount !== 1 ? "s" : ""}? This cannot be undone.`,
+    );
+
   const handleSend = async () => {
     setSending(true);
     try {
@@ -52,6 +57,7 @@ export function AdminBroadcastForm({ subscriberCount }: Props) {
           toast.error("Heading, subject, and body are required");
           return;
         }
+        if (!confirmSend()) return;
         result = await sendBroadcastNewsletter({
           emailHeading: heading,
           subject,
@@ -65,6 +71,7 @@ export function AdminBroadcastForm({ subscriberCount }: Props) {
           toast.error("All product fields are required");
           return;
         }
+        if (!confirmSend()) return;
         result = await sendProductUpdateBroadcast({
           productName,
           productDescription: productDesc,
@@ -77,6 +84,7 @@ export function AdminBroadcastForm({ subscriberCount }: Props) {
           toast.error("All collection fields are required");
           return;
         }
+        if (!confirmSend()) return;
         result = await sendCollectionUpdateBroadcast({
           collectionName,
           collectionDescription: collectionDesc,
@@ -88,7 +96,11 @@ export function AdminBroadcastForm({ subscriberCount }: Props) {
       if (result?.success && result.data) {
         toast.success(`Sent to ${result.data.sent}/${result.data.total} subscribers`);
       } else {
-        toast.error("Failed to send broadcast");
+        toast.error(
+          result && !result.success && result.error
+            ? result.error
+            : "Failed to send broadcast",
+        );
       }
     } finally {
       setSending(false);

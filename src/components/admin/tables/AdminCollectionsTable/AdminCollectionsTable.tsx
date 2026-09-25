@@ -42,6 +42,7 @@ export function AdminCollectionsTable({
 
   const deleteCollection = async (id: string) => {
     const deleted = await deleteCollectionById(id);
+    setDeletingId(null);
     if (!deleted.success) {
       console.error("Error deleting collection:", deleted.error);
       toast.error("Failed to delete collection. Please try again.");

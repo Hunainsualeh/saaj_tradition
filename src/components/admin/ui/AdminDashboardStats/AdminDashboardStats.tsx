@@ -52,7 +52,13 @@ const PAYMENT_STATUS_COLORS: Record<string, { bg: string; text: string; dot: str
 
 // ─── Greeting helper ─────────────────────────────────────────────────────────
 function getGreeting() {
-  const hour = new Date().getHours();
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      hourCycle: "h23",
+      timeZone: "Asia/Karachi",
+    }).format(new Date()),
+  );
   return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 }
 
@@ -474,6 +480,7 @@ export function AdminDashboardStats({ orderStats, productStats }: Props) {
                     </td>
                     <td className="py-2.5 px-1 text-neutral-08 hidden sm:table-cell whitespace-nowrap">
                       {new Date(order.createdAt).toLocaleDateString("en-PK", {
+                        timeZone: "Asia/Karachi",
                         day: "numeric",
                         month: "short",
                         year: "numeric",

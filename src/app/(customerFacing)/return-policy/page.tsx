@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
 import { PolicyLayout, PolicyCard } from "@/components/common/PolicyPage";
 import { STORE_EMAIL } from "@/lib/constants/store-information";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Return Policy",
-  description: "Saaj Tradition return, exchange, and refund policy.",
-};
+  description:
+    "Saaj Tradition 7-day return, exchange and refund policy for suits and dresses ordered online or bought at our Ahmedpur East boutique.",
+  path: "/return-policy",
+});
 
 const mailto = `mailto:${STORE_EMAIL}`;
 

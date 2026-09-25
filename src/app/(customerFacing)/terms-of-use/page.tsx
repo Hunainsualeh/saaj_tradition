@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
 import { PolicyLayout, PolicyCard } from "@/components/common/PolicyPage";
 import { STORE_EMAIL } from "@/lib/constants/store-information";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Terms of Use",
-  description: "Terms and conditions for using the Saaj Tradition website.",
-};
+  description:
+    "Terms and conditions for using the Saaj Tradition website, including accounts, content, orders and acceptable use of our online boutique.",
+  path: "/terms-of-use",
+});
 
 const mailto = `mailto:${STORE_EMAIL}`;
 

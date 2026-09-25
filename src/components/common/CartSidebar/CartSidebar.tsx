@@ -30,6 +30,15 @@ export function CartSidebar() {
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeSidebar();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, closeSidebar]);
+
   const items = cart?.items ?? [];
   const summary = cart?.summary ?? null;
   const isEmpty = items.length === 0 && !isLoading;
@@ -50,6 +59,10 @@ export function CartSidebar() {
 
       {/* Sidebar Panel */}
       <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Shopping cart"
+        inert={!isOpen}
         className={cn(
           "fixed top-0 right-0 z-[70] h-full w-full max-w-[420px] bg-white shadow-[-8px_0_30px_rgba(0,0,0,0.08)]",
           "flex flex-col transition-transform duration-350 ease-[cubic-bezier(0.32,0.72,0,1)]",

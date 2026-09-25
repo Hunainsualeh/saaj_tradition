@@ -10,6 +10,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { routes } from "@/lib";
+import { breadcrumbJsonLd, clampDescription, pageMetadata } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { getProductsByCategorySlug, getProductsByCollectionSlug, getCollections, getAllCategories } from "@/lib/server/queries";
 import type { ProductQueryFilters } from "@/lib/server/queries/product-queries";
 import { notFound } from "next/navigation";
@@ -21,33 +23,63 @@ const PRODUCTS_PER_PAGE = 12;
 // duplicate URL — an unbounded soft-404/duplicate-content space otherwise.
 const VALID_SHOP_SUBPAGES = ["collections", "categories", "new-arrivals"];
 
+type ShopPageMeta = {
+  title: string;
+  heading: string;
+  description: string;
+  intro: string;
+  path: string;
+  crumbs: { name: string; path?: string }[];
+};
+
 const getShopPageMeta = (
   id?: string[],
   collections?: { name: string; tagline: string | null; slug: string }[],
-  categories?: { name: string; slug: string }[],
-): { title: string; description: string } => {
-  const DEFAULT_TITLE = "Explore Our Shop";
-  const DEFAULT_DESCRIPTION =
-    "Discover handpicked products crafted with care and passion.";
-
+  categories?: { name: string; tagline?: string | null; slug: string }[],
+): ShopPageMeta => {
   if (id && id.length === 2) {
     const [type, slug] = id;
 
     if (type === "categories") {
       const category = categories?.find((c) => c.slug === slug);
+      const name = category?.name ?? "Shop";
+      const tagline = category?.tagline?.trim();
       return {
-        title: category?.name ?? DEFAULT_TITLE,
-        description: category ? `Browse our ${category.name} collection.` : DEFAULT_DESCRIPTION,
+        title: `${name} for Women | Buy Online in Pakistan`,
+        heading: name,
+        description: clampDescription(
+          `Shop ${name.toLowerCase()} for women at Saaj Tradition.${tagline ? ` ${tagline}.` : ""} Ladies boutique in Ahmedpur East, Bahawalpur with cash on delivery across Pakistan.`,
+        ),
+        intro:
+          tagline ||
+          `Browse ${name.toLowerCase()} from our Ahmedpur East boutique, delivered to Bahawalpur and across Pakistan.`,
+        path: `${routes.shopCategories}/${slug}`,
+        crumbs: [
+          { name: "Shop", path: routes.shop },
+          { name: "Categories", path: routes.shopCategories },
+          { name },
+        ],
       };
     }
 
-    const storeCollection = collections?.find(
-      (collection) => slug === collection.slug,
-    );
-
+    const collection = collections?.find((c) => c.slug === slug);
+    const name = collection?.name ?? "Collection";
+    const tagline = collection?.tagline?.trim();
     return {
-      title: storeCollection?.name ?? DEFAULT_TITLE,
-      description: storeCollection?.tagline ?? DEFAULT_DESCRIPTION,
+      title: `${name} | Ladies Suits & Dresses`,
+      heading: name,
+      description: clampDescription(
+        `${tagline ? `${tagline}. ` : ""}Shop the ${name} at Saaj Tradition, a ladies boutique in Ahmedpur East, District Bahawalpur. Cash on delivery across Pakistan.`,
+      ),
+      intro:
+        tagline ||
+        `Pieces from the ${name}, delivered from Ahmedpur East to Bahawalpur and across Pakistan.`,
+      path: `${routes.shopCollections}/${slug}`,
+      crumbs: [
+        { name: "Shop", path: routes.shop },
+        { name: "Collections", path: routes.shopCollections },
+        { name },
+      ],
     };
   }
 
@@ -56,41 +88,70 @@ const getShopPageMeta = (
 
     if (subpage === "collections") {
       return {
-        title: "Shop Collections",
+        title: "Collections: Eid, Summer & Festive Wear",
+        heading: "Shop Collections",
         description:
+          "Explore Saaj Tradition collections of Eid, summer lawn and festive ladies suits, curated at our Ahmedpur East boutique and delivered across Pakistan.",
+        intro:
           "Explore our curated collections, featuring seasonal and themed selections.",
+        path: routes.shopCollections,
+        crumbs: [{ name: "Shop", path: routes.shop }, { name: "Collections" }],
       };
     }
 
     if (subpage === "categories") {
       return {
-        title: "Shop Categories",
-        description: "Browse products by category.",
+        title: "Shop by Category: Ladies Suits & Dresses",
+        heading: "Shop Categories",
+        description:
+          "Browse women's suits and dresses by category at Saaj Tradition, from lawn and cotton to embroidered Bahawalpuri and Eid wear. Cash on delivery in Pakistan.",
+        intro: "Browse women's suits and dresses by category.",
+        path: routes.shopCategories,
+        crumbs: [{ name: "Shop", path: routes.shop }, { name: "Categories" }],
       };
     }
 
     return {
-      title: "New Arrivals",
-      description: "Discover the latest additions to our collection.",
+      title: "New Arrivals: Latest Ladies Suits & Dresses",
+      heading: "New Arrivals",
+      description:
+        "The newest ladies suits and dresses at Saaj Tradition, Ahmedpur East. Fresh Bahawalpuri, lawn and festive designs added weekly with delivery across Pakistan.",
+      intro: "Discover the latest additions to our collection.",
+      path: routes.shopNewArrivals,
+      crumbs: [{ name: "Shop", path: routes.shop }, { name: "New Arrivals" }],
     };
   }
 
   return {
-    title: DEFAULT_TITLE,
-    description: DEFAULT_DESCRIPTION,
+    title: "Shop Ladies Suits & Bahawalpuri Dresses Online",
+    heading: "Shop All",
+    description:
+      "Shop women's suits online: traditional Bahawalpuri, embroidered lawn, cotton and Eid dresses from our Ahmedpur East boutique. Cash on delivery in Pakistan.",
+    intro:
+      "Traditional Bahawalpuri, lawn and festive ladies suits from our boutique in Ahmedpur East.",
+    path: routes.shop,
+    crumbs: [{ name: "Shop" }],
   };
+};
+
+type ShopSearchParams = {
+  q?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  sort?: string;
+  page?: string;
 };
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ id?: string[] }>;
+  searchParams: Promise<ShopSearchParams>;
 }): Promise<Metadata> {
   const { id } = await params;
+  const query = await searchParams;
 
-  // 404s thrown here (in addition to the page body) carry a REAL 404 status:
-  // generateMetadata resolves before streaming, whereas the page body renders
-  // behind loading.tsx after a 200 shell has already flushed.
   if (id && id.length === 1 && !VALID_SHOP_SUBPAGES.includes(id[0])) {
     notFound();
   }
@@ -115,11 +176,17 @@ export async function generateMetadata({
     }
   }
 
-  const { title } = getShopPageMeta(id, collections, categories);
+  const meta = getShopPageMeta(id, collections, categories);
+  const page = Math.max(1, parseInt(query.page ?? "1", 10) || 1);
+  const isFiltered = Boolean(query.q || query.minPrice || query.maxPrice || query.sort);
+  const canonical = page > 1 && !isFiltered ? `${meta.path}?page=${page}` : meta.path;
 
-  return {
-    title,
-  };
+  return pageMetadata({
+    title: page > 1 ? `${meta.title} - Page ${page}` : meta.title,
+    description: meta.description,
+    path: canonical,
+    noindex: isFiltered,
+  });
 }
 
 // === PAGE ===
@@ -128,13 +195,7 @@ export default async function ShopPage({
   searchParams,
 }: {
   params: Promise<{ id?: string[] }>;
-  searchParams: Promise<{
-    q?: string;
-    minPrice?: string;
-    maxPrice?: string;
-    sort?: string;
-    page?: string;
-  }>;
+  searchParams: Promise<ShopSearchParams>;
 }) {
   // === PARAMS ===
   const { id } = await params;
@@ -161,19 +222,20 @@ export default async function ShopPage({
   if (id && id.length === 1 && id[0] === "collections") {
     const collectionsRes = await getCollections();
     const collections = collectionsRes.success ? collectionsRes.data : [];
-    const { title, description } = getShopPageMeta(id);
+    const meta = getShopPageMeta(id);
 
     return (
       <main>
+        <JsonLd data={breadcrumbJsonLd(meta.crumbs)} />
         <BaseSection id="shop-section" className="pb-6 xl:pb-8">
           <div className="flex flex-col gap-1 pt-6 md:pt-10 pb-6">
             <AnimatedHeadingText
               disableIsInView
-              text={title}
+              text={meta.heading}
               variant="page-title"
               className="pb-1"
             />
-            <p className="text-neutral-10 text-base">{description}</p>
+            <p className="text-neutral-10 text-base">{meta.intro}</p>
           </div>
         </BaseSection>
 
@@ -184,6 +246,7 @@ export default async function ShopPage({
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {collections.map((collection) => (
                 <CollectionTile
+                  headingLevel="h2"
                   key={collection.slug}
                   title={collection.name}
                   description={collection.tagline}
@@ -203,19 +266,20 @@ export default async function ShopPage({
   if (id && id.length === 1 && id[0] === "categories") {
     const categoriesRes = await getAllCategories();
     const categoriesList = categoriesRes.success ? categoriesRes.data : [];
-    const { title, description } = getShopPageMeta(id);
+    const meta = getShopPageMeta(id);
 
     return (
       <main>
+        <JsonLd data={breadcrumbJsonLd(meta.crumbs)} />
         <BaseSection id="shop-section" className="pb-6 xl:pb-8">
           <div className="flex flex-col gap-1 pt-6 md:pt-10 pb-6">
             <AnimatedHeadingText
               disableIsInView
-              text={title}
+              text={meta.heading}
               variant="page-title"
               className="pb-1"
             />
-            <p className="text-neutral-10 text-base">{description}</p>
+            <p className="text-neutral-10 text-base">{meta.intro}</p>
           </div>
         </BaseSection>
 
@@ -227,6 +291,7 @@ export default async function ShopPage({
               {categoriesList.map((category) =>
                 category.imageUrl ? (
                   <CollectionTile
+                    headingLevel="h2"
                     key={category.slug}
                     title={category.name}
                     description={category.tagline}
@@ -239,9 +304,9 @@ export default async function ShopPage({
                     href={`${routes.shop}/categories/${category.slug}`}
                     className="group flex aspect-4/3 flex-col items-center justify-center rounded-sm border border-neutral-03 bg-neutral-01 p-6 text-center transition-colors hover:border-neutral-09"
                   >
-                    <h4 className="text-xl font-medium text-neutral-12">
+                    <h2 className="text-xl font-medium text-neutral-12">
                       {category.name}
-                    </h4>
+                    </h2>
                     {category.tagline && (
                       <p className="mt-1 text-sm text-neutral-09">
                         {category.tagline}
@@ -297,12 +362,15 @@ export default async function ShopPage({
     }
   }
 
-  const { title } = getShopPageMeta(id, collections, categories);
+  const meta = getShopPageMeta(id, collections, categories);
 
   // === EXTRACT DATA ===
   const filteredProducts = productsResult.success ? productsResult.data.products : [];
   const totalProducts = productsResult.success ? productsResult.data.total : 0;
   const totalPages = Math.ceil(totalProducts / PRODUCTS_PER_PAGE);
+  if (productsResult.success && totalPages > 0 && currentPage > totalPages) {
+    notFound();
+  }
 
   // Build pagination href helper
   const buildPageHref = (page: number) => {
@@ -319,12 +387,18 @@ export default async function ShopPage({
 
   return (
     <main>
+      <JsonLd data={breadcrumbJsonLd(meta.crumbs)} />
       <BaseSection id="products-section" className="pt-6 md:pt-10 pb-16 xl:pb-20">
         <ShopToolbar
-          title={title}
+          title={meta.heading}
           collections={collections}
           categories={categories}
         />
+        {currentPage === 1 && !rawFilters.q && (
+          <p className="-mt-2 mb-6 max-w-3xl text-sm md:text-base text-neutral-10">
+            {meta.intro}
+          </p>
+        )}
 
         <div className="relative flex flex-col md:flex-row gap-8 md:gap-12">
           {/* Desktop-only sidebar nav — on mobile this lives in the toolbar's
@@ -348,9 +422,19 @@ export default async function ShopPage({
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 w-full">
                   {filteredProducts.length === 0 && (
-                    <p className="text-neutral-8 text-center col-span-full">
-                      No products found.
-                    </p>
+                    <div className="col-span-full flex flex-col items-center gap-4 py-12 text-center">
+                      <p className="text-neutral-10">
+                        {rawFilters.q || rawFilters.minPrice || rawFilters.maxPrice
+                          ? "No products match your search or filters."
+                          : "No products here yet. New pieces are added every week."}
+                      </p>
+                      <Link
+                        href={routes.shop}
+                        className="rounded-full border border-neutral-05 px-5 py-2 text-sm text-neutral-11 transition-colors hover:border-neutral-11"
+                      >
+                        View all products
+                      </Link>
+                    </div>
                   )}
                   {filteredProducts.length > 0 &&
                     filteredProducts.map((product, index) => (

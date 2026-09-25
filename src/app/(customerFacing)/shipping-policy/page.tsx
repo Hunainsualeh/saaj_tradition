@@ -1,14 +1,16 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
 import { PolicyLayout, PolicyCard } from "@/components/common/PolicyPage";
 import { STORE_EMAIL } from "@/lib/constants/store-information";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Shipping Policy",
   description:
-    "How Saaj Tradition processes, ships, and delivers orders across Pakistan.",
-};
+    "How Saaj Tradition processes and ships orders across Pakistan, including delivery times, charges and cash on delivery.",
+  path: "/shipping-policy",
+});
 
 const mailto = `mailto:${STORE_EMAIL}`;
 
@@ -68,9 +70,11 @@ export default function ShippingPolicyPage() {
 
       <PolicyCard title="Order Tracking">
         <p>
-          Once your order has been dispatched, you can request tracking details
-          by emailing us at <a href={mailto}>{STORE_EMAIL}</a> with your order
-          number. Our team will share the courier and tracking information.
+          Once your order has been dispatched, use the tracking link in your
+          confirmation email or the <Link href="/track">Track Order</Link> page
+          to check its status. You can also email us at{" "}
+          <a href={mailto}>{STORE_EMAIL}</a> with your order number for courier
+          details.
         </p>
       </PolicyCard>
 

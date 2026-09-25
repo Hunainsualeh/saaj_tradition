@@ -60,11 +60,16 @@ export function ProductPurchasePanelUI(props: ProductPurchasePanelUIProps) {
     <div className="w-full lg:flex-1 lg:max-w-xl flex flex-col gap-8 lg:gap-10 lg:sticky lg:top-22 self-start">
       {/* Product title, price, description */}
       <div className="flex flex-col gap-2">
-        <AnimatedHeadingText text={product.name} variant="product-page-title" />
+        <AnimatedHeadingText
+          as="h1"
+          disableIsInView
+          text={product.name}
+          variant="product-page-title"
+        />
         <div className="flex items-baseline gap-2 pb-2">
-          <h4 className="text-xl md:text-2xl font-medium">
+          <p className="text-xl md:text-2xl font-medium">
             Rs.{product.price.toFixed(2)}
-          </h4>
+          </p>
           {product.compareAtPrice && product.compareAtPrice > product.price && (
             <span className="text-base text-neutral-8 line-through">
               Rs.{product.compareAtPrice.toFixed(2)}
@@ -166,7 +171,7 @@ export function ProductPurchasePanelUI(props: ProductPurchasePanelUIProps) {
       <Accordion collapsible type="single">
         {PRODUCT_ACCORDION_ITEMS.map((item) => (
           <AccordionItem key={item.value} value={item.value}>
-            <AccordionTrigger className="text-base" smallVariant>
+            <AccordionTrigger headingLevel="h2" className="text-base" smallVariant>
               {item.trigger}
             </AccordionTrigger>
             <AccordionContent className="text-sm" smallVariant>

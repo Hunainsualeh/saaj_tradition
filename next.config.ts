@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const isProd = process.env.NODE_ENV === "production";
+const isVercelPreview =
+  process.env.VERCEL_ENV !== undefined && process.env.VERCEL_ENV !== "production";
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -60,10 +62,6 @@ const nextConfig: NextConfig = {
     // transform per size and, critically, stops burning the Vercel Hobby-plan
     // optimization quota — the cause of product images rendering inconsistently
     // in production. See src/lib/image-loader.ts.
-    // NOTE: configuring a loaderFile disables the built-in /_next/image route
-    // entirely, so local /assets images are served RAW at their on-disk size —
-    // they must be pre-resized/compressed to their display size (see the
-    // asset-recompression passes).
     loader: "custom",
     loaderFile: "./src/lib/image-loader.ts",
     // Inert while the custom loaderFile is set (no built-in optimizer runs).
@@ -91,12 +89,41 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.saajtradition.com" }],
+        destination: "https://saajtradition.com/:path*",
+        permanent: true,
+      },
+      { source: "/home", destination: "/", permanent: true },
+      { source: "/index", destination: "/", permanent: true },
+      { source: "/products", destination: "/shop", permanent: true },
+      { source: "/products/:slug", destination: "/product/:slug", permanent: true },
+      { source: "/shop/all", destination: "/shop", permanent: true },
+      { source: "/contact", destination: "/support", permanent: true },
+      { source: "/contact-us", destination: "/support", permanent: true },
+      { source: "/faq", destination: "/support", permanent: true },
+      { source: "/about-us", destination: "/about", permanent: true },
+      { source: "/store-location", destination: "/location", permanent: true },
+      { source: "/ahmedpur-east", destination: "/location", permanent: true },
+      { source: "/bahawalpur", destination: "/boutique-in-bahawalpur", permanent: true },
+      { source: "/news", destination: "/blog", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {
         // Apply to all routes
         source: "/(.*)",
-        headers: securityHeaders,
+        headers: isVercelPreview
+          ? [...securityHeaders, { key: "X-Robots-Tag", value: "noindex, nofollow" }]
+          : securityHeaders,
+      },
+      {
+        source: "/(admin|cart|checkout|track|unsubscribe|api)(.*)",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       },
       {
         // Static brand assets (images, video, poster) rarely change and are not

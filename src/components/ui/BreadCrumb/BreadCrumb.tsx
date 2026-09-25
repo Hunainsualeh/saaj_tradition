@@ -5,21 +5,31 @@ type BreadCrumbProps = {
 };
 
 export function BreadCrumb(props: BreadCrumbProps) {
-  // === PROPS ===
   const { items } = props;
   return (
-    <nav>
-      <ol className="flex items-center">
-        {items.map((item, index) => (
-          <li className="flex text-neutral-10 text-sm" key={item.label}>
-            <Link className="p-1" href={item.href ?? "#"}>
-              <p>{item.label}</p>
-            </Link>
-            {index < items.length - 1 && (
-              <span className="mx-1 self-center">{"/"}</span>
-            )}
-          </li>
-        ))}
+    <nav aria-label="Breadcrumb">
+      <ol className="flex flex-wrap items-center">
+        {items.map((item, index) => {
+          const isLast = index === items.length - 1;
+          return (
+            <li className="flex text-neutral-10 text-sm" key={`${item.label}-${index}`}>
+              {item.href && !isLast ? (
+                <Link className="p-1 hover:text-neutral-12" href={item.href}>
+                  {item.label}
+                </Link>
+              ) : (
+                <span className="p-1 text-neutral-11" aria-current={isLast ? "page" : undefined}>
+                  {item.label}
+                </span>
+              )}
+              {!isLast && (
+                <span aria-hidden="true" className="mx-1 self-center">
+                  {"/"}
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ol>
     </nav>
   );

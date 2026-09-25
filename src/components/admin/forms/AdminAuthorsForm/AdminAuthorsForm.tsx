@@ -30,6 +30,7 @@ import {
   updateAuthorById,
 } from "@/lib/server/actions";
 import { usePreviewUrl } from "@/hooks";
+import { adminRoutes } from "@/lib";
 
 type AdminAuthorsFormProps = {
   isEditMode?: boolean;
@@ -120,12 +121,12 @@ export function AdminAuthorsForm(props: AdminAuthorsFormProps) {
 
     if (!addRes.success) {
       setIsActionLocked(false);
-      toast.error("Error creating author");
+      toast.error(addRes.error || "Error creating author");
       return;
     }
 
     toast.success("Author created successfully!");
-    router.back();
+    router.push(adminRoutes.authors);
   };
 
   const onEditSubmit = async (data: AdminFormEditAuthorsData) => {
@@ -135,16 +136,17 @@ export function AdminAuthorsForm(props: AdminAuthorsFormProps) {
 
     if (!editRes.success) {
       setIsActionLocked(false);
-      toast.error("Error updating author");
+      toast.error(editRes.error || "Error updating author");
       return;
     }
 
     toast.success("Author updated successfully!");
-    router.back();
+    router.push(adminRoutes.authors);
   };
 
   const onDelete = async () => {
     if (!authorData?.id) return;
+    if (!window.confirm("Delete this author? This action cannot be undone.")) return;
 
     setIsDeleting(true);
     setIsActionLocked(true);
@@ -154,12 +156,12 @@ export function AdminAuthorsForm(props: AdminAuthorsFormProps) {
     if (!res.success) {
       setIsDeleting(false);
       setIsActionLocked(false);
-      toast.error("Error deleting author");
+      toast.error(res.error || "Error deleting author");
       return;
     }
 
     toast.success("Author deleted successfully!");
-    router.back();
+    router.push(adminRoutes.authors);
   };
 
   const isBusy = isActionLocked || isDeleting;

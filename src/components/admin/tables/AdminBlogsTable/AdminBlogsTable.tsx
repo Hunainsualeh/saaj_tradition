@@ -55,6 +55,7 @@ export function AdminBlogsTable({ authors }: { authors: BlogPost[] }) {
   // === FUNCTIONS ===
   const deleteAuthor = async (id: string) => {
     const deleted = await deleteBlogById(id);
+    setDeletingId(null);
 
     if (!deleted.success) {
       console.error("Error deleting blog:", deleted.error);

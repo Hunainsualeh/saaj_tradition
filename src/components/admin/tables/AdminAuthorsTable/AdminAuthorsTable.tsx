@@ -52,6 +52,7 @@ export function AdminAuthorsTable({
 
   const deleteAuthor = async (id: string) => {
     const deleted = await deleteAuthorById(id);
+    setDeletingId(null);
 
     if (!deleted.success) {
       console.error("Error deleting author:", deleted.error);

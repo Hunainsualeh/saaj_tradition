@@ -42,6 +42,7 @@ export function AdminTeamTable({
 
   const deleteMember = async (id: string) => {
     const deleted = await deleteTeamMemberById(id);
+    setDeletingId(null);
     if (!deleted.success) {
       console.error("Error deleting team member:", deleted.error);
       toast.error("Failed to delete team member. Please try again.");

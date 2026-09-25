@@ -32,7 +32,7 @@ function ContactCardContent({
     >
       <div className="flex gap-4 items-center">
         <span className="text-neutral-08">{icon}</span>
-        <h4 className="text-xl xl:text-2xl font-medium">{title}</h4>
+        <h3 className="text-xl xl:text-2xl font-medium">{title}</h3>
       </div>
       <p className="text-base text-neutral-10">{description}</p>
     </div>

@@ -1,13 +1,16 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
 import { PolicyLayout, PolicyCard } from "@/components/common/PolicyPage";
 import { STORE_EMAIL } from "@/lib/constants/store-information";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Terms of Sale",
-  description: "Terms and conditions governing purchases made at Saaj Tradition.",
-};
+  description:
+    "Terms and conditions for orders, pricing, payment and cash on delivery when you buy from Saaj Tradition online or in store.",
+  path: "/terms-of-sale",
+});
 
 const mailto = `mailto:${STORE_EMAIL}`;
 

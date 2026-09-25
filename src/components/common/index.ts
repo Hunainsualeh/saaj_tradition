@@ -31,3 +31,5 @@ export * from "./ProductImageMarquee";
 export * from "./PartnerLogosMarquee";
 export * from "./ViewAllProductsButton";
 export * from "./WhatsAppChatButton/WhatsAppChatButton";
+export * from "./ExploreLinks";
+export * from "./FaqSection";

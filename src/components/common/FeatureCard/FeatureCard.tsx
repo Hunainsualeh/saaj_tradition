@@ -11,7 +11,7 @@ export function FeatureCard(props: FeatureCardProps) {
   return (
     <div className="flex flex-col gap-5">
       <p className="text-neutral-09 text-base md:text-lg">{number}</p>
-      <h4 className="text-xl md:text-2xl">{title}</h4>
+      <h3 className="text-xl md:text-2xl">{title}</h3>
       <p className="text-neutral-10 text-base">{description}</p>
     </div>
   );

@@ -1,5 +1,7 @@
 import Image from "next/image";
 import type { Metadata } from "next";
+import { faqJsonLd, pageMetadata } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 import {
   Accordion,
@@ -7,7 +9,6 @@ import {
   AccordionItem,
   AccordionTrigger,
   AnimatedHeadingText,
-  AnimateFadeIn,
   AnimateStagger,
   BaseSection,
   ContactCard,
@@ -21,9 +22,12 @@ import { supportFaqQuestions } from "@/lib";
 import { STORE_EMAIL, STORE_PHONE } from "@/lib/constants/store-information";
 import { getSiteContentMap } from "@/lib/server/queries";
 
-export const metadata: Metadata = {
-  title: "Support",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Help & FAQ: Orders, Delivery, Returns",
+  description:
+    "Answers on ordering, cash on delivery, shipping times, sizing and 7-day returns at Saaj Tradition. Call or email our Ahmedpur East team.",
+  path: "/support",
+});
 
 function parseFaq(raw: string | undefined) {
   if (!raw) return [];
@@ -85,32 +89,36 @@ export default async function SupportPage() {
           />
           <p className="text-neutral-10 text-base">
             {
-              "Questions? Concerns? Let’s make your shopping experience seamless and enjoyable."
+              "Questions about an order, delivery or sizing? Find quick answers below or contact our Ahmedpur East team."
             }
           </p>
         </div>
         <div className="flex flex-col gap-10 md:gap-0 md:flex-row justify-between pt-12 items-center">
-          <AnimateFadeIn className="relative w-full md:w-1/3 min-h-100 max-h-125 h-full">
+          <div className="relative w-full md:w-1/3 min-h-100 max-h-125 h-full">
             <Image
               priority
               className="object-cover rounded-sm"
               src="/assets/support-hero.webp"
-              alt="Support Image"
+              alt=""
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               quality={60}
               fill
             />
-          </AnimateFadeIn>
-          <AnimateFadeIn className="w-full md:w-[57%]">
+          </div>
+          <div className="w-full md:w-[57%]">
+            <JsonLd data={faqJsonLd(faqQuestions)} />
+            <h2 className="sr-only">Frequently asked questions</h2>
             <Accordion collapsible type="single">
               {faqQuestions.map((faq, index) => (
                 <AccordionItem key={index} value={`faq-${index}`}>
                   <AccordionTrigger>{faq.question}</AccordionTrigger>
-                  <AccordionContent>{faq.answer}</AccordionContent>
+                  <AccordionContent forceMount className="data-[state=closed]:hidden">
+                    {faq.answer}
+                  </AccordionContent>
                 </AccordionItem>
               ))}
             </Accordion>
-          </AnimateFadeIn>
+          </div>
         </div>
       </BaseSection>
 
@@ -118,7 +126,7 @@ export default async function SupportPage() {
         id="contact-section"
         className="py-16 xl:py-20 flex flex-col gap-8"
       >
-        <AnimatedHeadingText text="Contact" />
+        <AnimatedHeadingText as="h2" text="Contact" />
         <AnimateStagger
           className="flex justify-between flex-col xl:flex-row gap-6 w-full"
           childClassName="flex-1"

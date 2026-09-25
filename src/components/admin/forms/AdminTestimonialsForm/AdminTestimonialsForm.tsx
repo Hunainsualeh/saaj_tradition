@@ -30,6 +30,7 @@ import {
   updateTestimonialById,
 } from "@/lib/server/actions";
 import { usePreviewUrl } from "@/hooks";
+import { adminRoutes } from "@/lib";
 
 type AdminTestimonialsFormProps = {
   isEditMode?: boolean;
@@ -92,11 +93,11 @@ export function AdminTestimonialsForm(props: AdminTestimonialsFormProps) {
     const addRes = await createTestimonial(data);
     if (!addRes.success) {
       setIsActionLocked(false);
-      toast.error("Error creating testimonial");
+      toast.error(addRes.error || "Error creating testimonial");
       return;
     }
     toast.success("Testimonial created successfully!");
-    router.back();
+    router.push(adminRoutes.testimonials);
   };
 
   const onEditSubmit = async (data: AdminFormEditTestimonialData) => {
@@ -107,26 +108,27 @@ export function AdminTestimonialsForm(props: AdminTestimonialsFormProps) {
     );
     if (!editRes.success) {
       setIsActionLocked(false);
-      toast.error("Error updating testimonial");
+      toast.error(editRes.error || "Error updating testimonial");
       return;
     }
     toast.success("Testimonial updated successfully!");
-    router.back();
+    router.push(adminRoutes.testimonials);
   };
 
   const onDelete = async () => {
     if (!testimonialData?.id) return;
+    if (!window.confirm("Delete this testimonial? This action cannot be undone.")) return;
     setIsDeleting(true);
     setIsActionLocked(true);
     const res = await deleteTestimonialById(testimonialData?.id);
     if (!res.success) {
       setIsDeleting(false);
       setIsActionLocked(false);
-      toast.error("Error deleting testimonial");
+      toast.error(res.error || "Error deleting testimonial");
       return;
     }
     toast.success("Testimonial deleted successfully!");
-    router.back();
+    router.push(adminRoutes.testimonials);
   };
 
   const isBusy = isActionLocked || isDeleting;

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { BaseSection, BreadCrumb } from "@/components";
 import type { Metadata } from "next";
+import { NOINDEX_METADATA } from "@/lib/seo";
 import { getCart } from "@/lib/server/queries";
 import { getCompletedOrderSuccessPath } from "@/lib/server/queries/order-queries";
 import { EmptyCart } from "@/components";
@@ -11,7 +12,8 @@ import { CartSummaryPanel } from "@/components/common/CartSummaryPanel/CartSumma
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Cart",
+  title: "Shopping Cart",
+  ...NOINDEX_METADATA,
 };
 
 export default async function CartPage() {

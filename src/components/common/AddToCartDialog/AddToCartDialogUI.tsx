@@ -70,7 +70,7 @@ export function AddToCartDialogUI(props: AddToCartDialogUIProps) {
               />
             </div>
             <div className="flex flex-1 flex-col gap-1.5">
-              <h4 className="text-lg line-clamp-2">{productName}</h4>
+              <h3 className="text-lg line-clamp-2">{productName}</h3>
               {category && (
                 <p className="text-sm text-neutral-10">{category}</p>
               )}

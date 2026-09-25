@@ -42,6 +42,7 @@ export function AdminTestimonialsTable({
 
   const deleteTestimonial = async (id: string) => {
     const deleted = await deleteTestimonialById(id);
+    setDeletingId(null);
     if (!deleted.success) {
       toast.error("Failed to delete testimonial.");
       return;

@@ -60,9 +60,9 @@ export function ProductImageMarquee({
                 />
               </div>
               <div className="flex justify-between items-center px-1">
-                <h4 className="text-sm font-medium text-stone-900 truncate max-w-[60%]">
+                <p className="text-sm font-medium text-stone-900 truncate max-w-[60%]">
                   {product.name}
-                </h4>
+                </p>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {product.compareAtPrice && (
                     <span className="text-xs text-stone-400 line-through">
@@ -97,9 +97,9 @@ export function ProductImageMarquee({
                 />
               </div>
               <div className="flex justify-between items-center px-1">
-                <h4 className="text-sm font-medium text-stone-900 truncate max-w-[60%]">
+                <p className="text-sm font-medium text-stone-900 truncate max-w-[60%]">
                   {product.name}
-                </h4>
+                </p>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {product.compareAtPrice && (
                     <span className="text-xs text-stone-400 line-through">

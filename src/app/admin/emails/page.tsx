@@ -19,9 +19,9 @@ export default async function AdminEmailsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <AdminHeading heading="Email Management" />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link href={adminRoutes.emailSubscribers}>
             <AdminButton variant="outline">View Subscribers</AdminButton>
           </Link>

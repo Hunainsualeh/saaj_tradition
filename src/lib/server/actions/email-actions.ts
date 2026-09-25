@@ -172,6 +172,7 @@ export async function sendOrderStatusEmail(
   customMessage?: string,
 ): Promise<ServerActionResponse<void>> {
   return wrapServerCall(async () => {
+    await requireAdmin();
     const rl = await rateLimitOrderEmail(orderId);
     if (!rl.allowed) {
       console.warn(`[Email] Order-email rate limit hit for ${orderId} (status) — skipping`);

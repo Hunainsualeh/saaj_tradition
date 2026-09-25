@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   toggleAdminStatus,
   deleteAdminUser,
@@ -40,17 +41,25 @@ export function AdminUsersTable({
 
   const handleToggle = async (id: string) => {
     setTogglingId(id);
-    await toggleAdminStatus(id);
+    const res = await toggleAdminStatus(id);
     setTogglingId(null);
+    if (!res.success) {
+      toast.error(res.error || "Failed to update admin status");
+      return;
+    }
     router.refresh();
   };
 
   const handleDelete = async () => {
     if (!confirmDeleteId) return;
     setDeletingId(confirmDeleteId);
-    await deleteAdminUser(confirmDeleteId);
+    const res = await deleteAdminUser(confirmDeleteId);
     setDeletingId(null);
     setConfirmDeleteId(null);
+    if (!res.success) {
+      toast.error(res.error || "Failed to delete admin");
+      return;
+    }
     router.refresh();
   };
 

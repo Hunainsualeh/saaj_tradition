@@ -31,6 +31,7 @@ import {
   updateCollectionById,
 } from "@/lib/server/actions";
 import { usePreviewUrl } from "@/hooks";
+import { adminRoutes } from "@/lib";
 
 type AdminCollectionsFormProps = {
   isEditMode?: boolean;
@@ -132,11 +133,11 @@ export function AdminCollectionsForm(props: AdminCollectionsFormProps) {
     const addRes = await createCollection(payload);
     if (!addRes.success) {
       setIsActionLocked(false);
-      toast.error("Error creating collection");
+      toast.error(addRes.error || "Error creating collection");
       return;
     }
     toast.success("Collection created successfully!");
-    router.back();
+    router.push(adminRoutes.collections);
   };
 
   const onEditSubmit = async (data: AdminFormEditCollectionData) => {
@@ -147,26 +148,27 @@ export function AdminCollectionsForm(props: AdminCollectionsFormProps) {
     );
     if (!editRes.success) {
       setIsActionLocked(false);
-      toast.error("Error updating collection");
+      toast.error(editRes.error || "Error updating collection");
       return;
     }
     toast.success("Collection updated successfully!");
-    router.back();
+    router.push(adminRoutes.collections);
   };
 
   const onDelete = async () => {
     if (!collectionData?.id) return;
+    if (!window.confirm("Delete this collection? This action cannot be undone.")) return;
     setIsDeleting(true);
     setIsActionLocked(true);
     const res = await deleteCollectionById(collectionData?.id);
     if (!res.success) {
       setIsDeleting(false);
       setIsActionLocked(false);
-      toast.error("Error deleting collection");
+      toast.error(res.error || "Error deleting collection");
       return;
     }
     toast.success("Collection deleted successfully!");
-    router.back();
+    router.push(adminRoutes.collections);
   };
 
   const isBusy = isActionLocked || isDeleting;

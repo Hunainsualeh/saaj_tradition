@@ -2,6 +2,15 @@
 
 import { useState } from "react";
 
+import {
+  STORE_ADDRESS_TEXT,
+  STORE_EMAIL,
+  STORE_HOURS,
+  STORE_MAP_QUERY,
+  STORE_NAME,
+  STORE_PHONE,
+} from "@/lib/constants/store-information";
+
 type LocationCardProps = {
   storeName?: string;
   address?: string;
@@ -17,13 +26,14 @@ function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
+      type="button"
       onClick={() => {
         navigator.clipboard.writeText(text).then(() => {
           setCopied(true);
           setTimeout(() => setCopied(false), 2000);
         });
       }}
-      className="text-[11px] font-medium tracking-wide text-neutral-08 hover:text-neutral-11 transition-colors underline underline-offset-2 cursor-pointer"
+      className="mt-1 inline-flex min-h-6 items-center text-xs font-medium tracking-wide text-neutral-10 hover:text-neutral-12 transition-colors underline underline-offset-2 cursor-pointer"
     >
       {copied ? "Copied ✓" : "Copy address"}
     </button>
@@ -31,14 +41,14 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export function LocationCard({
-  storeName = "Saaj Tradition",
-  address = "1/2 km KLP Road, near Hotel Pearl Resort, Ahmedpur East, District Bahawalpur, Pakistan 63350",
-  hoursDays = "Mon – Sat",
-  hoursTime = "10:00 AM – 8:00 PM",
-  hoursNote = "Closed Sundays",
-  phone = "+923106040861",
-  email = "saajtraditionbahawalpur@gmail.com",
-  mapQuery = "47PF+R29 Ahmedpur East Pakistan",
+  storeName = STORE_NAME,
+  address = STORE_ADDRESS_TEXT,
+  hoursDays = STORE_HOURS.daysLabel,
+  hoursTime = STORE_HOURS.timeLabel,
+  hoursNote = STORE_HOURS.note,
+  phone = STORE_PHONE,
+  email = STORE_EMAIL,
+  mapQuery = STORE_MAP_QUERY,
 }: LocationCardProps) {
   const encodedQuery = encodeURIComponent(mapQuery);
   const mapEmbedUrl = `https://maps.google.com/maps?q=${encodedQuery}&hl=en&z=18&output=embed`;
@@ -61,7 +71,7 @@ export function LocationCard({
           allowFullScreen
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
-          title={`${storeName} — map`}
+          title={`${storeName} location on Google Maps, Ahmedpur East`}
         />
 
         {/* Bottom gradient so the card reads over the map */}
@@ -88,7 +98,7 @@ export function LocationCard({
               <p className="text-sm font-semibold text-neutral-12 tracking-tight leading-tight">
                 {storeName}
               </p>
-              <p className="text-[11px] text-neutral-08 mt-0.5 leading-snug">
+              <p className="text-[11px] text-neutral-10 mt-0.5 leading-snug">
                 {address}
               </p>
             </div>
@@ -139,7 +149,7 @@ export function LocationCard({
             </svg>
           </span>
           <div className="min-w-0">
-            <p className="text-[11px] font-medium text-neutral-08 uppercase tracking-widest mb-1">
+            <p className="text-[11px] font-medium text-neutral-10 uppercase tracking-widest mb-1">
               Address
             </p>
             <p className="text-sm text-neutral-11 leading-relaxed">
@@ -157,13 +167,13 @@ export function LocationCard({
             </svg>
           </span>
           <div className="min-w-0">
-            <p className="text-[11px] font-medium text-neutral-08 uppercase tracking-widest mb-1">
+            <p className="text-[11px] font-medium text-neutral-10 uppercase tracking-widest mb-1">
               Contact
             </p>
             <a href={telHref} className="block text-sm text-neutral-11 hover:text-neutral-09 transition-colors">
               {phone}
             </a>
-            <a href={`mailto:${email}`} className="block text-xs text-neutral-09 hover:text-neutral-11 transition-colors mt-0.5 truncate">
+            <a href={`mailto:${email}`} className="block text-xs text-neutral-10 hover:text-neutral-12 transition-colors mt-0.5 truncate">
               {email}
             </a>
           </div>
@@ -177,13 +187,13 @@ export function LocationCard({
             </svg>
           </span>
           <div>
-            <p className="text-[11px] font-medium text-neutral-08 uppercase tracking-widest mb-1">
+            <p className="text-[11px] font-medium text-neutral-10 uppercase tracking-widest mb-1">
               Hours
             </p>
             <p className="text-sm text-neutral-11">{hoursDays}</p>
             <p className="text-sm text-neutral-11">{hoursTime}</p>
             {hoursNote && (
-              <p className="text-xs text-neutral-09 mt-0.5">{hoursNote}</p>
+              <p className="text-xs text-neutral-10 mt-0.5">{hoursNote}</p>
             )}
           </div>
         </div>

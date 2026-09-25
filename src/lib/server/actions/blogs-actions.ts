@@ -43,7 +43,7 @@ export async function createBlog(
         slug: data.slug,
         content: data.content,
         authorId: data.authorId,
-        createdAt: new Date(),
+        publishedAt: new Date(),
         updatedAt: new Date(),
         duration: getReadingMinutes(data.content),
         blogImageUrl: imageUrl,
@@ -72,6 +72,7 @@ export async function updateBlogById(
     invalidateCacheTag(CACHE_TAG_BLOG);
     revalidatePath(adminRoutes.blogs);
     revalidatePath(routes.blog);
+    revalidatePath(`${routes.blog}/${data.slug}`);
     revalidatePath(routes.home);
 
     if (data.image) {
@@ -92,7 +93,6 @@ export async function updateBlogById(
           slug: data.slug,
           content: data.content,
           authorId: data.authorId,
-          createdAt: new Date(),
           updatedAt: new Date(),
           duration: getReadingMinutes(data.content),
           blogImageUrl: imageUrl,
@@ -112,7 +112,6 @@ export async function updateBlogById(
         slug: data.slug,
         content: data.content,
         authorId: data.authorId,
-        createdAt: new Date(),
         updatedAt: new Date(),
         duration: getReadingMinutes(data.content),
       },

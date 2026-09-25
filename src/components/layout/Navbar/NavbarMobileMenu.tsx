@@ -42,10 +42,16 @@ export function NavbarMobileMenu({
             : "opacity-0 pointer-events-none",
         )}
         onClick={() => { setShowMobileMenu(false); setActiveSubMenu(null); }}
+        aria-hidden="true"
       />
 
       {/* Mobile menu panel */}
       <div
+        id="mobile-menu"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Main menu"
+        inert={!showMobileMenu}
         className={cn(
           "fixed top-0 right-0 bottom-0 z-50 w-full max-w-[320px] bg-white md:hidden",
           "transform transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
@@ -66,7 +72,7 @@ export function NavbarMobileMenu({
             ) : (
               <Image
                 src="/assets/logo/Saaj Tradition Golden.png"
-                alt="Saaj Tradition"
+                alt="Saaj Tradition logo"
                 width={44}
                 height={44}
                 className="h-[38px] w-auto object-contain"

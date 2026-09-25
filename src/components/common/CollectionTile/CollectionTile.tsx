@@ -8,14 +8,17 @@ type CollectionTileProps = {
   imageUrl: string;
   title: string;
   description: string;
+  headingLevel?: "h2" | "h3";
 };
 
 export function CollectionTile(props: CollectionTileProps) {
   // === PROPS ===
-  const { href, title, description, imageUrl } = props;
+  const { href, title, description, imageUrl, headingLevel = "h3" } = props;
+  const Heading = headingLevel;
 
   return (
     <Link href={href} className="group block w-full">
+      <Heading className="sr-only">{title}</Heading>
       <div className="relative aspect-4/3 overflow-hidden rounded-sm xl:flex">
         <Image
           className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -35,7 +38,7 @@ export function CollectionTile(props: CollectionTileProps) {
             "transition-opacity duration-300 ease-in-out",
           )}
         >
-          <h4 className="mb-2 text-4xl font-semibold">{title}</h4>
+          <p aria-hidden="true" className="mb-2 text-4xl font-semibold">{title}</p>
           <p className="text-sm text-neutral-01 max-w-xs">{description}</p>
         </div>
 
@@ -49,7 +52,7 @@ export function CollectionTile(props: CollectionTileProps) {
         />
 
         <div className="xl:hidden absolute bottom-0 left-0 right-0 p-6 text-white">
-          <h4 className="mb-2 text-xl">{title}</h4>
+          <p aria-hidden="true" className="mb-2 text-xl">{title}</p>
           <p className="text-base text-neutral-03">{description}</p>
         </div>
       </div>

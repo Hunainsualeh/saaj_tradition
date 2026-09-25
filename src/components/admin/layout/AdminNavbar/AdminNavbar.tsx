@@ -95,8 +95,16 @@ export function AdminNavbar() {
   const pathName = usePathname();
   const router = useRouter();
 
+  const [lastPathName, setLastPathName] = useState(pathName);
+  if (lastPathName !== pathName) {
+    setLastPathName(pathName);
+    setNavigatingTo(null);
+  }
+
   const isNavigating = navigatingTo !== null && navigatingTo !== pathName;
-  const isActive = (href: string) => pathName === href;
+  const isActive = (href: string) =>
+    pathName === href ||
+    (href !== adminRoutes.home && !!pathName?.startsWith(`${href}/`));
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -239,6 +247,7 @@ export function AdminNavbar() {
           <button
             onClick={() => setMobileOpen(false)}
             className="cursor-pointer p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-400"
+            aria-label="Close menu"
           >
             <X size={17} />
           </button>

@@ -28,6 +28,7 @@ import {
 } from "@/components/admin";
 
 import { usePreviewUrl } from "@/hooks";
+import { adminRoutes } from "@/lib";
 import { AdminBlogsFormData, AdminBlogsFormSchema } from "./schema";
 import {
   createBlog,
@@ -137,12 +138,12 @@ export function AdminBlogsForm(props: AdminBlogsFormProps) {
 
     if (!addRes.success) {
       setIsActionLocked(false);
-      toast.error("Error creating blog");
+      toast.error(addRes.error || "Error creating blog");
       return;
     }
 
     toast.success("Blog created successfully!");
-    router.back();
+    router.push(adminRoutes.blogs);
   };
 
   const onEditSubmit = async (data: AdminBlogsFormData) => {
@@ -152,16 +153,17 @@ export function AdminBlogsForm(props: AdminBlogsFormProps) {
 
     if (!editRes.success) {
       setIsActionLocked(false);
-      toast.error("Error updating blog");
+      toast.error(editRes.error || "Error updating blog");
       return;
     }
 
     toast.success("Blog updated successfully!");
-    router.back();
+    router.push(adminRoutes.blogs);
   };
 
   const onDelete = async () => {
     if (!blogData?.id) return;
+    if (!window.confirm("Delete this blog? This action cannot be undone.")) return;
 
     setIsDeleting(true);
     setIsActionLocked(true);
@@ -171,12 +173,12 @@ export function AdminBlogsForm(props: AdminBlogsFormProps) {
     if (!res.success) {
       setIsDeleting(false);
       setIsActionLocked(false);
-      toast.error("Error deleting blog");
+      toast.error(res.error || "Error deleting blog");
       return;
     }
 
     toast.success("Blog deleted successfully!");
-    router.back();
+    router.push(adminRoutes.blogs);
   };
 
   const isBusy = isActionLocked || isDeleting;
@@ -246,7 +248,7 @@ export function AdminBlogsForm(props: AdminBlogsFormProps) {
                       </AdminSelectGroup>
                     </AdminSelectContent>
                   </AdminSelect>
-                  <AdminFieldError errors={[errors.authorId]} />
+                  <AdminFieldError errors={[errors.category]} />
                 </AdminField>
 
                 {/* SLUG */}

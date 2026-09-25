@@ -12,6 +12,7 @@
     "build-storybook": "storybook build",
     "postinstall": "prisma generate",
     "update-deps": "npx npm-check-updates -u --target minor && npm install",
+    "optimize-assets": "node scripts/optimize-assets.mjs",
     "seed": "npx tsx prisma/seed.ts",
     "seed-admin": "npx tsx prisma/seed-admin.ts"
   },

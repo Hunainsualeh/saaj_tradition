@@ -15,13 +15,11 @@
  * with a responsive width and automatic format/quality, served straight from
  * Cloudinary's global CDN — no Vercel optimizer, no quota, no double transform.
  *
- * Local `/assets/*` marketing images (heroes, posters — a handful, already
- * hand-compressed) keep using Next's built-in optimizer so they still get
- * responsive AVIF/WebP. Any legacy Vercel-Blob images route through it too.
- *
  * NOTE: this file runs on both the server and the client, so it must stay pure
  * string manipulation with no Node/browser-only APIs.
  */
+
+import { OPTIMIZED_ASSET_WIDTHS, OPTIMIZED_ASSETS } from "./optimized-assets";
 
 type ImageLoaderArgs = {
   src: string;
@@ -70,16 +68,17 @@ export default function imageLoader({
     return `${prefix}/upload/${params}/${tail}`;
   }
 
-  // --- Everything else (local /assets, legacy Vercel Blob) ---
-  // Configuring a global `loaderFile` DISABLES Next's built-in `/_next/image`
-  // optimizer route (it 404s), so we cannot route through it. Return the source
-  // directly and let the browser load it. Local `/assets` are already
-  // hand-compressed (see the recompression pass), so serving them as-is — no
-  // per-viewport resize — is an acceptable trade-off for reliable loading.
-  //
-  // encodeURI is important: a local path may contain spaces (e.g. the logo file
-  // "Saaj Tradition Golden.png"). next/image emits the loader's return value
-  // inside a `srcset`, where a literal space separates the URL from its width
-  // descriptor and would break parsing. Encoding spaces to %20 keeps it valid.
+  const localMatch = src.match(/^\/assets\/([^?#]+)$/);
+  if (localMatch) {
+    const rel = decodeURI(localMatch[1]);
+    if (OPTIMIZED_ASSETS.has(rel)) {
+      const target =
+        OPTIMIZED_ASSET_WIDTHS.find((w) => w >= width) ??
+        OPTIMIZED_ASSET_WIDTHS[OPTIMIZED_ASSET_WIDTHS.length - 1];
+      const base = rel.replace(/\.[^.]+$/, "");
+      return encodeURI(`/assets/opt/${base}-${target}.webp`);
+    }
+  }
+
   return src.startsWith("/") ? encodeURI(src) : src;
 }

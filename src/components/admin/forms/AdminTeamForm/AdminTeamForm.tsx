@@ -30,6 +30,7 @@ import {
   updateTeamMemberById,
 } from "@/lib/server/actions";
 import { usePreviewUrl } from "@/hooks";
+import { adminRoutes } from "@/lib";
 
 type AdminTeamFormProps = {
   isEditMode?: boolean;
@@ -100,11 +101,11 @@ export function AdminTeamForm(props: AdminTeamFormProps) {
     const addRes = await createTeamMember(payload);
     if (!addRes.success) {
       setIsActionLocked(false);
-      toast.error("Error creating team member");
+      toast.error(addRes.error || "Error creating team member");
       return;
     }
     toast.success("Team member created successfully!");
-    router.back();
+    router.push(adminRoutes.team);
   };
 
   const onEditSubmit = async (data: AdminFormEditTeamData) => {
@@ -115,26 +116,27 @@ export function AdminTeamForm(props: AdminTeamFormProps) {
     );
     if (!editRes.success) {
       setIsActionLocked(false);
-      toast.error("Error updating team member");
+      toast.error(editRes.error || "Error updating team member");
       return;
     }
     toast.success("Team member updated successfully!");
-    router.back();
+    router.push(adminRoutes.team);
   };
 
   const onDelete = async () => {
     if (!teamMemberData?.id) return;
+    if (!window.confirm("Delete this team member? This action cannot be undone.")) return;
     setIsDeleting(true);
     setIsActionLocked(true);
     const res = await deleteTeamMemberById(teamMemberData?.id);
     if (!res.success) {
       setIsDeleting(false);
       setIsActionLocked(false);
-      toast.error("Error deleting team member");
+      toast.error(res.error || "Error deleting team member");
       return;
     }
     toast.success("Team member deleted successfully!");
-    router.back();
+    router.push(adminRoutes.team);
   };
 
   const isBusy = isActionLocked || isDeleting;

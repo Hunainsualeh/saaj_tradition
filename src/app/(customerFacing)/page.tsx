@@ -18,9 +18,11 @@ import {
   ProductImageMarquee,
   PartnerLogosMarquee,
   ViewAllProductsButton,
+  ExploreLinks,
 } from "@/components";
 import { HomeVideoSectionWrapper } from "@/components/common/HomeVideoSection/HomeVideoSectionClient";
 import { routes, screamingSnakeToTitle } from "@/lib";
+import { DEFAULT_DESCRIPTION, DEFAULT_TITLE, pageMetadata } from "@/lib/seo";
 import {
   DEFAULT_PARTNER_LOGOS_RAW,
   parsePartnerLogos,
@@ -32,13 +34,15 @@ import {
   getSiteContentMap,
   getActiveTestimonials,
   getMarqueeProducts,
+  getAllCategories,
 } from "@/lib/server/queries";
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Saaj Tradition",
-  },
-};
+export const metadata: Metadata = pageMetadata({
+  title: DEFAULT_TITLE,
+  absoluteTitle: true,
+  description: DEFAULT_DESCRIPTION,
+  path: "/",
+});
 
 // ISR: serve cached HTML and refresh at most every 5 minutes. Content edits
 // still push through immediately via tag revalidation on the underlying
@@ -47,18 +51,20 @@ export const revalidate = 300;
 
 export default async function HomePage() {
   // === QUERIES (parallel) ===
-  const [products, blogPostsResponse, collectionsResponse, contentMapResponse, testimonialsResponse] =
+  const [products, blogPostsResponse, collectionsResponse, contentMapResponse, testimonialsResponse, categoriesResponse] =
     await Promise.all([
       getFeaturedProducts(),
       getHomePageBlogs(),
       getCollections(),
       getSiteContentMap(),
       getActiveTestimonials(),
+      getAllCategories(),
     ]);
 
   const productsList = products.success ? products.data : [];
   const blogPosts = blogPostsResponse.success ? blogPostsResponse.data : [];
   const collections = collectionsResponse.success ? collectionsResponse.data : [];
+  const categories = categoriesResponse.success ? categoriesResponse.data : [];
   const c = contentMapResponse.success ? contentMapResponse.data : {};
   const testimonials = (
     testimonialsResponse.success ? testimonialsResponse.data : []
@@ -76,7 +82,7 @@ export default async function HomePage() {
   const productMarqueeActive = c.product_marquee_active !== "false";
   const partnersMarqueeActive = c.partners_marquee_active !== "false";
 
-  const announcementTexts = (c.announcement_texts ?? "Free Worldwide Shipping on orders over Rs.2000\nNew Spring Collection Has Arrived\nSustainably Crafted Luxury\nSign up for 15% off your first order")
+  const announcementTexts = (c.announcement_texts ?? "Cash on Delivery across Pakistan\nNew Arrivals Every Week\nVisit our boutique in Ahmedpur East")
     .split("\n")
     .map((s: string) => s.trim())
     .filter(Boolean);
@@ -115,7 +121,7 @@ export default async function HomePage() {
         imageUrl={c.hero_image}
       />
 
-      <BaseSection className="py-16 xl:py-20" id="hero-image">
+      <BaseSection className="py-16 xl:py-20" id="new-arrivals-section">
         <div className="flex flex-col gap-8">
           <div className="flex items-end">
             <SectionHeading
@@ -218,6 +224,52 @@ export default async function HomePage() {
         />
       </HomeVideoSectionWrapper>
 
+      <BaseSection className="py-16 xl:py-20" id="home-explore-section">
+        <div className="grid grid-cols-1 xl:grid-cols-[2fr_3fr] gap-10 xl:gap-16">
+          <div className="flex flex-col gap-4">
+            <h2 className="text-3xl md:text-4xl font-medium">
+              Traditional Bahawalpuri suits, from our boutique in Ahmedpur East
+            </h2>
+            <p className="text-base text-neutral-10">
+              Saaj Tradition is a ladies boutique on KLP Road in Ahmedpur East,
+              District Bahawalpur. We design and source embroidered Bahawalpuri
+              suits, lawn and cotton everyday wear, and festive Eid and party
+              wear dresses for women.
+            </p>
+            <p className="text-base text-neutral-10">
+              Visit the store to see fabrics in person, or order online with cash
+              on delivery to Bahawalpur, South Punjab and cities across Pakistan.
+            </p>
+          </div>
+          <ExploreLinks
+            heading="Explore Saaj Tradition"
+            links={[
+              {
+                label: "Traditional Bahawalpuri Suits",
+                href: routes.bahawalpuriSuits,
+                description: "Chunri, gota and hand embroidered styles",
+              },
+              ...categories.slice(0, 4).map((category) => ({
+                label: category.name,
+                href: `${routes.shopCategories}/${category.slug}`,
+                description: category.tagline || undefined,
+              })),
+              {
+                label: "Boutique in Ahmedpur East",
+                href: routes.location,
+                description: "Store address, hours and directions",
+              },
+              {
+                label: "Delivery in Bahawalpur",
+                href: routes.bahawalpurBoutique,
+                description: "Cash on delivery to Bahawalpur city",
+              },
+            ]}
+          />
+        </div>
+      </BaseSection>
+
+      {blogPosts.length > 0 && (
       <BaseSection
         className="py-16 xl:py-20 flex flex-col gap-8"
         id="home-news-section"
@@ -235,11 +287,6 @@ export default async function HomePage() {
           </Link>
         </div>
         <div className="flex flex-col xl:flex-row gap-12 xl:gap-6">
-          {blogPosts.length === 0 && (
-            <p className="text-neutral-10 text-base font-bold">
-              No blog posts available.
-            </p>
-          )}
           {blogPosts && blogPosts.length > 0 && (
             <>
               <div className="hidden md:flex flex-1">
@@ -289,6 +336,7 @@ export default async function HomePage() {
           </Link>
         </div>
       </BaseSection>
+      )}
     </main>
   );
 }

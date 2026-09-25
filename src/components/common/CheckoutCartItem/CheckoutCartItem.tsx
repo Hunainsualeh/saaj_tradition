@@ -27,9 +27,9 @@ export function CheckoutCartItem(props: CheckoutCartItemProps) {
 
       {/* Product Details */}
       <div className="flex-1 flex flex-col gap-1 min-w-0">
-        <h4 className="text-base font-medium text-neutral-12 truncate">
+        <h3 className="text-base font-medium text-neutral-12 truncate">
           {item.title}
-        </h4>
+        </h3>
         <p className="text-sm text-neutral-10">Size: {item.size.label}</p>
         <p className="text-sm text-neutral-10">Quantity: {item.quantity}</p>
       </div>

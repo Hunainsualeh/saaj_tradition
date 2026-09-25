@@ -44,6 +44,7 @@ export function ShopSidebar(props: ShopSideBarProps) {
         >
           <AccordionItem value="categories" className="border-b-0">
             <AccordionTrigger
+              headingLevel="h2"
               className={cn(
                 linkClasses,
                 "pt-3 hover:no-underline text-base! [&[data-state=open]>svg]:rotate-180",
@@ -71,6 +72,7 @@ export function ShopSidebar(props: ShopSideBarProps) {
       >
         <AccordionItem value="collections" className="border-b-0">
           <AccordionTrigger
+            headingLevel="h2"
             className={cn(
               linkClasses,
               "pt-3 hover:no-underline text-base! [&[data-state=open]>svg]:rotate-180",

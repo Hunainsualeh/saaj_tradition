@@ -54,6 +54,15 @@ function formatTime(date: Date | string) {
   });
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function formatDateTime(date: Date | string) {
   return `${formatDate(date)}, ${formatTime(date)}`;
 }
@@ -126,8 +135,8 @@ export function AdminOrderView(props: AdminOrderViewProps) {
         (item) => `
         <tr>
           <td style="padding:8px 4px;border-bottom:1px solid #e5e5e5;">
-            <div style="font-weight:500;">${item.title}</div>
-            <div style="color:#6b7280;font-size:12px;">Size: ${item.size?.label ?? "—"}</div>
+            <div style="font-weight:500;">${escapeHtml(item.title)}</div>
+            <div style="color:#6b7280;font-size:12px;">Size: ${escapeHtml(item.size?.label ?? "—")}</div>
           </td>
           <td style="padding:8px 4px;border-bottom:1px solid #e5e5e5;text-align:center;color:#6b7280;">${item.quantity}</td>
           <td style="padding:8px 4px;border-bottom:1px solid #e5e5e5;text-align:right;color:#6b7280;">Rs.${Math.round(item.unitPrice)}</td>
@@ -139,28 +148,28 @@ export function AdminOrderView(props: AdminOrderViewProps) {
     const deliveryHtml = order.delieveryName
       ? `<div style="margin-bottom:24px;">
           <h3 style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b7280;margin-bottom:8px;">Delivery</h3>
-          <p style="margin:2px 0;">${order.delieveryName}</p>
-          ${order.deliveryEmail ? `<p style="margin:2px 0;">${order.deliveryEmail}</p>` : ""}
-          ${order.deliveryPhone ? `<p style="margin:2px 0;">${order.deliveryPhone}</p>` : ""}
-          ${order.deliveryStreetAddress ? `<p style="margin:2px 0;">${order.deliveryStreetAddress}</p>` : ""}
-          ${[order.deliveryCity, order.deliveryState, order.deliveryPostcode].filter(Boolean).join(", ")}
-          ${order.deliveryCountry ? `<p style="margin:2px 0;">${order.deliveryCountry}</p>` : ""}
+          <p style="margin:2px 0;">${escapeHtml(order.delieveryName)}</p>
+          ${order.deliveryEmail ? `<p style="margin:2px 0;">${escapeHtml(order.deliveryEmail)}</p>` : ""}
+          ${order.deliveryPhone ? `<p style="margin:2px 0;">${escapeHtml(order.deliveryPhone)}</p>` : ""}
+          ${order.deliveryStreetAddress ? `<p style="margin:2px 0;">${escapeHtml(order.deliveryStreetAddress)}</p>` : ""}
+          ${escapeHtml([order.deliveryCity, order.deliveryState, order.deliveryPostcode].filter(Boolean).join(", "))}
+          ${order.deliveryCountry ? `<p style="margin:2px 0;">${escapeHtml(order.deliveryCountry)}</p>` : ""}
         </div>`
       : "";
 
     const billingHtml = order.billingName
       ? `<div style="margin-bottom:24px;">
           <h3 style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b7280;margin-bottom:8px;">Billing</h3>
-          <p style="margin:2px 0;">${order.billingName}</p>
-          ${order.billingStreetAddress ? `<p style="margin:2px 0;">${order.billingStreetAddress}</p>` : ""}
-          ${[order.billingCity, order.billingState, order.billingPostcode].filter(Boolean).join(", ")}
-          ${order.billingCountry ? `<p style="margin:2px 0;">${order.billingCountry}</p>` : ""}
+          <p style="margin:2px 0;">${escapeHtml(order.billingName)}</p>
+          ${order.billingStreetAddress ? `<p style="margin:2px 0;">${escapeHtml(order.billingStreetAddress)}</p>` : ""}
+          ${escapeHtml([order.billingCity, order.billingState, order.billingPostcode].filter(Boolean).join(", "))}
+          ${order.billingCountry ? `<p style="margin:2px 0;">${escapeHtml(order.billingCountry)}</p>` : ""}
         </div>`
       : "";
 
     const couponHtml = order.couponCode
       ? `<tr>
-          <td colspan="2" style="padding:4px 0;color:#16a34a;">Coupon (${order.couponCode}${order.discountPercent ? ` — ${order.discountPercent}%` : ""})</td>
+          <td colspan="2" style="padding:4px 0;color:#16a34a;">Coupon (${escapeHtml(order.couponCode)}${order.discountPercent ? ` — ${order.discountPercent}%` : ""})</td>
           <td style="padding:4px 0;text-align:right;color:#16a34a;">${order.discountAmount ? `-Rs.${Math.round(order.discountAmount)}` : "—"}</td>
         </tr>`
       : "";
@@ -187,9 +196,9 @@ export function AdminOrderView(props: AdminOrderViewProps) {
       </p>
     </div>
     <div style="text-align:right;">
-      <span style="display:inline-block;padding:4px 10px;background:#f3f4f6;border-radius:4px;font-size:12px;font-weight:600;">${order.status}</span>
+      <span style="display:inline-block;padding:4px 10px;background:#f3f4f6;border-radius:4px;font-size:12px;font-weight:600;">${escapeHtml(orderStatus)}</span>
       <br/>
-      <span style="display:inline-block;margin-top:4px;padding:4px 10px;background:#f3f4f6;border-radius:4px;font-size:12px;font-weight:600;">${order.paymentStatus}</span>
+      <span style="display:inline-block;margin-top:4px;padding:4px 10px;background:#f3f4f6;border-radius:4px;font-size:12px;font-weight:600;">${escapeHtml(paymentStat)}</span>
     </div>
   </div>
 
@@ -222,7 +231,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
         ${couponHtml}
         <tr style="border-top:2px solid #111;">
           <td colspan="2" style="padding:8px 0 0;font-weight:700;font-size:15px;">Total</td>
-          <td style="padding:8px 0 0;text-align:right;font-weight:700;font-size:18px;">Rs.${Math.round(order.totalPrice)}</td>
+          <td style="padding:8px 0 0;text-align:right;font-weight:700;font-size:18px;">Rs.${Math.round(displayedTotal)}</td>
         </tr>
       </tbody>
     </table>
@@ -236,7 +245,7 @@ export function AdminOrderView(props: AdminOrderViewProps) {
   ${order.orderNote ? `
   <div style="margin-top:24px;padding:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;">
     <p style="font-size:12px;font-weight:600;color:#92400e;margin-bottom:4px;">Customer Note</p>
-    <p style="font-size:13px;color:#111;white-space:pre-wrap;">${order.orderNote}</p>
+    <p style="font-size:13px;color:#111;white-space:pre-wrap;">${escapeHtml(order.orderNote)}</p>
   </div>` : ""}
 </body>
 </html>`;

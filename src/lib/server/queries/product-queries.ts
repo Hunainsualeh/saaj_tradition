@@ -128,37 +128,49 @@ export async function getAllProductsBasic(): Promise<
 // gives per-request variety WITHOUT a full-table `ORDER BY RANDOM()` scan on
 // every product page view. Invalidated on any product mutation via the tag.
 const getRelatedProductsPoolCached = unstable_cache(
-  async (): Promise<SerializedProduct[]> => {
+  async (): Promise<(SerializedProduct & { categorySlugs: string[] })[]> => {
     const products = await prisma.product.findMany({
       where: { isActive: true },
       orderBy: { createdAt: "desc" },
-      take: 24,
+      take: 48,
+      include: { categories: { select: { slug: true } } },
     });
-    return products.map((p) =>
-      serializeProduct({ ...p, categories: [] }),
-    ) as SerializedProduct[];
+    return products.map((p) => ({
+      ...(serializeProduct({ ...p, categories: [] }) as SerializedProduct),
+      categorySlugs: p.categories.map((c) => c.slug),
+    }));
   },
-  [CACHE_TAG_PRODUCT, "related-pool"],
+  [CACHE_TAG_PRODUCT, "related-pool-v2"],
   { tags: [CACHE_TAG_PRODUCT] },
 );
 
-export async function getThreeRandomProducts(
+function shuffle<T>(items: T[]): T[] {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  return items;
+}
+
+export async function getRelatedProducts(
   currentSlug: string,
+  categorySlugs: string[] = [],
+  count = 4,
 ): Promise<ServerActionResponse<SerializedProduct[]>> {
   return wrapServerCall(async () => {
     const pool = (await getRelatedProductsPoolCached()).filter(
       (p) => p.slug !== currentSlug,
     );
-
-    // Fisher–Yates shuffle, then take the first 3 for variety per request.
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-
-    return pool.slice(0, 3);
+    const sameCategory = shuffle(
+      pool.filter((p) => p.categorySlugs.some((slug) => categorySlugs.includes(slug))),
+    );
+    const others = shuffle(pool.filter((p) => !sameCategory.includes(p)));
+    return [...sameCategory, ...others]
+      .slice(0, count)
+      .map(({ categorySlugs: _categorySlugs, ...product }) => product);
   });
 }
+
 const getAllProductsWithTotalSoldCached = unstable_cache(
   async (): Promise<ProductGetAllCounts[]> => {
     // Efficiently get total sold per product using a grouped aggregate,

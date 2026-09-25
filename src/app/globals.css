@@ -153,6 +153,72 @@ footer {
   }
 }
 
+@keyframes saaj-confetti-burst {
+  from {
+    transform: translate(0, 0) rotate(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translate(var(--confetti-x), var(--confetti-y)) rotate(var(--confetti-r)) scale(0.4);
+    opacity: 0;
+  }
+}
+.saaj-confetti {
+  animation: saaj-confetti-burst 1.4s cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+}
+@keyframes saaj-pop {
+  0% {
+    transform: scale(0.75);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.saaj-pop-in {
+  animation: saaj-pop 0.45s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .saaj-confetti {
+    display: none;
+  }
+  .saaj-pop-in {
+    animation: none;
+  }
+}
+
+@keyframes saaj-letter-in {
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+.saaj-letter {
+  display: inline-block;
+  opacity: 0.001;
+  filter: blur(10px);
+  transform: translateY(12px);
+}
+.saaj-letters.is-visible .saaj-letter {
+  animation: saaj-letter-in 0.4s ease-in-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .saaj-letter {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+  .saaj-letters.is-visible .saaj-letter {
+    animation: none;
+  }
+}
+
 /* Typography Base Classes */
 .text-body-large {
   font-size: var(--font-size-lg);

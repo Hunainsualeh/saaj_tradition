@@ -13,8 +13,9 @@ type Props = { params: Promise<{ token: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params;
   const order = await getOrderByToken(token);
-  if (!order) return { title: "Order Not Found" };
-  return { title: `Order #${order.orderNumber} — Saaj Tradition` };
+  const robots = { index: false, follow: false };
+  if (!order) return { title: "Order Not Found", robots };
+  return { title: `Order #${order.orderNumber}`, robots };
 }
 
 // ─── DATA FETCH ──────────────────────────────────────────────────────────────

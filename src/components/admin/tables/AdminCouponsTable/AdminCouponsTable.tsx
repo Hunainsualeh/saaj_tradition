@@ -42,6 +42,7 @@ export function AdminCouponsTable({
 
   const deleteCoupon = async (id: string) => {
     const deleted = await deleteCouponById(id);
+    setDeletingId(null);
     if (!deleted.success) {
       toast.error("Failed to delete coupon.");
       return;

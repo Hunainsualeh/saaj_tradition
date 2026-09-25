@@ -1,10 +1,16 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createAdminUser } from "@/lib/server/actions/admin-auth-actions";
 
 export function CreateAdminForm() {
+  const router = useRouter();
   const [state, formAction, isPending] = useActionState(createAdminUser, null);
+
+  useEffect(() => {
+    if (state?.success) router.refresh();
+  }, [state, router]);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -47,9 +53,9 @@ export function CreateAdminForm() {
           id="password"
           name="password"
           type="password"
-          placeholder="Min 6 characters"
+          placeholder="Min 10 characters"
           required
-          minLength={6}
+          minLength={10}
           className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
         />
       </div>

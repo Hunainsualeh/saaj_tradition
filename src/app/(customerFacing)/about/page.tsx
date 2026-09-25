@@ -1,5 +1,8 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { Metadata } from "next";
+import { routes } from "@/lib";
+import { pageMetadata } from "@/lib/seo";
 
 import {
   AnimatedHeadingText,
@@ -21,9 +24,13 @@ import {
   getSiteContentMap,
 } from "@/lib/server/queries";
 
-export const metadata: Metadata = {
-  title: "About",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "About Saaj Tradition | Ladies Boutique from Ahmedpur East",
+  absoluteTitle: true,
+  description:
+    "Meet Saaj Tradition, a women's boutique in Ahmedpur East, Bahawalpur, bringing Bahawalpuri craft to embroidered suits, lawn and festive dresses.",
+  path: "/about",
+});
 
 export default async function AboutPage() {
   const teamResponse = await getTeamMembers();
@@ -85,13 +92,32 @@ export default async function AboutPage() {
         <div className="flex flex-col gap-1 pt-6 md:pt-10 pb-6">
           <AnimatedHeadingText
             disableIsInView
-            text="About Us"
+            text="About Saaj Tradition"
             variant="page-title"
             className="pb-1"
           />
           <p className="text-neutral-10 text-base">
             {c.about_subtitle ||
               "Get to know who we are, what we stand for, and why we love what we do."}
+          </p>
+          <p className="text-neutral-10 text-base max-w-3xl mt-2">
+            Saaj Tradition is a women&apos;s clothing boutique based on KLP Road
+            in Ahmedpur East, District Bahawalpur. We bring the colours and
+            handwork of Bahawalpur and Cholistan to everyday lawn suits, formal
+            wear and festive Eid dresses, and deliver them to customers in
+            Bahawalpur and across Pakistan. Visit our{" "}
+            <Link href={routes.location} className="underline underline-offset-2 hover:text-neutral-12">
+              Ahmedpur East boutique
+            </Link>
+            , explore our{" "}
+            <Link href={routes.bahawalpuriSuits} className="underline underline-offset-2 hover:text-neutral-12">
+              traditional Bahawalpuri suits
+            </Link>{" "}
+            or browse the full{" "}
+            <Link href={routes.shop} className="underline underline-offset-2 hover:text-neutral-12">
+              online collection
+            </Link>
+            .
           </p>
           <div className="flex items-center gap-4 mt-4">
             <a
@@ -139,10 +165,10 @@ export default async function AboutPage() {
                 key={`first-${index}`}
               >
                 <Image
-                  priority
+                  priority={index < 2}
                   className="object-cover rounded-sm"
                   src={src}
-                  alt={`About us image ${index + 1}`}
+                  alt={`Saaj Tradition lookbook photo ${index + 1}`}
                   fill
                   sizes="(min-width: 1024px) 350px, 250px"
                 />
@@ -153,11 +179,12 @@ export default async function AboutPage() {
               <div
                 className="relative w-62.5 aspect-3/4 lg:w-87.5 lg:aspect-6/7 shrink-0"
                 key={`second-${index}`}
+                aria-hidden="true"
               >
                 <Image
                   className="object-cover rounded-sm"
                   src={src}
-                  alt={`About us image ${index + 1}`}
+                  alt=""
                   fill
                   sizes="(min-width: 1024px) 350px, 250px"
                 />
@@ -173,12 +200,12 @@ export default async function AboutPage() {
             <Image
               className="object-cover rounded-sm"
               src={aboutFactImage}
-              priority
-              alt={"About us image facts"}
+              alt=""
               fill
               sizes="(min-width: 1280px) 33vw, 100vw"
             />
           </div>
+          <h2 className="sr-only">What we stand for</h2>
           <div className="grid xl:col-span-1 grid-cols-1 md:grid-cols-2 xl:grid-rows-2 xl:auto-rows-min gap-y-10 gap-x-6 md:border-y py-10">
             {featureCards.map((card) => (
               <AnimateFadeIn key={card.number}>

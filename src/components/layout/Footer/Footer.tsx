@@ -1,7 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import type React from "react";
-import { routes, STORE_EMAIL, STORE_PHONE, STORE_INSTAGRAM, STORE_FACEBOOK } from "@/lib";
+import {
+  routes,
+  STORE_ADDRESS,
+  STORE_EMAIL,
+  STORE_FACEBOOK,
+  STORE_HOURS,
+  STORE_INSTAGRAM,
+  STORE_PHONE,
+  STORE_PHONE_DISPLAY,
+} from "@/lib";
 import { NewsletterForm } from "./NewsletterForm";
 
 type FooterProps = {
@@ -79,19 +88,22 @@ export function Footer({
   const shopLinks = [
     { label: "Shop All", href: routes.shop },
     { label: "New Arrivals", href: routes.shopNewArrivals },
+    { label: "Bahawalpuri Suits", href: routes.bahawalpuriSuits },
     { label: "Collections", href: routes.shopCollections },
+    { label: "Categories", href: routes.shopCategories },
   ];
 
   const companyLinks = [
-    { label: "About", href: routes.about },
-    { label: "Location", href: routes.location },
+    { label: "About Us", href: routes.about },
+    { label: "Boutique in Ahmedpur East", href: routes.location },
+    { label: "Delivery in Bahawalpur", href: routes.bahawalpurBoutique },
     { label: "Blog", href: routes.blog },
+    { label: "Help & FAQ", href: routes.support },
     { label: "Track Order", href: routes.track },
   ];
 
   return (
-    /* Outer bg — Warm white */
-    <div className="bg-gradient-to-br from-stone-100 via-amber-50/30 to-stone-100 relative overflow-hidden pt-20 pb-12 px-4 md:px-8 font-sans">
+    <footer className="max-w-none bg-gradient-to-br from-stone-100 via-amber-50/30 to-stone-100 relative overflow-hidden pt-20 pb-12 px-4 md:px-8 font-sans">
 
       {/* ── Floating card — Glassmorphic ── */}
       <div className="max-w-[1280px] mx-auto relative z-20">
@@ -107,10 +119,10 @@ export function Footer({
                 <div className="relative w-48 h-48 shrink-0 mb-4">
                   <Image
                     src="/assets/logo/Saaj Tradition Golden.png"
-                    alt="Saaj Tradition"
+                    alt="Saaj Tradition logo"
                     fill
+                    sizes="192px"
                     className="object-contain"
-                    priority
                   />
                 </div>
                 <div className="flex flex-col items-center">
@@ -127,9 +139,23 @@ export function Footer({
               </div>
 
               {/* Description */}
-              <p className="text-[18px] leading-relaxed text-gray-500 mb-6 text-center">
+              <p className="text-[18px] leading-relaxed text-gray-500 mb-4 text-center">
                 Traditional Bahawalpuri dresses
               </p>
+
+              <address className="not-italic text-[13px] leading-relaxed text-gray-600 text-center mb-6">
+                <Link href={routes.location} className="hover:text-gray-900 transition-colors duration-200">
+                  {STORE_ADDRESS.streetAddress}, {STORE_ADDRESS.addressLocality}, District {STORE_ADDRESS.district}, {STORE_ADDRESS.addressRegion}
+                </Link>
+                <br />
+                <a href={`tel:${phone.replace(/[^\d+]/g, "")}`} className="hover:text-gray-900 transition-colors duration-200">
+                  {phone === STORE_PHONE ? STORE_PHONE_DISPLAY : phone}
+                </a>
+                <br />
+                <span>
+                  {STORE_HOURS.daysLabel}, {STORE_HOURS.timeLabel}
+                </span>
+              </address>
 
               {/* Social + contact icons row */}
               <div className="flex items-center justify-center gap-4 text-gray-500 mb-6">
@@ -188,9 +214,9 @@ export function Footer({
 
               {/* Shop + Newsletter heading & text below */}
               <div>
-                <h3 className="font-semibold text-[14px] text-gray-900 mb-5">
+                <h2 className="font-semibold text-[14px] text-gray-900 mb-5">
                   Shop
-                </h3>
+                </h2>
                 <ul className="flex flex-col gap-3.5 text-[13px] text-gray-500 mb-8">
                   {shopLinks.map((l) => (
                     <li key={l.href}>
@@ -201,9 +227,9 @@ export function Footer({
                   ))}
                 </ul>
 
-                <h3 className="font-semibold text-[14px] text-gray-900 mb-3">
+                <h2 className="font-semibold text-[14px] text-gray-900 mb-3">
                   Newsletter
-                </h3>
+                </h2>
                 <p className="text-[13px] text-gray-500 leading-relaxed">
                   New arrivals &amp; exclusive offers — direct to your inbox.
                 </p>
@@ -211,9 +237,9 @@ export function Footer({
 
               {/* Company + pill below */}
               <div>
-                <h3 className="font-semibold text-[14px] text-gray-900 mb-5">
+                <h2 className="font-semibold text-[14px] text-gray-900 mb-5">
                   Company
-                </h3>
+                </h2>
                 <ul className="flex flex-col gap-3.5 text-[13px] text-gray-500 mb-8">
                   {companyLinks.map((l) => (
                     <li key={l.href}>
@@ -234,19 +260,19 @@ export function Footer({
           <div className="w-full h-px bg-gray-200 my-8" />
 
           {/* Bottom bar */}
-          <div className="flex flex-col md:flex-row justify-between items-center gap-3 text-[12px] text-gray-400">
-            <p className="text-gray-400">&copy; {new Date().getFullYear()} Saaj Tradition. All rights reserved.</p>
+          <div className="flex flex-col md:flex-row justify-between items-center gap-3 text-[12px] text-gray-600">
+            <p className="text-gray-600">&copy; {new Date().getFullYear()} Saaj Tradition. All rights reserved.</p>
 
             {/* Legal links */}
-            <div className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 text-gray-400">
-              <Link href={routes.returnPolicy} className="hover:text-gray-600 transition-colors duration-200">Returns</Link>
-              <Link href={routes.shippingPolicy} className="hover:text-gray-600 transition-colors duration-200">Shipping</Link>
-              <Link href={routes.privacyPolicy} className="hover:text-gray-600 transition-colors duration-200">Privacy</Link>
-              <Link href={routes.termsOfUse} className="hover:text-gray-600 transition-colors duration-200">Terms of Use</Link>
-              <Link href={routes.termsOfSale} className="hover:text-gray-600 transition-colors duration-200">Terms of Sale</Link>
-            </div>
+            <nav aria-label="Legal" className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 text-gray-600">
+              <Link href={routes.returnPolicy} className="hover:text-gray-900 transition-colors duration-200">Returns</Link>
+              <Link href={routes.shippingPolicy} className="hover:text-gray-900 transition-colors duration-200">Shipping</Link>
+              <Link href={routes.privacyPolicy} className="hover:text-gray-900 transition-colors duration-200">Privacy</Link>
+              <Link href={routes.termsOfUse} className="hover:text-gray-900 transition-colors duration-200">Terms of Use</Link>
+              <Link href={routes.termsOfSale} className="hover:text-gray-900 transition-colors duration-200">Terms of Sale</Link>
+            </nav>
 
-            <p className="text-gray-400">Crafted with care in Pakistan</p>
+            <p className="text-gray-600">Crafted with care in Ahmedpur East, Pakistan</p>
           </div>
 
         </div>
@@ -254,11 +280,11 @@ export function Footer({
 
       {/* ── Watermark ── */}
       <div className="absolute bottom-[-5%] left-0 w-full flex justify-center items-end pointer-events-none z-0 overflow-hidden select-none">
-        <h1 className="text-[28vw] sm:text-[22vw] md:text-[18vw] leading-none font-bold text-amber-900/[0.07] tracking-tighter whitespace-nowrap">
+        <p aria-hidden="true" className="text-[28vw] sm:text-[22vw] md:text-[18vw] leading-none font-bold text-amber-900/[0.07] tracking-tighter whitespace-nowrap">
           Saaj Tradition
-        </h1>
+        </p>
       </div>
 
-    </div>
+    </footer>
   );
 }

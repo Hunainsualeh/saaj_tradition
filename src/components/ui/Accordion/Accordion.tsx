@@ -30,12 +30,16 @@ function AccordionTrigger({
   className,
   children,
   smallVariant = false,
+  headingLevel = "h3",
   ...props
 }: React.ComponentProps<typeof AccordionPrimitive.Trigger> & {
   smallVariant?: boolean;
+  headingLevel?: "h2" | "h3" | "h4";
 }) {
+  const Heading = headingLevel;
   return (
-    <AccordionPrimitive.Header className="flex" suppressHydrationWarning>
+    <AccordionPrimitive.Header asChild>
+      <Heading className="flex" suppressHydrationWarning>
       <AccordionPrimitive.Trigger
         suppressHydrationWarning
         data-slot="accordion-trigger"
@@ -56,6 +60,7 @@ function AccordionTrigger({
           )}
         />
       </AccordionPrimitive.Trigger>
+      </Heading>
     </AccordionPrimitive.Header>
   );
 }

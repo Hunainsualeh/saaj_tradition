@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import type { CSSProperties } from "react";
 import { subscribeToNewsletter } from "@/lib/server/actions/newsletter-actions";
 
 // Fixed confetti burst positions (avoids SSR randomness issues)
@@ -44,38 +44,31 @@ export function NewsletterForm() {
     return (
       <div className="relative flex flex-col items-center justify-center py-6 gap-3">
         {/* Confetti burst */}
-        <AnimatePresence>
-          {showConfetti &&
-            CONFETTI.map((p) => (
-              <motion.span
-                key={p.id}
-                initial={{ x: 0, y: 0, opacity: 1, rotate: 0, scale: 1 }}
-                animate={{
-                  x: p.x,
-                  y: p.y,
-                  opacity: 0,
-                  rotate: p.rotate,
-                  scale: 0.4,
-                }}
-                transition={{ duration: 1.4, ease: [0.2, 0.8, 0.4, 1] }}
-                className="absolute top-1/2 left-1/2 rounded-sm pointer-events-none"
-                style={{
+        {showConfetti &&
+          CONFETTI.map((p) => (
+            <span
+              key={p.id}
+              aria-hidden="true"
+              className="saaj-confetti absolute top-1/2 left-1/2 rounded-sm pointer-events-none"
+              style={
+                {
                   width: p.w,
                   height: p.h,
                   backgroundColor: p.color,
                   marginLeft: -p.w / 2,
                   marginTop: -p.h / 2,
-                }}
-              />
-            ))}
-        </AnimatePresence>
+                  "--confetti-x": `${p.x}px`,
+                  "--confetti-y": `${p.y}px`,
+                  "--confetti-r": `${p.rotate}deg`,
+                } as CSSProperties
+              }
+            />
+          ))}
 
         {/* Success state */}
-        <motion.div
-          initial={{ scale: 0.75, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 22 }}
-          className="flex flex-col items-center gap-3 text-center"
+        <div
+          role="status"
+          className="saaj-pop-in flex flex-col items-center gap-3 text-center"
         >
           <div className="w-12 h-12 rounded-full bg-[#c9a84c]/10 border border-[#c9a84c]/20 flex items-center justify-center">
             <svg
@@ -96,7 +89,7 @@ export function NewsletterForm() {
               Exclusive updates coming your way.
             </p>
           </div>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -109,6 +102,8 @@ export function NewsletterForm() {
           name="email"
           type="email"
           placeholder="Your email address"
+          aria-label="Email address for newsletter"
+          autoComplete="email"
           required
           className="flex-1 min-w-0 bg-transparent pl-4 pr-2 text-[13px] text-gray-800 placeholder:text-gray-400 outline-none"
         />
@@ -122,7 +117,7 @@ export function NewsletterForm() {
       </div>
 
       {state?.message && !state.success && (
-        <p className="text-xs mt-2 text-red-500 pl-3">
+        <p role="alert" className="text-xs mt-2 text-red-700 pl-3">
           {state.message}
         </p>
       )}

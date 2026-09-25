@@ -1,5 +1,4 @@
 import React from "react";
-import type { Metadata } from "next";
 
 import { Footer, Navbar } from "@/components";
 import { CartCountProvider, CartDialogProvider, CartSidebarProvider } from "@/providers";
@@ -9,13 +8,6 @@ import { CartSidebar } from "@/components/common/CartSidebar/CartSidebar";
 import { getCollections, getAllCategories, getSiteContentMap } from "@/lib/server/queries";
 import { STORE_EMAIL, STORE_PHONE, STORE_INSTAGRAM, STORE_FACEBOOK } from "@/lib/constants/store-information";
 import { WhatsAppChatButton } from "@/components/common/WhatsAppChatButton/WhatsAppChatButton";
-
-export const metadata: Metadata = {
-  title: {
-    default: "Store",
-    template: "%s | Saaj Tradition",
-  },
-};
 
 export default async function CustomerLayout({
   children,

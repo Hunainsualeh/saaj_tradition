@@ -23,6 +23,7 @@ import {
   deleteCouponById,
   updateCouponById,
 } from "@/lib/server/actions";
+import { adminRoutes } from "@/lib";
 
 type AdminCouponsFormProps = {
   isEditMode?: boolean;
@@ -61,7 +62,8 @@ export function AdminCouponsForm(props: AdminCouponsFormProps) {
     if (!res.success) {
       setIsActionLocked(false);
       toast.error(
-        isEditMode ? "Error updating coupon" : "Error creating coupon",
+        res.error ||
+          (isEditMode ? "Error updating coupon" : "Error creating coupon"),
       );
       return;
     }
@@ -70,22 +72,23 @@ export function AdminCouponsForm(props: AdminCouponsFormProps) {
         ? "Coupon updated successfully!"
         : "Coupon created successfully!",
     );
-    router.back();
+    router.push(adminRoutes.coupons);
   };
 
   const onDelete = async () => {
     if (!couponData?.id) return;
+    if (!window.confirm("Delete this coupon? This action cannot be undone.")) return;
     setIsDeleting(true);
     setIsActionLocked(true);
     const res = await deleteCouponById(couponData?.id);
     if (!res.success) {
       setIsDeleting(false);
       setIsActionLocked(false);
-      toast.error("Error deleting coupon");
+      toast.error(res.error || "Error deleting coupon");
       return;
     }
     toast.success("Coupon deleted successfully!");
-    router.back();
+    router.push(adminRoutes.coupons);
   };
 
   const isBusy = isActionLocked || isDeleting;

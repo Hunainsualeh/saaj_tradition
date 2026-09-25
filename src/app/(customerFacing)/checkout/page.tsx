@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { NOINDEX_METADATA } from "@/lib/seo";
 import { Decimal } from "@prisma/client/runtime/library";
 
 import { BaseSection } from "@/components";
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Checkout",
+  ...NOINDEX_METADATA,
 };
 
 export default async function CheckoutPage({

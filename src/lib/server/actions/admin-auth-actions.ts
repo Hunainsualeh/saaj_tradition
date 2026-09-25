@@ -120,7 +120,13 @@ export async function adminLogin(
     maxAge: COOKIE_MAX_AGE,
   });
 
-  redirect(redirectTo || "/admin");
+  const isSafeRedirect =
+    typeof redirectTo === "string" &&
+    !redirectTo.startsWith("//") &&
+    !redirectTo.includes("\\") &&
+    (redirectTo === "/admin" || redirectTo.startsWith("/admin/"));
+
+  redirect(isSafeRedirect ? redirectTo : "/admin");
 }
 
 /** Logout — clear session cookie and Redis session */

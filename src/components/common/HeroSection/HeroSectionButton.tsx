@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState, useCallback } from "react";
-import { motion } from "framer-motion";
 
 import { ArrowUpRightIcon, getButtonStyles } from "@/components";
 import { cn, routes } from "@/lib";
@@ -30,31 +29,25 @@ export function HeroSectionButton({ className }: HeroButtonSectionProps) {
       className={cn(className, "flex gap-1 relative cursor-pointer")}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      aria-label="Shop now - Navigate to products"
-      type="button"
+      onFocus={() => setIsHovered(true)}
+      onBlur={() => setIsHovered(false)}
     >
-      <motion.div
+      <div
         ref={buttonRef}
-        className="z-20"
-        animate={{
-          x: isHovered ? circleWidth + 4 : 0,
-        }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="z-20 transition-transform duration-300 ease-in-out motion-reduce:transition-none"
+        style={{ transform: `translateX(${isHovered ? circleWidth + 4 : 0}px)` }}
       >
         <div className={getButtonStyles("light-no-border")}>Shop now</div>
-      </motion.div>
+      </div>
 
-      <motion.div
+      <div
         ref={circleRef}
-        className="bg-white text-black flex items-center justify-center rounded-full w-12 h-12 min-w-12 min-h-12 shrink-0 z-10"
-        animate={{
-          x: isHovered ? -(buttonWidth + 4) : 0,
-        }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="bg-white text-black flex items-center justify-center rounded-full w-12 h-12 min-w-12 min-h-12 shrink-0 z-10 transition-transform duration-300 ease-in-out motion-reduce:transition-none"
+        style={{ transform: `translateX(${isHovered ? -(buttonWidth + 4) : 0}px)` }}
         aria-hidden="true"
       >
         <ArrowUpRightIcon />
-      </motion.div>
+      </div>
     </Link>
   );
 }

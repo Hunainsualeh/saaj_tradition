@@ -130,7 +130,7 @@ export function DeliveryDetailsStep(props: DeliveryDetailsStepProps) {
             className="w-full"
             id="fullName"
             variant="light"
-            placeholder="Amelia Clarke"
+            placeholder="Ayesha Khan"
             autoComplete="name"
             isError={!!errors.fullName}
             {...register("fullName")}
@@ -152,7 +152,7 @@ export function DeliveryDetailsStep(props: DeliveryDetailsStepProps) {
             id="email"
             type="email"
             variant="light"
-            placeholder="info@saajtradition.com"
+            placeholder="you@example.com"
             autoComplete="email"
             isError={!!errors.email}
             {...register("email")}
@@ -172,7 +172,7 @@ export function DeliveryDetailsStep(props: DeliveryDetailsStepProps) {
             id="phone"
             type="tel"
             variant="light"
-            placeholder="020 7946 0958"
+            placeholder="0300 1234567"
             autoComplete="tel"
             isError={!!errors.phone}
             {...register("phone")}
@@ -197,7 +197,7 @@ export function DeliveryDetailsStep(props: DeliveryDetailsStepProps) {
               className="w-full"
               id="address"
               variant="light"
-              placeholder="123 Main Street"
+              placeholder="House 12, Street 4, Model Town"
               autoComplete="street-address"
               isError={!!errors.address}
               {...register("address")}
@@ -219,7 +219,7 @@ export function DeliveryDetailsStep(props: DeliveryDetailsStepProps) {
                 className="w-full"
                 id="city"
                 variant="light"
-                placeholder="London"
+                placeholder="Bahawalpur"
                 autoComplete="address-level2"
                 isError={!!errors.city}
                 {...register("city")}
@@ -266,7 +266,7 @@ export function DeliveryDetailsStep(props: DeliveryDetailsStepProps) {
                 className="w-full"
                 id="zipCode"
                 variant="light"
-                placeholder="SW1A 1AA"
+                placeholder="63100"
                 autoComplete="postal-code"
                 isError={!!errors.zipCode}
                 {...register("zipCode")}
@@ -286,7 +286,7 @@ export function DeliveryDetailsStep(props: DeliveryDetailsStepProps) {
                 className="w-full"
                 id="country"
                 variant="light"
-                placeholder="United Kingdom"
+                placeholder="Pakistan"
                 autoComplete="country"
                 isError={!!errors.country}
                 {...register("country")}
@@ -344,7 +344,7 @@ export function DeliveryDetailsStep(props: DeliveryDetailsStepProps) {
               className="w-full"
               id="billingAddress"
               variant="light"
-              placeholder="123 Main Street"
+              placeholder="House 12, Street 4, Model Town"
               autoComplete="billing street-address"
               isError={!!errors.billingAddress}
               {...register("billingAddress")}
@@ -365,7 +365,7 @@ export function DeliveryDetailsStep(props: DeliveryDetailsStepProps) {
                 className="w-full"
                 id="billingCity"
                 variant="light"
-                placeholder="London"
+                placeholder="Bahawalpur"
                 autoComplete="billing address-level2"
                 isError={!!errors.billingCity}
                 {...register("billingCity")}
@@ -411,7 +411,7 @@ export function DeliveryDetailsStep(props: DeliveryDetailsStepProps) {
                 className="w-full"
                 id="billingZipCode"
                 variant="light"
-                placeholder="SW1A 1AA"
+                placeholder="63100"
                 autoComplete="billing postal-code"
                 isError={!!errors.billingZipCode}
                 {...register("billingZipCode")}
@@ -431,7 +431,7 @@ export function DeliveryDetailsStep(props: DeliveryDetailsStepProps) {
                 className="w-full"
                 id="billingCountry"
                 variant="light"
-                placeholder="United Kingdom"
+                placeholder="Pakistan"
                 autoComplete="billing country"
                 isError={!!errors.billingCountry}
                 {...register("billingCountry")}

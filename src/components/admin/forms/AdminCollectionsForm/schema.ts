@@ -3,7 +3,13 @@ import { z } from "zod";
 const baseSchema = z.object({
   name: z.string().min(1, "Name is required"),
   tagline: z.string().min(1, "Tagline is required"),
-  slug: z.string().min(1, "Slug is required"),
+  slug: z
+    .string()
+    .min(1, "Slug is required")
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Slug must be lowercase with hyphens only",
+    ),
   sortOrder: z.number().int().min(0, "Sort order must be >= 0"),
 });
 
