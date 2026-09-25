@@ -53,6 +53,22 @@ All of the changes below are live on `master` (commit `520290f`).
 | Product and blog pages were rendered fresh on every visit | No `generateStaticParams` | These pages are now cached (ISR) and refreshed when content changes |
 | Too many images marked as high priority | Footer logo and below-the-fold images had `priority` | Priority is kept only for above-the-fold images |
 
+**Lighthouse mobile results.** Medians of 3 alternating runs on the same machine and the same data. The originals are marked "before".
+
+| Page | Performance before → after | LCP before → after | Page weight before → after |
+|---|---|---|---|
+| Home | 76 → 89 | 5.1 s → 3.2 s | 693 → 603 KiB |
+| Shop | 76 → 81 | 5.3 s → 4.5 s | 877 → 679 KiB |
+| Product | 75 → 89 | 4.8 s → 3.4 s | 853 → 655 KiB |
+| Location | 78 → 82 | 5.0 s → 4.0 s | 872 → 581 KiB |
+| About | 75 → 95 | 6.5 s → 2.6 s | 1603 → 918 KiB |
+
+**Other scores**
+- Accessibility went from 93–96 to 96–100.
+- Best Practices stayed at 96 on every page.
+- CLS stayed at 0 on every page.
+- Remaining cost is mostly Next.js and React JavaScript (about 155 KiB unused on first load). Real-user numbers on Vercel will be better than these simulated slow-phone results.
+
 ### Accessibility
 - Logical heading order on every page (verified by an automated crawl: zero skipped levels).
 - The mobile menu and cart drawer are removed from keyboard focus when closed, close with Escape and have dialog labels.
